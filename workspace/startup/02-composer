@@ -1,0 +1,201 @@
+#!/bin/bash
+
+# Enable strict error handling
+set -euo pipefail
+
+# Configuration constants
+readonly USER_HOME="/home/${APP_USER}"
+readonly USER_BASHRC="${USER_HOME}/.bashrc"
+readonly COMPOSER_HOME="${USER_HOME}/.composer"
+readonly AUTH_FILE="/var/www/auth.json"
+
+# Composer configuration
+readonly COMPOSER_DISABLE_XDEBUG_WARN="1"
+
+# Output formatting functions
+log_info() {
+    echo "$*"
+}
+
+log_success() {
+    echo "✓ $*"
+}
+
+log_warning() {
+    echo "⚠ $*"
+}
+
+log_error() {
+    echo "✗ $*" >&2
+}
+
+# Input validation
+validate_environment() {
+    if [[ -z "${APP_USER:-}" ]]; then
+        log_error "APP_USER environment variable is not set"
+        exit 1
+    fi
+}
+
+validate_user_exists() {
+    if ! id "$APP_USER" >/dev/null 2>&1; then
+        log_error "User $APP_USER does not exist"
+        exit 1
+    fi
+}
+
+# Function to setup Composer environment variables
+setup_composer_environment() {
+    # Check if variables are already set as readonly, if not - export them
+    if ! readonly -p | grep -q "COMPOSER_DISABLE_XDEBUG_WARN"; then
+        export COMPOSER_DISABLE_XDEBUG_WARN="$COMPOSER_DISABLE_XDEBUG_WARN"
+    fi
+}
+
+# Function to setup file permissions
+setup_file_permissions() {
+    local file_path="$1"
+    local permissions="$2"
+
+    chown "${APP_USER}:${APP_USER}" "$file_path"
+    chmod "$permissions" "$file_path"
+}
+
+# Function to setup Composer authentication
+setup_composer_auth() {
+    local auth_file="$1"
+    local composer_home="$2"
+
+    if [[ ! -f "$auth_file" ]]; then
+        return 0
+    fi
+
+    log_info "Found auth.json, configuring Composer authentication..."
+
+    # Ensure proper ownership
+    setup_file_permissions "$auth_file" "600"
+
+    # Create composer directory if it doesn't exist
+    if [[ ! -d "$composer_home" ]]; then
+        mkdir -p "$composer_home"
+        setup_file_permissions "$composer_home" "755"
+    fi
+
+    # Copy auth.json to composer home
+    cp "$auth_file" "$composer_home/auth.json"
+    setup_file_permissions "$composer_home/auth.json" "600"
+
+    log_success "Composer authentication configured"
+}
+
+# Function to check if composer is available
+check_composer_availability() {
+    if ! command -v composer >/dev/null 2>&1; then
+        log_warning "Composer not found, skipping plugin installation"
+        return 1
+    fi
+    return 0
+}
+
+# Function to configure allow-plugins
+configure_allow_plugins() {
+    log_info "Configuring allow-plugins policy..."
+
+    runuser -u "${APP_USER}" -- bash -c "
+        composer config --global allow-plugins.ergebnis/composer-normalize true --no-interaction --quiet 2>/dev/null
+        composer config --global allow-plugins.pyrech/composer-changelogs true --no-interaction --quiet 2>/dev/null
+    "
+
+    log_success "Allow-plugins configured"
+}
+
+# Function to install global plugin
+install_global_plugin() {
+    local plugin="$1"
+    local description="$2"
+
+    log_info "Installing global plugin: $plugin ($description)"
+
+    # Run as APP_USER
+    if runuser -u "${APP_USER}" -- bash -c "
+        composer global require '$plugin' --no-interaction --quiet 2>/dev/null
+    "; then
+        log_success "Successfully installed: $plugin"
+    else
+        log_warning "Failed to install $plugin"
+    fi
+}
+
+# Function to setup composer plugins
+setup_composer_plugins() {
+    if ! check_composer_availability; then
+        log_info "Skipping Composer plugin installation - Composer not available"
+        return 0
+    fi
+
+    log_info "Setting up Composer global plugins..."
+
+    # Configure allow-plugins first
+    configure_allow_plugins
+
+    # Install global plugins
+    install_global_plugin "ergebnis/composer-normalize" "Normalize composer.json files"
+    install_global_plugin "pyrech/composer-changelogs" "Show changelogs when updating packages"
+
+    log_success "Composer global plugins setup completed"
+}
+
+# Function to add environment variables to user profile
+setup_user_environment() {
+    local bashrc_file="$1"
+
+    if [[ ! -f "$bashrc_file" ]]; then
+        log_warning "Bashrc file not found at $bashrc_file"
+        return 0
+    fi
+
+    # Check if Composer environment variables are already set
+    if grep -q "COMPOSER_DISABLE_XDEBUG_WARN" "$bashrc_file"; then
+        log_info "Composer environment variables already configured in user profile"
+        return 0
+    fi
+
+    {
+        echo ""
+        echo "# Composer environment variables"
+        echo "export COMPOSER_DISABLE_XDEBUG_WARN=\"$COMPOSER_DISABLE_XDEBUG_WARN\""
+    } >> "$bashrc_file"
+
+    setup_file_permissions "$bashrc_file" "644"
+    log_success "Composer environment variables added to user profile"
+}
+
+# Main execution
+main() {
+    log_info "Setting up Composer environment for user: ${APP_USER}"
+
+    # Validate environment and user
+    validate_environment
+    validate_user_exists
+
+    # Setup Composer environment
+    log_info "Configuring Composer environment variables"
+    setup_composer_environment
+
+    # Setup authentication
+    log_info "Checking for Composer authentication configuration"
+    setup_composer_auth "$AUTH_FILE" "$COMPOSER_HOME"
+
+    # Setup plugins
+    log_info "Installing Composer global plugins"
+    setup_composer_plugins
+
+    # Setup user environment
+    log_info "Updating user environment configuration"
+    setup_user_environment "$USER_BASHRC"
+
+    log_success "Composer environment setup completed for ${APP_USER}"
+}
+
+# Execute main function
+main

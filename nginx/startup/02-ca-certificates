@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Enable strict error handling
+set -euo pipefail
+
+# Configuration constants
+readonly CA_CERT_SOURCE="/ssl-ca/rootCA.crt"
+readonly CA_CERT_TARGET="/usr/local/share/ca-certificates/mkcert-root.crt"
+readonly CA_PACKAGES="ca-certificates"
+
+# Output formatting functions
+log_info() {
+    echo "$*"
+}
+
+log_success() {
+    echo "✓ $*"
+}
+
+log_warning() {
+    echo "⚠ $*"
+}
+
+log_error() {
+    echo "✗ $*" >&2
+}
+
+# Function to check if ca-certificates package is installed
+check_ca_package() {
+    if ! dpkg -l | grep -q "^ii.*${CA_PACKAGES}"; then
+        log_info "Installing ${CA_PACKAGES} package..."
+        if apt-get update >/dev/null 2>&1 && apt-get install -y ${CA_PACKAGES} >/dev/null 2>&1; then
+            log_success "${CA_PACKAGES} package installed successfully"
+            return 0
+        else
+            log_error "Failed to install ${CA_PACKAGES} package"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Function to install mkcert CA certificate
+install_ca_certificate() {
+    local source_cert="$1"
+    local target_cert="$2"
+
+    log_info "Installing mkcert CA certificate..."
+
+    # Copy certificate to the correct location
+    if cp "$source_cert" "$target_cert"; then
+        log_success "CA certificate copied to $target_cert"
+    else
+        log_error "Failed to copy CA certificate"
+        return 1
+    fi
+
+    # Update CA certificates bundle
+    if update-ca-certificates >/dev/null 2>&1; then
+        log_success "CA certificates bundle updated successfully"
+        return 0
+    else
+        log_error "Failed to update CA certificates bundle"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    log_info "Setting up mkcert CA certificates for nginx container..."
+
+    if [[ -f "$CA_CERT_SOURCE" ]]; then
+        log_info "Found mkcert CA certificate at $CA_CERT_SOURCE"
+
+        # Ensure ca-certificates package is installed
+        log_info "Checking ca-certificates package installation"
+        if check_ca_package; then
+            # Install the certificate
+            if install_ca_certificate "$CA_CERT_SOURCE" "$CA_CERT_TARGET"; then
+                log_success "mkcert CA certificate setup completed successfully"
+            else
+                log_error "mkcert CA certificate setup failed"
+                return 1
+            fi
+        else
+            log_error "Cannot proceed without ca-certificates package"
+            return 1
+        fi
+    else
+        log_warning "mkcert CA certificate not found at $CA_CERT_SOURCE"
+        log_warning "HTTPS connections to local development sites may fail"
+    fi
+
+    log_info "CA certificates setup completed for nginx container"
+}
+
+# Execute main function
+main

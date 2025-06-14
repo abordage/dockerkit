@@ -1,0 +1,83 @@
+-- MySQL initialization script example
+-- Rename this file to init.sql to enable automatic execution
+
+-- Create additional databases
+-- CREATE DATABASE IF NOT EXISTS example_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- CREATE DATABASE IF NOT EXISTS test_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Create users with proper permissions
+-- CREATE USER IF NOT EXISTS 'app_user'@'%' IDENTIFIED BY 'password';
+-- GRANT ALL PRIVILEGES ON example_db.* TO 'app_user'@'%';
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON test_db.* TO 'app_user'@'%';
+
+-- Switch to example database
+-- USE example_db;
+
+-- Example table creation
+-- CREATE TABLE IF NOT EXISTS users (
+--     id INT AUTO_INCREMENT PRIMARY KEY,
+--     username VARCHAR(50) UNIQUE NOT NULL,
+--     email VARCHAR(100) UNIQUE NOT NULL,
+--     password_hash VARCHAR(255) NOT NULL,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     INDEX idx_username (username),
+--     INDEX idx_email (email)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- CREATE TABLE IF NOT EXISTS posts (
+--     id INT AUTO_INCREMENT PRIMARY KEY,
+--     user_id INT NOT NULL,
+--     title VARCHAR(255) NOT NULL,
+--     content TEXT,
+--     status ENUM('draft', 'published', 'archived') DEFAULT 'draft',
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+--     INDEX idx_user_id (user_id),
+--     INDEX idx_status (status)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert sample data
+-- INSERT IGNORE INTO users (username, email, password_hash) VALUES
+--     ('admin', 'admin@example.com', SHA2('admin123', 256)),
+--     ('user1', 'user1@example.com', SHA2('user123', 256)),
+--     ('user2', 'user2@example.com', SHA2('user123', 256));
+
+-- INSERT IGNORE INTO posts (user_id, title, content, status) VALUES
+--     (1, 'Welcome Post', 'This is a welcome post from admin.', 'published'),
+--     (2, 'My First Post', 'This is my first blog post!', 'published'),
+--     (2, 'Draft Post', 'This is a draft post.', 'draft');
+
+-- Create a view for active users
+-- CREATE OR REPLACE VIEW active_users AS
+-- SELECT
+--     u.id,
+--     u.username,
+--     u.email,
+--     COUNT(p.id) as post_count,
+--     u.created_at
+-- FROM users u
+-- LEFT JOIN posts p ON u.id = p.user_id AND p.status = 'published'
+-- GROUP BY u.id, u.username, u.email, u.created_at;
+
+-- Create a stored procedure example
+-- DELIMITER //
+-- CREATE PROCEDURE IF NOT EXISTS GetUserStats(IN user_id INT)
+-- BEGIN
+--     SELECT
+--         u.username,
+--         u.email,
+--         COUNT(p.id) as total_posts,
+--         COUNT(CASE WHEN p.status = 'published' THEN 1 END) as published_posts,
+--         COUNT(CASE WHEN p.status = 'draft' THEN 1 END) as draft_posts,
+--         u.created_at as user_since
+--     FROM users u
+--     LEFT JOIN posts p ON u.id = p.user_id
+--     WHERE u.id = user_id
+--     GROUP BY u.id, u.username, u.email, u.created_at;
+-- END //
+-- DELIMITER ;
+
+-- Apply privileges after creating tables
+-- FLUSH PRIVILEGES;

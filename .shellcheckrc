@@ -1,0 +1,6 @@
+# ShellCheck configuration for DockerKit
+# Disable SC1091 as it's common in modular projects with dynamic source paths
+disable=SC1091
+
+# Enable external source following for better analysis
+external-sources=true

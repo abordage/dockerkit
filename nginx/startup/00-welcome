@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Enable strict error handling
+set -euo pipefail
+
+# Output formatting functions
+log_info() {
+    echo "$*"
+}
+
+log_success() {
+    echo "✓ $*"
+}
+
+# Function to display DockerKit logo
+show_dockerkit_logo() {
+    cat << 'EOF'
+$$$$$$$\                      $$\                           $$\   $$\ $$\   $$\
+$$  __$$\                     $$ |                          $$ | $$  |\__|  $$ |
+$$ |  $$ | $$$$$$\   $$$$$$$\ $$ |  $$\  $$$$$$\   $$$$$$\  $$ |$$  / $$\ $$$$$$\
+$$ |  $$ |$$  __$$\ $$  _____|$$ | $$  |$$  __$$\ $$  __$$\ $$$$$  /  $$ |\_$$  _|
+$$ |  $$ |$$ /  $$ |$$ /      $$$$$$  / $$$$$$$$ |$$ |  \__|$$  $$<   $$ |  $$ |
+$$ |  $$ |$$ |  $$ |$$ |      $$  _$$<  $$   ____|$$ |      $$ |\$$\  $$ |  $$ |$$\
+$$$$$$$  |\$$$$$$  |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |      $$ | \$$\ $$ |  \$$$$  |
+\_______/  \______/  \_______|\__|  \__| \_______|\__|      \__|  \__|\__|   \____/
+EOF
+}
+
+# Function to show welcome information
+show_welcome_info() {
+    echo
+    log_info "Nginx Web Server & Reverse Proxy"
+    log_info "SSL certificates and virtual hosts ready"
+    log_info "Serving your .local development sites"
+    echo
+}
+
+# Main execution
+main() {
+    # Clear screen for clean welcome display
+    clear
+
+    # Show DockerKit logo
+    show_dockerkit_logo
+
+    # Show welcome information
+    show_welcome_info
+
+    # Final success message
+    log_success "DockerKit Nginx ready to serve your applications!"
+    echo
+}
+
+# Execute main function
+main

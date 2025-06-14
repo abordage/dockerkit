@@ -1,0 +1,4 @@
+# Ignore all contents of ssl-ca directory for security
+# This directory contains Certificate Authority files that should not be committed
+*
+!.gitignore

@@ -1,0 +1,460 @@
+#file: noinspection SpellCheckingInspection
+
+services:
+  ### Workspace ############################################
+  workspace:
+    build:
+      context: ./workspace
+      args:
+        # Core configuration
+        - PHP_VERSION
+        - TZ
+        - APP_USER
+        - APP_GROUP
+        - APP_UID
+        - APP_GID
+        - APP_PATH
+        # PHP Extensions
+        - INSTALL_XDEBUG
+        - INSTALL_PCOV
+        - INSTALL_MONGO
+        - INSTALL_AMQP
+        - INSTALL_AST
+        # Database clients
+        - INSTALL_POSTGRES_CLIENT
+        - POSTGRES_CLIENT_VERSION
+        - INSTALL_MYSQL_CLIENT
+        # Node.js
+        - INSTALL_NODE
+        - NODE_VERSION
+        - INSTALL_VACUUM
+        - INSTALL_OPENAPI_GENERATOR
+        # Performance and Security
+        - ENABLE_NON_ROOT_USER=true
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_WORKSPACE:-1}
+    ports:
+      - "${BROWSERSYNC_HOST_PORT}:3000"
+      - "${BROWSERSYNC_UI_HOST_PORT}:3001"
+      - "${VITE_PORT}:5173"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    tty: true
+    environment:
+      - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
+      - CHOKIDAR_USEPOLLING=true
+      - TZ
+      # Container user configuration
+      - APP_USER
+      - APP_GROUP
+      - APP_UID
+      - APP_GID
+      - APP_PATH
+      # Runtime PHP environment variables support
+      - ALLOW_RUNTIME_PHP_ENVVARS=1
+      # PHP Configuration
+      - PHP_DATE_TIMEZONE=UTC
+      - PHP_DISPLAY_ERRORS=Off
+      - PHP_LOG_ERRORS=Off
+      - PHP_OUTPUT_BUFFERING=0
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_MAX_EXECUTION_TIME=21600
+      - PHP_DEFAULT_SOCKET_TIMEOUT=21600
+      # Xdebug Configuration
+      - PHP_XDEBUG_MODE=debug
+      - PHP_XDEBUG_START_WITH_REQUEST=trigger
+      - PHP_XDEBUG_CLIENT_HOST=host.docker.internal
+      - PHP_XDEBUG_CLIENT_PORT=${XDEBUG_PORT}
+      - PHP_XDEBUG_DISCOVER_CLIENT_HOST=0
+      - PHP_XDEBUG_IDEKEY=PHPSTORM
+      # Optimization and logging
+      - DEFAULT_LOG_PATH=/var/log/workspace.log
+      - DEBUG=${DEBUG_MODE:-0}
+      - DISABLE_GREETING=1
+      # Cron configuration
+      - ENABLE_CRONTAB=1
+      - CRONTAB_DIR=/workspace/crontab
+      - DISABLE_AUTORUN_CREATING_PROJECT=1
+      - DISABLE_AUTORUN_COMPOSER_INSTALL=1
+      - DISABLE_AUTORUN_GENERATING_INDEX=1
+    volumes:
+      - ${HOST_APP_PATH}:${APP_PATH}${APP_PATH_FLAG}
+      - ${HOST_LOGS_PATH}/workspace:/var/log
+      - ./workspace/startup:/startup
+      - ./ssl-ca:/ssl-ca:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "php --version" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - web
+      - backend
+
+  ### NGINX ################################################
+  nginx:
+    build:
+      context: ./nginx
+      args:
+        # Core configuration
+        - PHP_VERSION
+        - TZ
+        # User configuration
+        - APP_USER
+        - APP_GROUP
+        - APP_UID
+        - APP_GID
+        - APP_PATH
+        # PHP Extensions
+        - INSTALL_XDEBUG
+        - INSTALL_MONGO
+        - INSTALL_AMQP
+        - INSTALL_AST
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_NGINX:-1}
+    ports:
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
+      - CHOKIDAR_USEPOLLING=true
+      - TZ
+      # Container user configuration
+      - APP_USER
+      - APP_GROUP
+      - APP_UID
+      - APP_GID
+      - APP_PATH
+      # Runtime PHP environment variables support
+      - ALLOW_RUNTIME_PHP_ENVVARS=1
+      # PHP Configuration
+      - PHP_DATE_TIMEZONE=UTC
+      - PHP_DISPLAY_ERRORS=Off
+      - PHP_LOG_ERRORS=Off
+      - PHP_OUTPUT_BUFFERING=0
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_UPLOAD_MAX_FILESIZE=100M
+      - PHP_POST_MAX_SIZE=100M
+      - PHP_MAX_EXECUTION_TIME=21600
+      - PHP_DEFAULT_SOCKET_TIMEOUT=21600
+      - PHP_REQUEST_TERMINATE_TIMEOUT=600
+      # Xdebug Configuration
+      - PHP_XDEBUG_MODE=debug
+      - PHP_XDEBUG_START_WITH_REQUEST=trigger
+      - PHP_XDEBUG_CLIENT_HOST=host.docker.internal
+      - PHP_XDEBUG_CLIENT_PORT=${XDEBUG_PORT}
+      - PHP_XDEBUG_DISCOVER_CLIENT_HOST=0
+      - PHP_XDEBUG_IDEKEY=PHPSTORM
+      # Optimization and logging
+      - ENABLE_TUNING_FPM=1
+      - DEFAULT_LOG_PATH=/dev/stderr
+      - DEBUG=${DEBUG_MODE:-0}
+      - DISABLE_GREETING=1
+      - DISABLE_AUTORUN_CREATING_PROJECT=1
+      - DISABLE_AUTORUN_COMPOSER_INSTALL=1
+      - DISABLE_AUTORUN_GENERATING_INDEX=1
+    volumes:
+      - ${HOST_APP_PATH}:${APP_PATH}${APP_PATH_FLAG}
+      - ./nginx/sites-available:/etc/nginx/sites-available
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/custom.d:/etc/nginx/custom.d
+      - ./nginx/startup:/startup
+      - ./ssl-ca:/ssl-ca:ro
+      - ${HOST_LOGS_PATH}/nginx:/var/log/nginx
+      - ${HOST_LOGS_PATH}/php-fpm:/var/log/php-fpm
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:80 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - workspace
+    networks:
+      - web
+      - backend
+
+  ### PostgreSQL ###########################################
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_POSTGRES:-0}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/postgres-${POSTGRES_VERSION}:/var/lib/postgresql/data
+      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ${HOST_LOGS_PATH}/postgres:/var/log/postgresql
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - backend
+
+  ### MySQL ################################################
+  mysql:
+    image: mysql:${MYSQL_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_MYSQL:-0}
+    environment:
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD
+      - TZ
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - ${HOST_DATA_PATH}/mysql-${MYSQL_VERSION}:/var/lib/mysql
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ${HOST_LOGS_PATH}/mysql:/var/log/mysql
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - backend
+
+  ### MongoDB ##############################################
+  mongo:
+    image: mongo:${MONGODB_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_MONGODB:-0}
+    ports:
+      - "${MONGODB_PORT}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/mongo-${MONGODB_VERSION}/db:/data/db
+      - ${HOST_DATA_PATH}/mongo-${MONGODB_VERSION}/config:/data/configdb
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  ### Redis ################################################
+  redis:
+    image: redis:${REDIS_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_REDIS:-0}
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: --requirepass ${REDIS_PASSWORD}
+    environment:
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/redis-${REDIS_VERSION}:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  ### RabbitMQ #############################################
+  rabbitmq:
+    image: rabbitmq:${RABBITMQ_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_RABBITMQ:-0}
+    hostname: dockerkit-rabbitmq
+    ports:
+      - "${RABBITMQ_NODE_HOST_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
+      - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
+      - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
+    environment:
+      - RABBITMQ_DEFAULT_USER
+      - RABBITMQ_DEFAULT_PASS
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/rabbitmq-${RABBITMQ_VERSION}:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  ### ElasticSearch ########################################
+  elasticsearch:
+    image: elasticsearch:${ELASTICSEARCH_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_ELASTICSEARCH:-0}
+    ports:
+      - "${ELASTICSEARCH_HOST_HTTP_PORT}:9200"
+    environment:
+      # Single-node cluster configuration
+      - cluster.name=${ELASTICSEARCH_CLUSTER_NAME:-dockerkit-cluster}
+      - discovery.type=single-node
+      - node.name=${ELASTICSEARCH_NODE_NAME:-dockerkit-node}
+
+      # Memory and performance settings
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:UseSVE=0"
+      - "CLI_JAVA_OPTS=-XX:UseSVE=0"
+
+      # Logging (reduce noise)
+      - logger.level=${ELASTICSEARCH_LOG_LEVEL}
+      - logger.org.elasticsearch.cluster.service=ERROR
+      - logger.org.elasticsearch.discovery=ERROR
+
+      # Caching settings
+      - indices.fielddata.cache.size=${ELASTICSEARCH_CACHE_SIZE}
+      - indices.queries.cache.size=10%
+      - indices.requests.cache.size=5%
+
+      # Network settings
+      - http.compression=true
+      - http.max_content_length=200mb
+      - transport.compress=true
+
+      # Development optimizations
+      - action.auto_create_index=true
+      - bootstrap.memory_lock=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - cluster.routing.allocation.node_concurrent_recoveries=2
+      - indices.recovery.max_bytes_per_sec=100mb
+
+      # Security settings (disabled for development)
+      - xpack.security.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+
+      - TZ=UTC
+    volumes:
+      - ${HOST_DATA_PATH}/elasticsearch-${ELASTICSEARCH_VERSION}:/usr/share/elasticsearch/data
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - web
+
+  ### Dejavu ###############################################
+  dejavu:
+    image: appbaseio/dejavu:${DEJAVU_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_DEJAVU:-0}
+    ports:
+      - "${DEJAVU_HTTP_PORT}:1358"
+    environment:
+      - TZ
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:1358 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - elasticsearch
+    networks:
+      - web
+
+  ### Minio ################################################
+  minio:
+    image: minio/minio:${MINIO_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_MINIO:-0}
+    command: server --console-address ":9001" /data
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    environment:
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/minio-${MINIO_VERSION}/data:/data
+      - ${HOST_DATA_PATH}/minio-${MINIO_VERSION}/config:/root/.minio
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - web
+
+  ### Mailpit ##############################################
+  mailpit:
+    image: axllent/mailpit:${MAILPIT_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_MAILPIT:-0}
+    ports:
+      - "${MAILPIT_HTTP_PORT}:8025"
+      - "${MAILPIT_SMTP_PORT}:1025"
+    environment:
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/mailpit-${MAILPIT_VERSION}:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8025 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - web
+
+  ### Portainer ############################################
+  portainer:
+    image: portainer/portainer-ce:${PORTAINER_VERSION}
+    restart: unless-stopped
+    deploy:
+      replicas: ${ENABLE_PORTAINER:-0}
+    ports:
+      - "${PORTAINER_PORT}:9000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - TZ
+    volumes:
+      - ${HOST_DATA_PATH}/portainer-${PORTAINER_VERSION}:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9000 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - management
+
+networks:
+  web:
+    driver: bridge
+  backend:
+    driver: bridge
+  management:
+    driver: bridge

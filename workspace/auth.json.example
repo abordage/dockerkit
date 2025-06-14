@@ -1,0 +1,14 @@
+{
+    "http-basic": {
+        "repo.example.com": {
+            "username": "your-username",
+            "password": "your-password"
+        }
+    },
+    "github-oauth": {
+        "github.com": "your-github-token"
+    },
+    "gitlab-token": {
+        "gitlab.com": "your-gitlab-token"
+    }
+}

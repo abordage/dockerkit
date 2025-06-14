@@ -1,0 +1,6 @@
+# Ignore all files in this directory except .gitignore and example files
+*
+!.gitignore
+!*.example
+
+*.sh

@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Enable strict error handling
+set -euo pipefail
+
+# Configuration constants
+readonly SITES_AVAILABLE_DIR="/etc/nginx/sites-available"
+readonly SITES_ENABLED_DIR="/etc/nginx/sites-enabled"
+readonly DEFAULT_SITE="00-default.conf"
+
+# Output formatting functions
+log_info() {
+    echo "$*"
+}
+
+log_success() {
+    echo "✓ $*"
+}
+
+log_warning() {
+    echo "⚠ $*"
+}
+
+# Function to remove existing symlinks
+remove_existing_symlinks() {
+    local sites_enabled_dir="$1"
+    local default_site="$2"
+
+    # Check if directory exists
+    if [[ ! -d "$sites_enabled_dir" ]]; then
+        log_warning "Sites enabled directory not found: $sites_enabled_dir"
+        return 1
+    fi
+
+    find "$sites_enabled_dir" -name "*.conf" -not -name "$default_site" -type l -delete
+    log_info "Removed existing site symlinks (except $default_site)"
+}
+
+# Function to activate sites
+activate_sites() {
+    local sites_available_dir="$1"
+    local sites_enabled_dir="$2"
+
+    if [[ ! -d "$sites_available_dir" ]]; then
+        log_warning "Sites available directory not found at $sites_available_dir"
+        return 0
+    fi
+
+    if [[ ! -d "$sites_enabled_dir" ]]; then
+        log_warning "Sites enabled directory not found at $sites_enabled_dir"
+        return 1
+    fi
+
+        local activated_count=0
+    local available_sites
+    available_sites=$(find "$sites_available_dir" -name "*.conf" -type f | wc -l)
+
+    log_info "Found $available_sites configuration file(s) in $sites_available_dir"
+
+    # Show list of sites to be activated
+    if [[ $available_sites -gt 0 ]]; then
+        log_info "Sites to activate:"
+        for conf_file in "$sites_available_dir"/*.conf; do
+            [[ -f "$conf_file" ]] || continue
+            local conf_name
+            conf_name=$(basename "$conf_file" .conf)
+            log_info "  → $conf_name"
+        done
+        log_info "Starting activation process..."
+    else
+        log_warning "No configuration files found to activate"
+        return 0
+    fi
+
+    for site in "$sites_available_dir"/*.conf; do
+        # Skip if glob doesn't match any files
+        [[ -f "$site" ]] || continue
+
+        local site_name
+        site_name=$(basename "$site")
+
+        if ln -sf "$site" "$sites_enabled_dir/$site_name" 2>/dev/null; then
+            log_success "Activated $site_name"
+            activated_count=$((activated_count + 1))
+        else
+            log_warning "Failed to activate $site_name"
+        fi
+    done
+
+    if [[ $activated_count -eq 0 ]]; then
+        log_warning "No sites were activated"
+    else
+        log_info "Successfully activated $activated_count of $available_sites site(s)"
+    fi
+}
+
+# Main execution
+main() {
+    log_info "Activating sites from $SITES_AVAILABLE_DIR..."
+
+    # Remove any existing symlinks in sites-enabled (except default)
+    if ! remove_existing_symlinks "$SITES_ENABLED_DIR" "$DEFAULT_SITE"; then
+        log_warning "Failed to clean existing symlinks, continuing anyway..."
+    fi
+
+    # Create symlinks for all sites in sites-available
+    if activate_sites "$SITES_AVAILABLE_DIR" "$SITES_ENABLED_DIR"; then
+        log_success "Sites activation completed!"
+    else
+        log_warning "Sites activation completed with warnings"
+        return 1
+    fi
+}
+
+# Execute main function
+main
