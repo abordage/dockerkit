@@ -42,6 +42,7 @@ make start
 **Important**: Only directories with `.local` suffix are automatically discovered and configured. The setup system completely ignores all other directories in the parent folder.
 
 Your projects will be available at:
+
 - `https://myapp.local` (with SSL)
 - `https://api.local` (with SSL)
 - `https://blog.local` (with SSL)
@@ -51,7 +52,7 @@ Your projects will be available at:
 
 DockerKit provides a comprehensive set of services that can be **flexibly enabled or disabled** based on your project needs:
 
-```
+```text
 ┌─────────────────┬──────────┬─────────────────────────────────────┬─────────────┐
 │ Service         │ Port     │ Description                         │ Default     │
 ├─────────────────┼──────────┼─────────────────────────────────────┼─────────────┤
@@ -98,6 +99,7 @@ ENABLE_PORTAINER=1
 ### Common Configurations
 
 #### Minimal Setup (Static Sites)
+
 ```bash
 ENABLE_NGINX=1
 ENABLE_WORKSPACE=1
@@ -105,6 +107,7 @@ ENABLE_WORKSPACE=1
 ```
 
 #### Laravel Project
+
 ```bash
 ENABLE_NGINX=1
 ENABLE_WORKSPACE=1
@@ -115,6 +118,7 @@ ENABLE_MINIO=1
 ```
 
 #### Microservices with Search
+
 ```bash
 ENABLE_NGINX=1
 ENABLE_WORKSPACE=1
@@ -134,11 +138,13 @@ The workspace container includes pre-installed development tools for API develop
 ### OpenAPI Tools
 
 #### @openapitools/openapi-generator-cli
+
 **Purpose**: Generate client libraries, server stubs, and API documentation from OpenAPI specifications
 
 **Installation**: Pre-installed when `INSTALL_OPENAPI_GENERATOR=true`
 
 **Usage Examples**:
+
 ```bash
 # Generate TypeScript client from OpenAPI spec
 openapi-generator-cli generate -g typescript-fetch \
@@ -155,6 +161,7 @@ openapi-generator-cli list
 ```
 
 **Use Cases**:
+
 - Generate API clients for frontend applications
 - Create server stubs for new APIs
 - Generate API documentation
@@ -163,11 +170,13 @@ openapi-generator-cli list
 **Documentation**: [OpenAPI Generator CLI](https://github.com/OpenAPITools/openapi-generator-cli)
 
 #### @quobix/vacuum
+
 **Purpose**: OpenAPI specification linter and quality checker
 
 **Installation**: Pre-installed when `INSTALL_VACUUM=true`
 
 **Usage Examples**:
+
 ```bash
 # Lint OpenAPI specification
 vacuum lint ./api/openapi.yaml
@@ -184,6 +193,7 @@ vacuum lint ./api/openapi.yaml --format=html > report.html
 ```
 
 **Use Cases**:
+
 - Validate OpenAPI specifications for errors
 - Enforce API design standards
 - Security analysis (OWASP rules)
@@ -195,6 +205,7 @@ vacuum lint ./api/openapi.yaml --format=html > report.html
 ### Additional Tools
 
 The workspace also includes:
+
 - **Graphviz**: For generating diagrams and dependency graphs
 - **Java Development Kit**: For Java-based tools and generators
 - **Python Environment**: With powerline and development tools
@@ -208,7 +219,9 @@ The workspace also includes:
 - **Without mkcert**: SSL certificates won't be generated, so only HTTP (not HTTPS) will be available
 
 ## hostctl
+
 [hostctl](https://github.com/guumaster/hostctl) manages `/etc/hosts` entries for local development domains
+
 - VPN-resistant (uses hosts file, not DNS)
 - Profile-based management for multiple projects
 - Cross-platform compatibility
@@ -217,7 +230,7 @@ The workspace also includes:
 
 On macOS, `.local` domains can experience 5+ second delays due to IPv6 DNS resolution timeouts. DockerKit automatically solves this by creating **dual-stack host entries**:
 
-```
+```text
 127.0.0.1  myapp.local    # IPv4 entry
 ::1        myapp.local    # IPv6 entry (prevents timeout)
 ```
@@ -227,7 +240,7 @@ On macOS, `.local` domains can experience 5+ second delays due to IPv6 DNS resol
 
 This optimization is automatically applied during `make setup-hosts` - no manual configuration needed.
 
-### Installation
+### Installation hostctl
 
 ```bash
 # macOS: using Homebrew
@@ -242,12 +255,14 @@ choco install hostctl
 ```
 
 ## mkcert
+
 [mkcert](https://github.com/FiloSottile/mkcert) generates locally-trusted SSL certificates
+
 - Creates valid HTTPS certificates for development
 - Automatically installs local Certificate Authority
 - Browser-trusted certificates without warnings
 
-### Installation
+### Installation mkcert
 
 ```bash
 # macOS: using homebrew
@@ -266,7 +281,7 @@ choco install mkcert
 
 The system automatically detects your project types based on file presence:
 
-```
+```text
 ┌──────────────┬─────────────────────────────────────────────────────┐
 │ Project Type │ Detection Logic                                     │
 ├──────────────┼─────────────────────────────────────────────────────┤
@@ -280,7 +295,7 @@ The system automatically detects your project types based on file presence:
 
 ### Document Root Mapping
 
-```
+```text
 Laravel/Symfony:  /var/www/{sitename.local}/public
 WordPress/PHP:    /var/www/{sitename.local}
 Static HTML:      /var/www/{sitename.local}
@@ -322,7 +337,7 @@ make health               # Check container health status
 
 The `tools/` directory contains the automated environment configuration system:
 
-```
+```text
 tools/
 ├── setup.sh                          # Main setup orchestrator
 ├── status.sh                         # System status checker
@@ -386,14 +401,16 @@ DockerKit features intelligent container startup automation that configures your
 The workspace container runs these startup scripts in sequence:
 
 #### 01-aliases
+
 - **Purpose**: Sets up development aliases and command autocomplete
-- **Features**: 
+- **Features**:
   - Enhanced bash/zsh completion for common commands
   - Docker and Git shortcuts
   - Laravel Artisan command shortcuts
   - Symfony Console command shortcuts
 
 #### 02-composer
+
 - **Purpose**: Configures Composer environment and installs global packages
 - **Features**:
   - Performance optimization (2GB memory limit, extended timeouts)
@@ -402,6 +419,7 @@ The workspace container runs these startup scripts in sequence:
   - Persistent cache configuration
 
 #### 03-ca-certificates
+
 - **Purpose**: Installs mkcert CA certificates for HTTPS development
 - **Features**:
   - Automatic detection of CA certificates in `/ssl-ca/`
@@ -409,19 +427,12 @@ The workspace container runs these startup scripts in sequence:
   - HTTPS support for local `.local` domains
   - Browser-trusted certificates without warnings
 
-#### 04-local-hosts
-- **Purpose**: Automatically generates `/etc/hosts` entries for local projects
-- **Features**:
-  - Scans `/var/www/*.local` directories
-  - Creates hosts entries pointing to nginx container
-  - Tests connectivity and SSL certificate availability
-  - Visual status indicators (✓ success, ⚠ warnings, ✗ errors)
-
 ### Nginx Container Automation
 
 The nginx container runs these startup scripts:
 
 #### 01-activate-sites
+
 - **Purpose**: Activates nginx site configurations
 - **Features**:
   - Links configurations from `sites-available` to `sites-enabled`
@@ -429,12 +440,9 @@ The nginx container runs these startup scripts:
   - Reloads nginx with new configurations
 
 #### 02-ca-certificates
+
 - **Purpose**: Installs mkcert CA certificates
 - **Features**: Same as workspace container, ensures nginx trusts local CA
-
-#### 04-local-hosts
-- **Purpose**: Generates local hosts entries
-- **Features**: Similar to workspace, but points domains to `127.0.0.1`
 
 ### Automatic SSL and Hosts Configuration
 
@@ -469,7 +477,7 @@ The startup system provides seamless HTTPS development:
 
 DockerKit uses a three-tier network architecture for optimal security and performance:
 
-```
+```text
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   WEB NETWORK   │    │ BACKEND NETWORK  │    │ MANAGEMENT NET  │
 ├─────────────────┤    ├──────────────────┤    ├─────────────────┤
@@ -483,23 +491,26 @@ DockerKit uses a three-tier network architecture for optimal security and perfor
         │                        │                        │
         └────────────────────────┼────────────────────────┘
                                  │
-                    workspace and fmp-nginx have 
+                    workspace and nginx have 
                     access to both networks
 ```
 
 ### Network Segmentation
 
 **Web Network (`web`)**
+
 - Services with web interfaces accessible via browser
 - ElasticSearch, Dejavu, Minio, Mailpit web consoles
 - Nginx web server and workspace development environment
 
 **Backend Network (`backend`)**
+
 - Internal services (databases, cache, message queues)
 - PostgreSQL, MySQL, MongoDB, Redis, RabbitMQ
 - Isolated from direct web access for security
 
 **Management Network (`management`)**
+
 - Docker administration tools
 - Portainer container management interface
 - Separated from application networks
@@ -533,6 +544,7 @@ DockerKit automatically generates network aliases for `.local` projects, enablin
 #### How It Works
 
 When you run `make setup`, DockerKit:
+
 1. **Scans** for `.local` projects in your workspace
 2. **Generates** `docker-compose.aliases.yml` with network aliases
 3. **Configures** nginx to resolve `.local` domains in both `web` and `backend` networks
@@ -553,8 +565,6 @@ services:
           - myproject.local
           - api.local
 ```
-
-#### Benefits
 
 **External Access**: Browser requests to `https://myproject.local` → nginx  
 **Internal Access**: Workspace can make HTTP requests to `http://myproject.local` → nginx  
@@ -587,12 +597,14 @@ php artisan health:check --url=http://myproject.local
 ### Template Structure
 
 Each project type has two templates:
+
 - `{type}.conf` - HTTP only
 - `{type}-ssl.conf` - HTTPS with SSL redirect
 
 ### Template Variables
 
 Templates use placeholder variables that are replaced during generation:
+
 - `{{SITE_NAME}}` - The .local domain name
 - `{{DOCUMENT_ROOT}}` - Project-specific document root path
 
@@ -602,14 +614,14 @@ You can modify templates in `tools/templates/` to customize nginx configurations
 
 ## Custom nginx Configuration
 
-DockerKit provides flexible nginx customization through the `fmp-nginx/custom.d/` directory.
+DockerKit provides flexible nginx customization through the `nginx/custom.d/` directory.
 
 ### Available Custom Configurations
 
 The following configurations are automatically loaded:
 
-```
-fmp-nginx/custom.d/
+```text
+nginx/custom.d/
 ├── 00-client_body_timeout.conf    # Client body timeout settings
 ├── 00-client_max_body_size.conf   # Maximum upload size (100M)
 ├── 00-ext-gzip.conf               # Gzip compression settings
@@ -619,18 +631,19 @@ fmp-nginx/custom.d/
 
 ### Adding Custom Configuration
 
-Create new `.conf` files in the `fmp-nginx/custom.d/` directory:
+Create new `.conf` files in the `nginx/custom.d/` directory:
 
 ```bash
 # Example: Custom security headers
 echo 'add_header X-Content-Type-Options nosniff;
 add_header X-Frame-Options DENY;
-add_header X-XSS-Protection "1; mode=block";' > fmp-nginx/custom.d/01-security-headers.conf
+add_header X-XSS-Protection "1; mode=block";' > nginx/custom.d/01-security-headers.conf
 ```
 
 ### Configuration Priority
 
 Files are loaded in alphabetical order. Use numeric prefixes to control loading order:
+
 - `00-*` - Core system configurations
 - `01-*` - Security configurations  
 - `02-*` - Performance optimizations
@@ -639,9 +652,10 @@ Files are loaded in alphabetical order. Use numeric prefixes to control loading 
 ### SSL Configuration
 
 SSL certificates and configurations are managed in:
-```
-fmp-nginx/ssl/              # SSL certificates directory
-fmp-nginx/sites-available/  # Generated nginx site configurations
+
+```text
+nginx/ssl/              # SSL certificates directory
+nginx/sites-available/  # Generated nginx site configurations
 ```
 
 ## Environment Variables
@@ -681,7 +695,7 @@ ENABLE_PORTAINER=1                   # Container management
 
 All services log to the `logs/` directory:
 
-```
+```text
 logs/
 ├── nginx/                     # nginx access and error logs
 ├── php-fpm/                   # PHP-FPM logs
@@ -709,8 +723,6 @@ DockerKit provides an optimized Composer environment with automatic authenticati
 - **Global Plugins**: Automatic installation of development tools
 - **Smart Autocomplete**: Extended command completion for all Composer commands and plugins
 - **Secure Credential Handling**: Authentication files are properly managed with correct permissions
-
-### Environment Variables
 
 The following environment variables are automatically configured:
 
@@ -750,6 +762,7 @@ nano workspace/auth.json
 ```
 
 **Security Notes:**
+
 - The `auth.json` file is automatically excluded from git
 - File permissions are set to 600 (owner read/write only)
 - Credentials are copied to the user's Composer home directory inside the container
@@ -759,9 +772,11 @@ nano workspace/auth.json
 Two plugins are automatically installed and configured:
 
 #### ergebnis/composer-normalize
+
 **Purpose**: Normalizes composer.json files according to a defined schema
 
 **Usage**: Manual execution required
+
 ```bash
 # Inside the workspace container
 composer normalize                    # Normalize current project
@@ -770,21 +785,25 @@ composer normalize path/to/composer.json # Normalize specific file
 ```
 
 **Benefits**:
+
 - Consistent composer.json formatting across projects
 - Alphabetical sorting of dependencies
 - Validation of required fields
 - Standardized property ordering
 
 #### pyrech/composer-changelogs
+
 **Purpose**: Displays changelogs when updating packages
 
 **Usage**: Automatic - works during `composer update`
+
 ```bash
 composer update                      # Automatically shows changelogs
 composer update --with-all-dependencies # Shows changelogs for all updates
 ```
 
 **Benefits**:
+
 - Immediate visibility of changes in updated packages
 - Better understanding of breaking changes
 - Links to release notes and documentation
@@ -805,6 +824,7 @@ composer self-update bump normalize changelogs
 ### Caching
 
 Composer cache is persisted using Docker volumes:
+
 - **Location**: `${HOST_DATA_PATH}/composer` (typically `~/.dockerkit/data/composer`)
 - **Benefits**: Faster package installation across container restarts
 - **Shared**: Cache is shared between all projects in the workspace
@@ -817,14 +837,13 @@ The workspace container includes cron support for automated task scheduling.
 
 Cron jobs are configured in the `workspace/crontab/` directory:
 
-```
+```text
 workspace/crontab/
 └── example                # Example crontab file
 ```
 
-### Environment Variables
-
 Cron is controlled by these environment variables:
+
 ```bash
 ENABLE_CRONTAB=1           # Enable cron daemon
 CRONTAB_DIR=/workspace/crontab  # Crontab files directory
@@ -842,13 +861,10 @@ Create crontab files in `workspace/crontab/`:
 0 2 * * * cd /var/www && pg_dump -h postgres -U user database > backup_$(date +\%Y\%m\%d).sql
 ```
 
-### File Permissions
-
 Crontab files are automatically set to 644 permissions during container startup.
 
-### Logging
-
 Cron logs are available in the workspace container logs:
+
 ```bash
 make shell
 sudo tail -f /var/log/cron.log
@@ -856,26 +872,18 @@ sudo tail -f /var/log/cron.log
 
 ## Roadmap
 
-### Recently Completed ✅
+### Recently Completed
 
 - [x] Add Composer configuration for private repositories (GitLab, GitHub, etc)
 - [x] Add flexible service management with environment variables (ENABLE_* flags)
 - [x] Implement container startup automation system
 - [x] Add CA certificate installation for HTTPS development
 - [x] Add automatic hosts file generation for local projects
-- [x] Add comprehensive status reporting with visual indicators
-- [x] Standardize exit codes across all scripts
-- [x] Implement modular architecture with clean code principles
 - [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
 
-### In Progress 🚧
+### Planned Features
 
-- [ ] Test setup scripts for cross-platform compatibility (Linux, Windows)
-- [ ] Improve documentation and add more examples
-
-### Planned Features 📋
-
-- [ ] Configure supervisor in nginx container for process management
+- [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [ ] Implement automatic database creation for detected projects
 - [ ] Add IDEs integration support (terminal, plugins, .devcontainer)
@@ -884,9 +892,6 @@ sudo tail -f /var/log/cron.log
 - [ ] Add Laravel Horizon support for queue monitoring
 - [ ] Add pgBadger support for PostgreSQL log analysis
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
-- [ ] Implement dependency caching (Composer, npm packages)
-- [ ] Add CI (GitHub Actions workflows)
-
 - [ ] Implement project health monitoring service (status checks, performance metrics, alerts)
 
 ## Contributing
@@ -895,13 +900,15 @@ Please see [CONTRIBUTING](https://github.com/abordage/.github/blob/master/CONTRI
 
 ## Security
 
-Please review [our security policy](https://github.com/abordage/.github/security/policy) on how to report
+Please review [security policy](https://github.com/abordage/.github/security/policy) on how to report
 security vulnerabilities.
 
 ## Feedback
+
 Find a bug or have a feature request? Open an issue, or better yet, submit a pull request - contribution welcome!
 
 ## Built With
+
 - [shinsenter/php](https://github.com/shinsenter/php) - production-ready PHP Docker images with startup script system
 - [guumaster/hostctl](https://github.com/guumaster/hostctl) - cross-platform hosts file manager
 - [FiloSottile/mkcert](https://github.com/FiloSottile/mkcert) - simple tool for making locally-trusted development certificates
@@ -913,10 +920,7 @@ Find a bug or have a feature request? Open an issue, or better yet, submit a pul
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE) for more information.
-
-
-```
+```text
 $$$$$$$\                      $$\                           $$\   $$\ $$\   $$\     
 $$  __$$\                     $$ |                          $$ | $$  |\__|  $$ |    
 $$ |  $$ | $$$$$$\   $$$$$$$\ $$ |  $$\  $$$$$$\   $$$$$$\  $$ |$$  / $$\ $$$$$$\   
@@ -925,4 +929,6 @@ $$ |  $$ |$$ /  $$ |$$ /      $$$$$$  / $$$$$$$$ |$$ |  \__|$$  $$<   $$ |  $$ |
 $$ |  $$ |$$ |  $$ |$$ |      $$  _$$<  $$   ____|$$ |      $$ |\$$\  $$ |  $$ |$$\ 
 $$$$$$$  |\$$$$$$  |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |      $$ | \$$\ $$ |  \$$$$  |
 \_______/  \______/  \_______|\__|  \__| \_______|\__|      \__|  \__|\__|   \____/ 
+
+The MIT License (MIT)
 ```

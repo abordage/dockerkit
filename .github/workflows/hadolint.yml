@@ -1,0 +1,37 @@
+name: Dockerfile Lint
+
+on:
+  push:
+    paths:
+      - '**/Dockerfile'
+      - '.hadolint.yaml'
+  pull_request:
+    paths:
+      - '**/Dockerfile'
+      - '.hadolint.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hadolint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: Dockerfile Analysis
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: |
+            workspace/Dockerfile
+            nginx/Dockerfile
+          format: gcc
+          failure-threshold: error
