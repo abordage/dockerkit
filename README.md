@@ -301,6 +301,58 @@ WordPress/PHP:    /var/www/{sitename.local}
 Static HTML:      /var/www/{sitename.local}
 ```
 
+## Network Architecture
+
+DockerKit implements intelligent **multi-network architecture** with automatic service discovery:
+
+### Network Topology
+
+```text
+┌───────────────────────────────────────────────────────────────────────┐
+│                             Host Machine                              │
+│                                                                       │
+│          Browser ──► https://myapp.local:443 ──► /etc/hosts           │
+│                                                                       │
+│         ┌─────────────────┐   :443/:80   ┌─────────────────┐          │
+│         │   web network   │◄────────────►│ backend network │          │
+│         │                 │              │                 │          │
+│         │  ┌───────────┐  │              │  ┌───────────┐  │          │
+│         │  │   nginx   │◄─┼──────────────┼─►│ workspace │  │          │
+│         │  └───────────┘  │              │  └───────────┘  │          │
+│         │                 │              │                 │          │
+│         │  aliases:       │              │  aliases:       │          │
+│         │  • myapp.local  │              │  • myapp.local  │          │
+│         │  • api.local    │              │  • api.local    │          │
+│         │  • blog.local   │              │  • blog.local   │          │
+│         └─────────────────┘              └─────────────────┘          │
+│                                                                       │
+│         Container-to-container communication:                         │
+│         HTTP:  curl http://api.local/users                            │
+│         HTTPS: curl https://myapp.local/api (with SSL certs)          │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+### Automatic Network Aliases
+
+For every discovered `.local` project, DockerKit automatically:
+
+1. **Generates network aliases** in `docker-compose.aliases.yml`
+2. **Updates container networking** for seamless inter-service communication
+3. **Maintains sync** when projects are added or removed
+
+```bash
+# Example: Internal API calls work automatically
+curl http://api.local/users    # From any container
+curl http://blog.local/posts   # Cross-service communication
+```
+
+**Benefits:**
+- ✅ **Internal routing**: Containers can resolve `myapp.local` directly
+- ✅ **API communication**: Services can call each other by domain name
+- ✅ **Auto-sync**: Aliases update automatically when projects are added/removed
+- ✅ **Network isolation**: Proper separation between web and backend networks
+
 ## Makefile Commands
 
 ```bash
@@ -704,14 +756,6 @@ logs/
 └── workspace/                 # Development container logs
 ```
 
-## Screenshots
-
-TODO
-
-## Comparison
-
-TODO
-
 ## Composer Configuration
 
 DockerKit provides an optimized Composer environment with automatic authentication, global plugins, and performance tuning for PHP projects in the workspace container.
@@ -727,7 +771,7 @@ DockerKit provides an optimized Composer environment with automatic authenticati
 The following environment variables are automatically configured:
 
 ```bash
-COMPOSER_DISABLE_XDEBUG_WARN=1             # Suppress Xdebug performance warnings
+COMPOSER_DISABLE_XDEBUG_WARN=1 # Suppress Xdebug performance warnings
 ```
 
 ### Authentication Setup
@@ -779,8 +823,8 @@ Two plugins are automatically installed and configured:
 
 ```bash
 # Inside the workspace container
-composer normalize                    # Normalize current project
-composer normalize --dry-run         # Preview changes without applying
+composer normalize                       # Normalize current project
+composer normalize --dry-run             # Preview changes without applying
 composer normalize path/to/composer.json # Normalize specific file
 ```
 
@@ -798,7 +842,7 @@ composer normalize path/to/composer.json # Normalize specific file
 **Usage**: Automatic - works during `composer update`
 
 ```bash
-composer update                      # Automatically shows changelogs
+composer update                         # Automatically shows changelogs
 composer update --with-all-dependencies # Shows changelogs for all updates
 ```
 
@@ -820,14 +864,6 @@ composer dump-autoload clear-cache config global search depends why-not
 composer run-script check-platform-reqs archive audit init create-project
 composer self-update bump normalize changelogs
 ```
-
-### Caching
-
-Composer cache is persisted using Docker volumes:
-
-- **Location**: `${HOST_DATA_PATH}/composer` (typically `~/.dockerkit/data/composer`)
-- **Benefits**: Faster package installation across container restarts
-- **Shared**: Cache is shared between all projects in the workspace
 
 ## Scheduled Tasks (Cron)
 
@@ -869,6 +905,34 @@ Cron logs are available in the workspace container logs:
 make shell
 sudo tail -f /var/log/cron.log
 ```
+
+## DockerKit vs Laradock
+
+| Feature                    | DockerKit                                                                                                          | Laradock                        |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders                                                                 | ❌ Manual configuration          |
+| **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                                                                             | ❌ Manual SSL setup              |
+| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection<br/>(`Laravel`, `Symfony`, `WordPress`, `PHP`, `Static HTML`) | ❌ Manual nginx configuration    |
+| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl                                                                 | ❌ Manual hosts file editing     |
+| **Database Creation**      | ✅ Automatic database creation for local sites (coming soon)                                                        | ❌ Manual database setup         |
+| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching                                                       | ⚠️ Traditional Docker approach  |
+| **Project Maturity**       | ⚠️ Modern but newer project                                                                                        | ✅ Battle-tested, proven by time |
+| **Available Services**     | ⚠️ Focused essential toolkit                                                                                       | ✅ Extensive service library     |
+| **Community Support**      | ⚠️ Growing community                                                                                               | ✅ Large established community   |
+
+### 🎯 Choose DockerKit if you want:
+- **Automated workflow** for local development
+- **Modern Docker practices** with optimized performance
+- **Focus on essential tools** without complexity
+
+### 🎯 Choose Laradock if you need:
+- **Extensive service ecosystem** out of the box
+- **Proven stability** for production-like environments
+- **Large community** support and resources
+
+## Screenshots
+
+TODO
 
 ## Roadmap
 
