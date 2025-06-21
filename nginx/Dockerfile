@@ -2,7 +2,7 @@
 # check=error=true
 
 # Build arguments - centralized configuration
-ARG PHP_VERSION
+ARG PHP_VERSION=8.4
 ARG TZ=UTC
 
 # User configuration arguments
@@ -21,7 +21,7 @@ ARG INSTALL_AMQP=false
 
 FROM shinsenter/php:${PHP_VERSION}-fpm-nginx AS base
 
-# Re-declare ARG for this stage
+# Import ARG values into this stage
 ARG TZ=UTC
 ARG APP_USER=dockerkit
 ARG APP_GROUP=dockerkit

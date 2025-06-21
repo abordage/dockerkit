@@ -2,7 +2,7 @@
 # check=error=true
 
 # Build arguments - centralized configuration
-ARG PHP_VERSION
+ARG PHP_VERSION=8.4
 ARG TZ=UTC
 ARG APP_USER=dockerkit
 ARG APP_GROUP=dockerkit
@@ -37,7 +37,7 @@ ARG ENABLE_NON_ROOT_USER=true
 
 FROM shinsenter/php:${PHP_VERSION}-cli AS base
 
-# Re-declare ARG for this stage
+# Import ARG values into this stage
 ARG TZ=UTC
 ARG APP_USER=dockerkit
 ARG APP_GROUP=dockerkit
