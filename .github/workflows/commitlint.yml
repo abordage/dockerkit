@@ -3,6 +3,8 @@ name: Commitlint
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -13,7 +15,6 @@ jobs:
     name: Lint commit messages
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event.pull_request.commits > 0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,4 +22,6 @@ jobs:
           fetch-depth: 0
 
       - name: Lint commit messages
-        uses: wagoid/commitlint-github-action@v6 
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.yml 
