@@ -379,7 +379,7 @@ make shell-nginx          # Enter nginx container shell
 make shell-root           # Enter workspace as root
 
 # Cleanup & Maintenance
-make clean-project        # Clean project resources (safer)
+make reset                # Clean project resources (safer)
 
 # System Checks & Diagnostics
 make health               # Check container health status
@@ -642,7 +642,7 @@ php artisan health:check --url=http://myproject.local
 - **Auto-generated**: `docker-compose.aliases.yml` is created automatically
 - **Version controlled**: Include in git for team consistency  
 - **Self-updating**: Regenerated when new `.local` projects are added
-- **Clean removal**: `make clean-project` removes the aliases file
+- **Clean removal**: `make reset` removes the aliases file
 
 ## Nginx Template System
 

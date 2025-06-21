@@ -16,8 +16,9 @@ ifneq (,$(wildcard $(ENV_FILE)))
 endif
 
 # Declare all targets as phony (they don't create files)
-.PHONY: help status health setup start stop restart build build-nc rebuild \
-        shell shell-nginx shell-root clean-project check-dockerfiles lint
+.PHONY: help status health setup check-env create-logs-dir \
+        start stop restart build build-nc rebuild \
+        shell shell-nginx shell-root reset check-dockerfiles lint
 
 # Colors for output
 RED := \033[0;31m
@@ -72,8 +73,25 @@ health: ## Check container health status
 # ENVIRONMENT SETUP
 # =============================================================================
 
-setup: ## Complete environment setup (deps, hosts, SSL, nginx for .local projects)
+setup: check-env create-logs-dir ## Complete environment setup (deps, hosts, SSL, nginx for .local projects)
 	@tools/setup.sh
+
+check-env: ## Check and create .env file if needed
+	@if [ ! -f $(ENV_FILE) ]; then \
+		echo "$(YELLOW)Creating .env file from .env.example...$(NC)"; \
+		cp .env.example $(ENV_FILE); \
+		echo "$(GREEN).env file created successfully!$(NC)"; \
+		echo "$(BLUE)Please review and adjust settings in .env$(NC)"; \
+	fi
+
+create-logs-dir: ## Create logs directory from HOST_LOGS_PATH
+	@$(LOAD_ENV) && \
+	LOGS_DIR=$${HOST_LOGS_PATH:-./logs} && \
+	if [ ! -d "$$LOGS_DIR" ]; then \
+		echo "$(YELLOW)Creating logs directory at $$LOGS_DIR...$(NC)"; \
+		mkdir -p "$$LOGS_DIR"; \
+		echo "$(GREEN)Logs directory created successfully!$(NC)"; \
+	fi
 
 # =============================================================================
 # SERVICE MANAGEMENT
@@ -124,18 +142,22 @@ shell-root: ## Enter workspace as root
 # CLEANUP & MAINTENANCE
 # =============================================================================
 
-clean-project: ## Clean project resources (safer)
-	@echo "$(YELLOW)Cleaning only dockerkit project resources...$(NC)"
+reset: ## Reset project to initial state (clean containers, volumes, configs)
+	@echo "$(YELLOW)Resetting dockerkit project to initial state...$(NC)"
 	@$(DOCKER_COMPOSE) down --rmi local --volumes --remove-orphans
-	@echo "$(YELLOW)Removing logs...$(NC)"
-	@rm -rf logs/*
+	@$(LOAD_ENV) && \
+	LOGS_DIR=$${HOST_LOGS_PATH:-./logs} && \
+	if [ -d "$$LOGS_DIR" ]; then \
+		echo "$(YELLOW)Cleaning logs directory...$(NC)"; \
+		rm -rf "$$LOGS_DIR"/*; \
+	fi
 	@echo "$(YELLOW)Removing SSL certificates...$(NC)"
 	@rm -rf nginx/ssl/*.crt nginx/ssl/*.key 2>/dev/null || true
 	@echo "$(YELLOW)Removing generated nginx configurations...$(NC)"
 	@rm -rf nginx/sites-available/*.conf 2>/dev/null || true
 	@echo "$(YELLOW)Removing network aliases file...$(NC)"
 	@rm -f docker-compose.aliases.yml 2>/dev/null || true
-	@echo "$(GREEN)Project cleanup completed!$(NC)"
+	@echo "$(GREEN)Project reset completed!$(NC)"
 
 # =============================================================================
 # QUALITY ASSURANCE
