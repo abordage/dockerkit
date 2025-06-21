@@ -1,0 +1,128 @@
+name: Bug Report
+description: Report a bug or issue with DockerKit
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below to help us understand and fix the issue.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following steps
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have read the documentation
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which DockerKit component is affected?
+      options:
+        - Docker configuration
+        - Nginx
+        - Workspace
+        - PHP
+        - Tools/Scripts
+        - Documentation
+        - CI
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: dockerkit-version
+    attributes:
+      label: DockerKit Version
+      description: What version of DockerKit are you using?
+      placeholder: "e.g., v1.0.0 or commit hash"
+    validations:
+      required: true
+
+  - type: input
+    id: docker-version
+    attributes:
+      label: Docker Version
+      description: What version of Docker are you using?
+      placeholder: "e.g., 24.0.7"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (Ubuntu)
+        - Linux (Debian)
+        - Linux (Other)
+        - Windows (WSL2)
+    validations:
+      required: true
+
+  - type: textarea
+    id: env-config
+    attributes:
+      label: Environment Configuration
+      description: Please share relevant .env file content or environment variables (if applicable)
+      placeholder: |
+        # Example:
+        APP_ENV=local
+        DB_CONNECTION=mysql
+        DB_HOST=mysql
+        DB_PORT=3306
+      render: shell
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: "Describe what happened and what you expected to happen"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run `make up`
+        2. Navigate to '...'
+        3. Execute '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and Error Messages
+      description: Please copy and paste any relevant log output or error messages
+      render: shell
+      placeholder: "Paste your logs here..."
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: "Screenshots, configuration files, or other relevant information" 

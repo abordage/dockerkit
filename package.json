@@ -1,0 +1,21 @@
+{
+  "name": "dockerkit",
+  "version": "0.0.0",
+  "description": "Local development environment with Docker",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abordage/dockerkit.git"
+  },
+  "keywords": [
+    "docker",
+    "development",
+    "environment"
+  ],
+  "author": {
+    "name": "Pavel Bychko",
+    "email": "box@abordage.dev",
+    "url": "https://abordage.dev"
+  },
+  "license": "MIT"
+} 
