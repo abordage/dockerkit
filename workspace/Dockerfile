@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.4
-ARG PHP_VERSION
-FROM shinsenter/php:${PHP_VERSION}-cli as base
+# check=error=true
 
 # Build arguments - centralized configuration
+ARG PHP_VERSION
 ARG TZ=UTC
 ARG APP_USER=dockerkit
 ARG APP_GROUP=dockerkit
@@ -35,6 +35,59 @@ ARG INSTALL_OPENAPI_GENERATOR=false
 # Performance and Security
 ARG ENABLE_NON_ROOT_USER=true
 
+FROM shinsenter/php:${PHP_VERSION}-cli AS base
+
+# Re-declare ARG for this stage
+ARG TZ=UTC
+ARG APP_USER=dockerkit
+ARG APP_GROUP=dockerkit
+ARG APP_UID=1000
+ARG APP_GID=1000
+ARG APP_PATH=/var/www
+ARG INSTALL_AST=false
+ARG INSTALL_XDEBUG=false
+ARG XDEBUG_PORT=9003
+ARG INSTALL_PCOV=false
+ARG INSTALL_MONGO=false
+ARG INSTALL_AMQP=false
+ARG INSTALL_JAVA=true
+ARG POSTGRES_CLIENT_VERSION=15
+ARG INSTALL_POSTGRES_CLIENT=true
+ARG INSTALL_MYSQL_CLIENT=false
+ARG INSTALL_NODE=false
+ARG NODE_VERSION=22
+ARG INSTALL_VACUUM=false
+ARG INSTALL_OPENAPI_GENERATOR=false
+ARG ENABLE_NON_ROOT_USER=true
+
+# OCI Standard Labels
+LABEL org.opencontainers.image.title="DockerKit Workspace"
+LABEL org.opencontainers.image.description="Development workspace with PHP CLI, tools and utilities"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.authors="Pavel Bychko <box@abordage.dev>"
+LABEL org.opencontainers.image.url="https://github.com/abordage/dockerkit"
+LABEL org.opencontainers.image.source="https://github.com/abordage/dockerkit"
+LABEL org.opencontainers.image.documentation="https://github.com/abordage/dockerkit/blob/main/README.md"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# DockerKit Specific Labels
+LABEL dockerkit.service.type="workspace"
+LABEL dockerkit.service.role="development"
+LABEL dockerkit.php.version="${PHP_VERSION}"
+LABEL dockerkit.user.name="${APP_USER}"
+LABEL dockerkit.user.uid="${APP_UID}"
+LABEL dockerkit.path.app="${APP_PATH}"
+LABEL dockerkit.extensions.xdebug="${INSTALL_XDEBUG}"
+LABEL dockerkit.extensions.pcov="${INSTALL_PCOV}"
+LABEL dockerkit.extensions.mongo="${INSTALL_MONGO}"
+LABEL dockerkit.extensions.amqp="${INSTALL_AMQP}"
+LABEL dockerkit.extensions.ast="${INSTALL_AST}"
+LABEL dockerkit.tools.node="${INSTALL_NODE}"
+LABEL dockerkit.tools.java="${INSTALL_JAVA}"
+LABEL dockerkit.tools.postgres_client="${INSTALL_POSTGRES_CLIENT}"
+LABEL dockerkit.tools.mysql_client="${INSTALL_MYSQL_CLIENT}"
+LABEL dockerkit.healthcheck.enabled="true"
+
 # Environment variables
 ENV TZ=${TZ} \
     APP_USER=${APP_USER} \
@@ -53,7 +106,7 @@ USER root
 # ============================================================================
 # Stage: System Dependencies
 # ============================================================================
-FROM base as dependencies
+FROM base AS dependencies
 
 # Update package lists and install base system tools
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -82,7 +135,7 @@ RUN if [ "$INSTALL_JAVA" = "true" ]; then update-ca-certificates -f; fi
 # ============================================================================
 # Stage: PHP Extensions
 # ============================================================================
-FROM dependencies as php-extensions
+FROM dependencies AS php-extensions
 
 # Install always-on PHP extensions
 RUN phpaddmod bz2 gmp imagick inotify soap xlswriter
@@ -100,7 +153,7 @@ RUN set -eux; \
 # ============================================================================
 # Stage: Node.js Tools
 # ============================================================================
-FROM php-extensions as node-tools
+FROM php-extensions AS node-tools
 
 # Install Node.js if requested
 RUN if [ "$INSTALL_NODE" = "true" ]; then \
@@ -122,7 +175,7 @@ RUN if [ "$INSTALL_NODE" = "true" ] && [ "$INSTALL_OPENAPI_GENERATOR" = "true" ]
 # ============================================================================
 # Stage: Python Environment
 # ============================================================================
-FROM node-tools as python-env
+FROM node-tools AS python-env
 
 # Create and configure Python virtual environment
 RUN python3 -m venv /opt/venv && \
@@ -146,7 +199,7 @@ RUN PYTHON_VERSION=$(/opt/venv/bin/python -c "import sys; print(f'{sys.version_i
 # ============================================================================
 # Stage: Final Configuration
 # ============================================================================
-FROM python-env as final
+FROM python-env AS final
 
 # Copy configuration files
 COPY ./crontab /etc/cron.d

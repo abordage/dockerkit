@@ -17,7 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status health setup start stop restart build build-nc rebuild \
-        shell shell-nginx shell-root clean-project
+        shell shell-nginx shell-root clean-project check-dockerfiles lint
 
 # Colors for output
 RED := \033[0;31m
@@ -60,7 +60,7 @@ help: ## Show this help message
 	@echo "  $(GREEN)make start$(NC)          # Start all services"
 	@echo "  $(GREEN)make build$(NC)          # Build all containers"
 	@echo "  $(GREEN)make shell$(NC)          # Enter workspace container"
-	@echo "  $(GREEN)make logs$(NC)           # Show all logs"
+	@echo "  $(GREEN)make lint$(NC)           # Check Dockerfile quality"
 
 status: ## Show current system status
 	@tools/status.sh
@@ -136,4 +136,41 @@ clean-project: ## Clean project resources (safer)
 	@echo "$(YELLOW)Removing network aliases file...$(NC)"
 	@rm -f docker-compose.aliases.yml 2>/dev/null || true
 	@echo "$(GREEN)Project cleanup completed!$(NC)"
+
+# =============================================================================
+# QUALITY ASSURANCE
+# =============================================================================
+
+check-dockerfiles: ## Check Dockerfile best practices with Docker Build Checks
+	@echo "Checking nginx Dockerfile..."
+	@$(LOAD_ENV) && docker build --check \
+		--build-arg PHP_VERSION=$$PHP_VERSION \
+		--build-arg APP_USER=$$APP_USER \
+		--build-arg APP_UID=$$APP_UID \
+		--build-arg APP_PATH=$$APP_PATH \
+		--build-arg INSTALL_XDEBUG=$$INSTALL_XDEBUG \
+		--build-arg INSTALL_MONGO=$$INSTALL_MONGO \
+		--build-arg INSTALL_AMQP=$$INSTALL_AMQP \
+		./nginx
+	@echo "Checking workspace Dockerfile..."
+	@$(LOAD_ENV) && docker build --check \
+		--build-arg PHP_VERSION=$$PHP_VERSION \
+		--build-arg APP_USER=$$APP_USER \
+		--build-arg APP_UID=$$APP_UID \
+		--build-arg APP_PATH=$$APP_PATH \
+		--build-arg INSTALL_XDEBUG=$$INSTALL_XDEBUG \
+		--build-arg INSTALL_PCOV=$$INSTALL_PCOV \
+		--build-arg INSTALL_MONGO=$$INSTALL_MONGO \
+		--build-arg INSTALL_AMQP=$$INSTALL_AMQP \
+		--build-arg INSTALL_AST=$$INSTALL_AST \
+		--build-arg INSTALL_NODE=$$INSTALL_NODE \
+		--build-arg INSTALL_JAVA=$$INSTALL_JAVA \
+		--build-arg INSTALL_POSTGRES_CLIENT=$$INSTALL_POSTGRES_CLIENT \
+		--build-arg INSTALL_MYSQL_CLIENT=$$INSTALL_MYSQL_CLIENT \
+		./workspace
+	@echo "All Dockerfile checks passed!"
+
+lint: check-dockerfiles ## Run all linting and quality checks
+	@echo "Running all linting checks..."
+	@echo "All linting checks completed!"
 
