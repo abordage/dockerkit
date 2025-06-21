@@ -1,0 +1,95 @@
+name: Documentation
+description: Report an issue with documentation or suggest improvements
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve DockerKit documentation! Please fill out the form below.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm you have completed the following steps
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect/outdated information
+        - Unclear instructions
+        - Typo/grammar error
+        - Broken link
+        - Missing example
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: doc-section
+    attributes:
+      label: Documentation Section
+      description: Which section of documentation is affected?
+      options:
+        - README.md
+        - Installation guide
+        - Configuration guide
+        - Usage examples
+        - Troubleshooting
+        - Contributing guide
+        - Docker configuration
+        - Service setup
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: doc-url
+    attributes:
+      label: Documentation URL
+      description: Link to the specific documentation page (if applicable)
+      placeholder: "https://github.com/abordage/dockerkit/..."
+
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue or improvement needed
+      placeholder: "The documentation states... but it should..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested Fix
+      description: How would you improve this documentation?
+      placeholder: "I suggest changing... to..."
+
+  - type: dropdown
+    id: user-level
+    attributes:
+      label: User Experience Level
+      description: What's your experience level with Docker/DockerKit?
+      options:
+        - Beginner - New to Docker
+        - Intermediate - Some Docker experience
+        - Advanced - Experienced with Docker
+        - Expert - Docker specialist
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other context about the documentation issue
+      placeholder: "Screenshots, examples, or other relevant information" 
