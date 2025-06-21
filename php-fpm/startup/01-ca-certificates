@@ -65,9 +65,54 @@ install_ca_certificate() {
     fi
 }
 
+# Function to verify system cURL SSL configuration
+verify_system_curl_config() {
+    log_info "Verifying system cURL SSL configuration..."
+
+    # Check if curl command is available
+    if command -v curl >/dev/null 2>&1; then
+        log_success "System cURL is available"
+
+        # Check cURL version and SSL support
+        local curl_info
+        curl_info=$(curl --version 2>/dev/null | head -n1 || echo "Unknown")
+        log_info "    ├─ Version: $curl_info"
+
+        # Check SSL libraries
+        local ssl_info
+        ssl_info=$(curl --version 2>/dev/null | grep -o 'OpenSSL/[0-9.]*\|LibreSSL/[0-9.]*\|NSS/[0-9.]*' | head -n1 || echo "Unknown")
+        log_info "    └─ SSL Library: $ssl_info"
+
+        return 0
+    else
+        log_warning "System cURL is not available"
+        return 1
+    fi
+}
+
+# Function to verify PHP cURL SSL configuration
+verify_php_ssl_config() {
+    log_info "Verifying PHP cURL SSL configuration..."
+
+    # Check if cURL extension is loaded
+    if php -m | grep -q "curl"; then
+        log_success "PHP cURL extension is loaded"
+
+        # Check cURL SSL version
+        local curl_version
+        curl_version=$(php -r "echo curl_version()['ssl_version'];" 2>/dev/null || echo "Unknown")
+        log_info "    └─ SSL Version: $curl_version"
+
+        return 0
+    else
+        log_warning "PHP cURL extension is not loaded"
+        return 1
+    fi
+}
+
 # Main execution
 main() {
-    log_info "Setting up mkcert CA certificates for nginx container..."
+    log_info "Setting up mkcert CA certificates for PHP-FPM container..."
 
     if [[ -f "$CA_CERT_SOURCE" ]]; then
         log_info "Found mkcert CA certificate at $CA_CERT_SOURCE"
@@ -78,6 +123,12 @@ main() {
             # Install the certificate
             if install_ca_certificate "$CA_CERT_SOURCE" "$CA_CERT_TARGET"; then
                 log_success "mkcert CA certificate setup completed successfully"
+
+                # Verify SSL configurations
+                verify_system_curl_config
+                verify_php_ssl_config
+
+                log_info "PHP applications can now make HTTPS requests to local development sites"
             else
                 log_error "mkcert CA certificate setup failed"
                 return 1
@@ -88,10 +139,11 @@ main() {
         fi
     else
         log_warning "mkcert CA certificate not found at $CA_CERT_SOURCE"
-        log_warning "HTTPS connections to local development sites may fail"
+        log_warning "PHP HTTPS requests to local development sites may fail"
+        log_warning "cURL SSL verification errors may occur"
     fi
 
-    log_info "CA certificates setup completed for nginx container"
+    log_info "CA certificates setup completed for PHP-FPM container"
 }
 
 # Execute main function

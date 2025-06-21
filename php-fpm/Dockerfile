@@ -19,7 +19,7 @@ ARG XDEBUG_PORT=9003
 ARG INSTALL_MONGO=false
 ARG INSTALL_AMQP=false
 
-FROM shinsenter/php:${PHP_VERSION}-fpm-nginx AS base
+FROM shinsenter/php:${PHP_VERSION}-fpm AS base
 
 # Import ARG values into this stage
 ARG TZ=UTC
@@ -34,8 +34,8 @@ ARG INSTALL_MONGO=false
 ARG INSTALL_AMQP=false
 
 # OCI Standard Labels
-LABEL org.opencontainers.image.title="DockerKit Nginx"
-LABEL org.opencontainers.image.description="Nginx with PHP-FPM for automated local development environment"
+LABEL org.opencontainers.image.title="DockerKit PHP-FPM"
+LABEL org.opencontainers.image.description="PHP-FPM for automated local development environment"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.authors="Pavel Bychko <box@abordage.dev>"
 LABEL org.opencontainers.image.url="https://github.com/abordage/dockerkit"
@@ -45,7 +45,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # DockerKit Specific Labels
 LABEL dockerkit.service.type="web"
-LABEL dockerkit.service.role="nginx-php"
+LABEL dockerkit.service.role="php-fpm"
 LABEL dockerkit.php.version="${PHP_VERSION}"
 LABEL dockerkit.user.name="${APP_USER}"
 LABEL dockerkit.user.uid="${APP_UID}"
@@ -54,7 +54,6 @@ LABEL dockerkit.extensions.xdebug="${INSTALL_XDEBUG}"
 LABEL dockerkit.extensions.mongo="${INSTALL_MONGO}"
 LABEL dockerkit.extensions.amqp="${INSTALL_AMQP}"
 LABEL dockerkit.healthcheck.enabled="true"
-LABEL dockerkit.healthcheck.endpoint="http://localhost:80"
 
 # Configure user environment
 ENV APP_USER=${APP_USER}
@@ -116,16 +115,11 @@ RUN set -eux; \
 # Set working directory
 WORKDIR ${APP_PATH}
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:80 || exit 1
-
 # Validation step - ensure critical services are configured
 RUN set -eux; \
     php --version; \
-    nginx -v; \
     php-fpm -t; \
     echo "✓ All services validated successfully"
 
 # Expose ports
-EXPOSE 80 443
+EXPOSE 9000

@@ -6,14 +6,14 @@ on:
       - '**/*.sh'
       - 'tools/**'
       - 'workspace/startup/**'
-      - 'nginx/startup/**'
+      - 'php-fpm/startup/**'
       - '.shellcheckrc'
   pull_request:
     paths:
       - '**/*.sh'
       - 'tools/**'
       - 'workspace/startup/**'
-      - 'nginx/startup/**'
+      - 'php-fpm/startup/**'
       - '.shellcheckrc'
 
 concurrency:

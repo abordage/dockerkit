@@ -26,12 +26,13 @@ $$$$$$$  |\$$$$$$  |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |      $$ | \$$\ $$ |  \$$$
 EOF
 }
 
-# Function to show welcome information
-show_welcome_info() {
-    echo
-    log_info "Nginx Web Server & Reverse Proxy"
-    log_info "SSL certificates and virtual hosts ready"
-    log_info "Serving your .local development sites"
+# Function to show system status
+show_system_status() {
+    log_info "PHP-FPM Service Status:"
+    log_info "    ├─ PHP Version → $(php -v 2>/dev/null | head -n1 | cut -d' ' -f2 || echo 'Loading...')"
+    log_info "    ├─ PHP-FPM     → $(php-fpm -v 2>/dev/null | head -n1 | cut -d' ' -f2 || echo 'Loading...')"
+    log_info "    ├─ Extensions  → $(php -m 2>/dev/null | wc -l || echo '0') loaded"
+    log_info "    └─ Process     → $(ps aux | grep -c '[p]hp-fpm' || echo '0') workers"
     echo
 }
 
@@ -43,11 +44,11 @@ main() {
     # Show DockerKit logo
     show_dockerkit_logo
 
-    # Show welcome information
-    show_welcome_info
+    # Show system status
+    show_system_status
 
     # Final success message
-    log_success "DockerKit Nginx ready to serve your applications!"
+    log_success "PHP-FPM service ready! Processing requests..."
     echo
 }
 

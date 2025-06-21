@@ -11,16 +11,6 @@ Brief description of changes
 - [ ] Maintenance (`chore`)
 - [ ] Performance improvement (`perf`)
 
-## Component (if applicable)
-
-- [ ] Docker configuration
-- [ ] Nginx
-- [ ] Workspace
-- [ ] PHP
-- [ ] Tools/Scripts
-- [ ] Documentation
-- [ ] CI
-
 ## Checklist
 
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)

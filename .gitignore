@@ -5,13 +5,8 @@
 /nginx/ssl/*.crt
 /nginx/ssl/*.key
 /nginx/ssl/*.csr
-
-/.devcontainer/*
-!/.devcontainer/devcontainer.example.json
-!/.devcontainer/docker-compose.extend-example.yml
-
+/nginx/conf.d/*.local.conf
 .DS_Store
-/nginx/sites-available/
 
 # Composer authentication
 /workspace/auth.json

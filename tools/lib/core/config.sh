@@ -87,10 +87,10 @@ export PERFORMANCE_THRESHOLD_DNS=1.0      # DNS lookup > 1s = slow
 export PERFORMANCE_THRESHOLD_SSL=1.5      # SSL handshake > 1.5s = slow
 
 # Directory paths
-export NGINX_SITES_DIR="nginx/sites-available"
+export NGINX_SITES_DIR="nginx/conf.d"
 export NGINX_SSL_DIR="nginx/ssl"
 export SSL_CA_DIR="ssl-ca"
-export NGINX_TEMPLATES_DIR="tools/templates"
+export NGINX_TEMPLATES_DIR="nginx/templates"
 
 # Timeout settings
 export CURL_CONNECT_TIMEOUT=10

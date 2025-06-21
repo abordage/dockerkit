@@ -154,7 +154,7 @@ reset: ## Reset project to initial state (clean containers, volumes, configs)
 	@echo "$(YELLOW)Removing SSL certificates...$(NC)"
 	@rm -rf nginx/ssl/*.crt nginx/ssl/*.key 2>/dev/null || true
 	@echo "$(YELLOW)Removing generated nginx configurations...$(NC)"
-	@rm -rf nginx/sites-available/*.conf 2>/dev/null || true
+	@rm -rf nginx/conf.d/*.local.conf 2>/dev/null || true
 	@echo "$(YELLOW)Removing network aliases file...$(NC)"
 	@rm -f docker-compose.aliases.yml 2>/dev/null || true
 	@echo "$(GREEN)Project reset completed!$(NC)"
@@ -164,7 +164,7 @@ reset: ## Reset project to initial state (clean containers, volumes, configs)
 # =============================================================================
 
 check-dockerfiles: ## Check Dockerfile best practices with Docker Build Checks
-	@echo "Checking nginx Dockerfile..."
+	@echo "Checking php-fpm Dockerfile..."
 	@$(LOAD_ENV) && docker build --check \
 		--build-arg PHP_VERSION=$$PHP_VERSION \
 		--build-arg APP_USER=$$APP_USER \
@@ -173,7 +173,7 @@ check-dockerfiles: ## Check Dockerfile best practices with Docker Build Checks
 		--build-arg INSTALL_XDEBUG=$$INSTALL_XDEBUG \
 		--build-arg INSTALL_MONGO=$$INSTALL_MONGO \
 		--build-arg INSTALL_AMQP=$$INSTALL_AMQP \
-		./nginx
+		./php-fpm
 	@echo "Checking workspace Dockerfile..."
 	@$(LOAD_ENV) && docker build --check \
 		--build-arg PHP_VERSION=$$PHP_VERSION \

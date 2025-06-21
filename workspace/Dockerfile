@@ -201,12 +201,6 @@ RUN PYTHON_VERSION=$(/opt/venv/bin/python -c "import sys; print(f'{sys.version_i
 # ============================================================================
 FROM python-env AS final
 
-# Copy configuration files
-COPY ./crontab /etc/cron.d
-
-# Set permissions
-RUN chmod -R 644 /etc/cron.d
-
 # Ensure user exists (shinsenter/php base image should handle this automatically)
 # But we add sudo access for development convenience
 RUN if [ "$ENABLE_NON_ROOT_USER" = "true" ]; then \
@@ -221,10 +215,6 @@ RUN if [ "$ENABLE_NON_ROOT_USER" = "true" ]; then \
 
 # Set working directory
 WORKDIR ${APP_PATH}
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD php --version || exit 1
 
 # Validation step - ensure critical tools are available
 RUN set -eux; \

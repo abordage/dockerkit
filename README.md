@@ -4,146 +4,270 @@
 
 ## Overview
 
-DockerKit is a comprehensive Docker-based development environment that provides a complete stack for web development. It features automated local development setup with SSL certificates, intelligent project type detection, and seamless integration with popular PHP frameworks.
+DockerKit is a comprehensive Docker-based development environment that provides a complete stack for web development.
 
-The kit automatically **discovers your projects**, **configures local domains**, **adds hosts entries**, **generates SSL certificates**, and **creates optimized nginx configurations** - all with a single command.
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Advanced Configuration](#advanced-configuration)
+   - [Container Startup Automation](#container-startup-automation)
+   - [Nginx Configuration](#nginx-configuration)
+   - [Composer Configuration](#composer-configuration)
+   - [Scheduled Tasks](#scheduled-tasks)
+3. [Development Tools](#development-tools)
+4. [Architecture Overview](#architecture-overview)
+5. [Common Commands](#common-commands)
+6. [Project Structure](#project-structure)
+7. [Troubleshooting](#troubleshooting)
+8. [Comparison](#comparison)
+9. [CI/CD](#cicd)
+10. [Roadmap](#roadmap)
+11. [FAQ](#faq)
+12. [Contributing](#contributing)
 
 ## Quick Start
 
+### Understanding the Structure
+
+DockerKit scans the **parent directory** for `.local` projects:
+
+```text
+your-projects/
+├── dockerkit/         # This repository
+├── myapp.local/       # Detected: Laravel project
+├── api.local/         # Detected: Symfony project
+├── blog.local/        # Detected: WordPress project
+├── backup-files/      # Ignored
+└── docs/              # Ignored
+```
+
+### 1. Install Dependencies (recommended)
+
+`hostctl` and `mkcert` are **optional but highly recommended** for the best development experience. DockerKit will work without them, but with limitations:
+
+- **without hostctl**: You'll need to manually edit your `/etc/hosts` file to add local domain entries
+- **without mkcert**: SSL certificates won't be generated, so only HTTP (not HTTPS) will be available
+
 ```bash
-# 1. Clone the repository
+# macOS: using Homebrew
+brew install guumaster/tap/hostctl
+brew install mkcert && mkcert -install
+
+# Windows: using Chocolatey
+choco install hostctl
+choco install mkcert && mkcert -install
+
+# Linux: download binary from
+https://github.com/guumaster/hostctl/releases
+https://github.com/FiloSottile/mkcert/releases
+```
+
+### 2. Clone Repository
+
+```bash
+# Navigate to your projects directory
+cd /path/to/your/projects
+
+# Clone DockerKit
 git clone https://github.com/abordage/dockerkit dockerkit
 cd dockerkit
+```
 
-# 2. Place your projects in the parent directory
-# Projects must end with '.local' (e.g., myapp.local, api.local)
-#
-# your-projects-dir/
-# ├── dockerkit/               # This repository
-# ├── myapp.local/             # Laravel project (will be processed)
-# ├── api.local/               # Symfony API (will be processed)
-# ├── blog.local/              # WordPress blog (will be processed)
-# ├── shop.local/              # E-commerce site (will be processed)
-# ├── old-project/             # Regular directory (ignored)
-# ├── backup-files/            # Regular directory (ignored)
-# └── docs/                    # Regular directory (ignored)
+### 3. Run Setup
 
-# 3. Configure services (optional)
-# Edit .env to enable/disable services as needed
-# Default: nginx, workspace, postgres, redis enabled
-
-# 4. Set up local development environment
+```bash
 make setup
+```
 
-# 5. Start the services
+This will automatically:
+
+- Create `.env` file from `.env.example`
+- Detect your `.local` projects
+- Generate `SSL certificates`
+- Create `nginx configurations`
+- Set up `hosts file` entries
+
+### 4. Review Configuration
+
+Edit `ENABLE_*` flags to customize your stack.
+
+```bash
+nano .env
+```
+
+### 5. Start Services
+
+```bash
 make start
 ```
 
-**Important**: Only directories with `.local` suffix are automatically discovered and configured. The setup system completely ignores all other directories in the parent folder.
+This command:
 
-Your projects will be available at:
+- Checks network aliases configuration
+- Starts all enabled services (`ENABLE_*=1`) in detached mode
+- Uses `docker-compose.aliases.yml` for `.local` domain routing
+- Shows startup status for each container
 
-- `https://myapp.local` (with SSL)
-- `https://api.local` (with SSL)
-- `https://blog.local` (with SSL)
-- `https://shop.local` (with SSL)
+### Access Your Projects
 
-## Available Services
+Your projects are now available:
 
-DockerKit provides a comprehensive set of services that can be **flexibly enabled or disabled** based on your project needs:
+- <https://myapp.local>
+- <https://api.local>
+- <https://blog.local>
+
+## Advanced Configuration
+
+### Container Startup Automation
+
+DockerKit uses automated startup scripts to configure development environment on container launch.
+
+#### Workspace Container Startup
+
+The workspace container automatically executes these initialization scripts:
 
 ```text
-┌─────────────────┬──────────┬─────────────────────────────────────┬─────────────┐
-│ Service         │ Port     │ Description                         │ Default     │
-├─────────────────┼──────────┼─────────────────────────────────────┼─────────────┤
-│ nginx           │ 80, 443  │ PHP-FPM + nginx web server          │ ✅ Enabled  │
-│ workspace       │ 3000+    │ Development workspace with Composer │ ✅ Enabled  │
-│ postgres        │ 5432     │ PostgreSQL database server          │ ✅ Enabled  │
-│ redis           │ 6379     │ Redis cache server                  │ ✅ Enabled  │
-│ mysql           │ 3306     │ MySQL database server               │ ❌ Disabled │
-│ mongodb         │ 27017    │ MongoDB document database           │ ❌ Disabled │
-│ rabbitmq        │ 5672+    │ RabbitMQ message broker             │ ✅ Enabled  │
-│ elasticsearch   │ 9200     │ Elasticsearch search engine         │ ❌ Disabled │
-│ dejavu          │ 1358     │ Elasticsearch web UI                │ ❌ Disabled │
-│ minio           │ 9000+    │ MinIO S3-compatible object storage  │ ✅ Enabled  │
-│ mailpit         │ 8025+    │ Email testing tool                  │ ✅ Enabled  │
-│ portainer       │ 9000     │ Docker container management         │ ✅ Enabled  │
-└─────────────────┴──────────┴─────────────────────────────────────┴─────────────┘
+workspace/startup/
+├── 00-welcome           # Display DockerKit logo and system status
+├── 01-aliases           # Configure Laravel/PHP development aliases  
+├── 02-composer          # Setup Composer authentication and plugins
+└── 03-ca-certificates   # Install SSL CA certificates for HTTPS
 ```
 
-### Flexible Service Configuration
+#### Key features
 
-Control which services to run by editing the `.env` file:
+- **Development aliases:** `art` (artisan), `fresh`, `migrate`, `pint`, `pest`
+- **Auto-completion:** Laravel Artisan and Composer commands
+- **Composer auth:** Automatic setup from `workspace/auth.json`
+- **SSL support:** Local HTTPS certificates for development sites
+
+#### PHP-FPM Container Startup
+
+The PHP-FPM container runs these initialization scripts:
+
+```text
+php-fpm/startup/
+├── 00-welcome           # Display service status and PHP version
+└── 01-ca-certificates   # Install SSL CA certificates for PHP requests
+```
+
+#### Custom Startup Scripts
+
+Add custom scripts to `workspace/startup/` or `php-fpm/startup/`:
 
 ```bash
-### Services ###############################################
-# Core services (1 = enabled, 0 = disabled)
-ENABLE_NGINX=1
-ENABLE_WORKSPACE=1
-
-# Database services (1 = enabled, 0 = disabled)
-ENABLE_POSTGRES=1
-ENABLE_MYSQL=0
-ENABLE_MONGODB=0
-ENABLE_REDIS=1
-
-# Additional services (1 = enabled, 0 = disabled)
-ENABLE_RABBITMQ=1
-ENABLE_ELASTICSEARCH=0
-ENABLE_DEJAVU=0
-ENABLE_MINIO=1
-ENABLE_MAILPIT=1
-ENABLE_PORTAINER=1
+# workspace/startup/99-custom-setup
+#!/bin/bash
+echo "Running custom workspace setup..."
+# Your custom initialization code
 ```
 
-### Common Configurations
+**Note:** Scripts execute in alphabetical order. Use numeric prefixes (00-, 01-, etc.) to control execution sequence.
 
-#### Minimal Setup (Static Sites)
+### Nginx Configuration
+
+DockerKit provides flexible nginx customization through configuration snippets:
+
+```text
+nginx/snippets/
+├── security.conf          # Security headers and restrictions
+├── ssl-params.conf        # SSL/TLS configuration  
+├── php-fpm.conf          # PHP-FPM backend settings
+└── modern-fpm.conf       # Optimized PHP-FPM config
+```
+
+#### Adding Custom Rules
+
+Create `.conf` files in `nginx/conf.d/` for custom server blocks.
+
+### Composer Configuration
+
+For private repositories, create `auth.json` file:
 
 ```bash
-ENABLE_NGINX=1
-ENABLE_WORKSPACE=1
-# All databases = 0
+# Copy the example template
+cp workspace/auth.json.example workspace/auth.json
+
+# Edit with your credentials
+nano workspace/auth.json
 ```
 
-#### Laravel Project
+#### auth.json structure
+
+```json
+{
+   "http-basic": {
+      "private.repo.com": {
+         "username": "your-username",
+         "password": "your-password"
+      }
+   },
+   "github-oauth": {
+      "github.com": "ghp_your_personal_access_token"
+   },
+   "gitlab-token": {
+      "gitlab.com": "glpat-your_project_access_token"
+   },
+   "bitbucket-oauth": {
+      "bitbucket.org": {
+         "consumer-key": "your-key",
+         "consumer-secret": "your-secret"
+      }
+   }
+}
+```
+
+**Security:** File is git-ignored and has restricted permissions (600) inside containers.
+
+### Scheduled Tasks
+
+Automated task execution using cron in the workspace container.
+
+#### Configuration
+
+Cron is enabled by default and reads jobs from `workspace/crontab/` directory:
 
 ```bash
-ENABLE_NGINX=1
-ENABLE_WORKSPACE=1
-ENABLE_MYSQL=1
-ENABLE_REDIS=1
-ENABLE_MAILPIT=1
-ENABLE_MINIO=1
+ENABLE_CRONTAB=1            # Enable cron daemon  
+CRONTAB_DIR=/etc/crontab.d  # Crontab directory (mapped from workspace/crontab)
 ```
 
-#### Microservices with Search
+#### Add Scheduled Tasks
+
+Create crontab files in `workspace/crontab/`:
+
+##### Laravel Scheduler
 
 ```bash
-ENABLE_NGINX=1
-ENABLE_WORKSPACE=1
-ENABLE_POSTGRES=1
-ENABLE_REDIS=1
-ENABLE_RABBITMQ=1
-ENABLE_ELASTICSEARCH=1
-ENABLE_DEJAVU=1
+# workspace/crontab/scheduler
+* * * * * /usr/local/bin/php /var/www/myapp.local/artisan schedule:run >> /var/log/cron/scheduler.log 2>&1
 ```
 
-**Apply changes**: Simply run `docker compose up -d` after modifying `.env`
+##### Database Backup
+
+```bash  
+# workspace/crontab/backup
+0 2 * * * /usr/bin/pg_dump -h postgres -U dockerkit -d default > /var/www/backup_$(date +\%Y\%m\%d).sql 2>> /var/log/cron/backup.log
+```
+
+##### Log Cleanup
+
+```bash
+# workspace/crontab/cleanup
+0 0 * * 0 find /var/www/*/storage/logs -name "*.log" -mtime +30 -delete 2>> /var/log/cron/cleanup.log
+```
+
+**Apply changes:** `make restart`
 
 ## Development Tools
 
-The workspace container includes pre-installed development tools for API development and validation.
+The workspace container includes a comprehensive set of pre-installed development tools for modern web development.
 
-### OpenAPI Tools
+### API Development Tools
 
-#### @openapitools/openapi-generator-cli
+#### OpenAPI Generator CLI
 
-**Purpose**: Generate client libraries, server stubs, and API documentation from OpenAPI specifications
-
-**Installation**: Pre-installed when `INSTALL_OPENAPI_GENERATOR=true`
-
-**Usage Examples**:
+Generate client libraries, server stubs, and API documentation from OpenAPI specifications:
 
 ```bash
 # Generate TypeScript client from OpenAPI spec
@@ -160,22 +284,9 @@ openapi-generator-cli generate -g php \
 openapi-generator-cli list
 ```
 
-**Use Cases**:
+#### Vacuum OpenAPI Linter
 
-- Generate API clients for frontend applications
-- Create server stubs for new APIs
-- Generate API documentation
-- Keep clients in sync with API changes
-
-**Documentation**: [OpenAPI Generator CLI](https://github.com/OpenAPITools/openapi-generator-cli)
-
-#### @quobix/vacuum
-
-**Purpose**: OpenAPI specification linter and quality checker
-
-**Installation**: Pre-installed when `INSTALL_VACUUM=true`
-
-**Usage Examples**:
+OpenAPI specification linter and quality checker:
 
 ```bash
 # Lint OpenAPI specification
@@ -192,120 +303,67 @@ vacuum lint ./api/openapi.yaml --format=json
 vacuum lint ./api/openapi.yaml --format=html > report.html
 ```
 
-**Use Cases**:
+### Composer Global Tools
 
-- Validate OpenAPI specifications for errors
-- Enforce API design standards
-- Security analysis (OWASP rules)
-- Quality metrics and reporting
-- CI/CD integration for API validation
+#### ergebnis/composer-normalize
 
-**Documentation**: [Vacuum](https://github.com/daveshanley/vacuum)
-
-### Additional Tools
-
-The workspace also includes:
-
-- **Graphviz**: For generating diagrams and dependency graphs
-- **Java Development Kit**: For Java-based tools and generators
-- **Python Environment**: With powerline and development tools
-- **Database Clients**: PostgreSQL and MySQL clients for database operations
-
-## Optional Tools
-
-`hostctl` and `mkcert` are **optional but highly recommended** for the best development experience. DockerKit will work without them, but with limitations:
-
-- **Without hostctl**: You'll need to manually edit your `/etc/hosts` file to add local domain entries
-- **Without mkcert**: SSL certificates won't be generated, so only HTTP (not HTTPS) will be available
-
-## hostctl
-
-[hostctl](https://github.com/guumaster/hostctl) manages `/etc/hosts` entries for local development domains
-
-- VPN-resistant (uses hosts file, not DNS)
-- Profile-based management for multiple projects
-- Cross-platform compatibility
-
-### macOS DNS Performance Fix
-
-On macOS, `.local` domains can experience 5+ second delays due to IPv6 DNS resolution timeouts. DockerKit automatically solves this by creating **dual-stack host entries**:
-
-```text
-127.0.0.1  myapp.local    # IPv4 entry
-::1        myapp.local    # IPv6 entry (prevents timeout)
-```
-
-**Before fix**: `curl http://myapp.local` takes ~5.002 seconds  
-**After fix**: `curl http://myapp.local` takes ~0.015 seconds (**333x faster!**)
-
-This optimization is automatically applied during `make setup-hosts` - no manual configuration needed.
-
-### Installation hostctl
+Normalizes `composer.json` files according to a defined schema:
 
 ```bash
-# macOS: using Homebrew
-brew install guumaster/tap/hostctl
+# Normalize current project
+composer normalize
 
-# Linux
-curl -L https://github.com/guumaster/hostctl/releases/latest/download/hostctl_linux_amd64.tar.gz | tar xz
-sudo mv hostctl /usr/local/bin/
+# Preview changes without applying
+composer normalize --dry-run
 
-# Windows: using Chocolatey
-choco install hostctl
+# Normalize specific file
+composer normalize path/to/composer.json
 ```
 
-## mkcert
+#### pyrech/composer-changelogs
 
-[mkcert](https://github.com/FiloSottile/mkcert) generates locally-trusted SSL certificates
-
-- Creates valid HTTPS certificates for development
-- Automatically installs local Certificate Authority
-- Browser-trusted certificates without warnings
-
-### Installation mkcert
+Displays changelogs when updating packages:
 
 ```bash
-# macOS: using homebrew
-brew install mkcert
-mkcert -install
+# Automatically shows changelogs during updates
+composer update
 
-# Linux: using package manager or download
-# Ubuntu/Debian: apt install libnss3-tools
-# Then download from: https://github.com/FiloSottile/mkcert/releases
-
-# Windows: chocolatey
-choco install mkcert
+# Shows changelogs for all dependencies
+composer update --with-all-dependencies
 ```
 
-### Automatic Project Type Detection
+### Database Tools
 
-The system automatically detects your project types based on file presence:
+#### PostgreSQL Client
 
-```text
-┌──────────────┬─────────────────────────────────────────────────────┐
-│ Project Type │ Detection Logic                                     │
-├──────────────┼─────────────────────────────────────────────────────┤
-│ Laravel      │ artisan file exists                                 │
-│ Symfony      │ bin/console OR symfony.lock exists                  │
-│ WordPress    │ wp-config.php OR wp-content/index.php exists        │
-│ Static HTML  │ index.html exists AND index.php does NOT exist      │
-│ Simple PHP   │ Default fallback for other PHP projects             │
-└──────────────┴─────────────────────────────────────────────────────┘
+Direct database access and operations:
+
+```bash
+# Connect to PostgreSQL
+psql -h postgres -U dockerkit -d default
+
+# Export database
+pg_dump -h postgres -U dockerkit -d default > backup.sql
+
+# Import database
+psql -h postgres -U dockerkit -d default < backup.sql
 ```
 
-### Document Root Mapping
+#### MySQL Client
 
-```text
-Laravel/Symfony:  /var/www/{sitename.local}/public
-WordPress/PHP:    /var/www/{sitename.local}
-Static HTML:      /var/www/{sitename.local}
+```bash
+# Connect to MySQL
+mysql -h mysql -u dockerkit -p
+
+# Export database
+mysqldump -h mysql -u dockerkit -p default > backup.sql
 ```
 
-## Network Architecture
-
-DockerKit implements intelligent **multi-network architecture** with automatic service discovery:
+## Architecture Overview
 
 ### Network Topology
+
+DockerKit implements intelligent **multi-network architecture** with automatic service discovery:
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -316,8 +374,13 @@ DockerKit implements intelligent **multi-network architecture** with automatic s
 │         ┌─────────────────┐   :443/:80   ┌─────────────────┐          │
 │         │   web network   │◄────────────►│ backend network │          │
 │         │                 │              │                 │          │
-│         │  ┌───────────┐  │              │  ┌───────────┐  │          │
-│         │  │   nginx   │◄─┼──────────────┼─►│ workspace │  │          │
+│         │  ┌───────────┐  │   :443/:80   │  ┌───────────┐  │          │
+│         │  │           │◄─┼──────────────┼──│ workspace │  │          │
+│         │  │           │  │              │  └───────────┘  │          │
+│         │  │   nginx   │  │   :443/:80   │  ┌───────────┐  │          │
+│         │  │           │◄─┼──────────────┼──│           │  │          │
+│         │  │           │  │     :9000    │  │  php-fpm  │  │          │
+│         │  │           │──┼──────────────┼─►│           │  │          │
 │         │  └───────────┘  │              │  └───────────┘  │          │
 │         │                 │              │                 │          │
 │         │  aliases:       │              │  aliases:       │          │
@@ -329,623 +392,197 @@ DockerKit implements intelligent **multi-network architecture** with automatic s
 │         Container-to-container communication:                         │
 │         HTTP:  curl http://api.local/users                            │
 │         HTTPS: curl https://myapp.local/api (with SSL certs)          │
+│         nginx → php-fmp:9000 (FastCGI protocol)                       │
 │                                                                       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-### Automatic Network Aliases
-
-For every discovered `.local` project, DockerKit automatically:
-
-1. **Generates network aliases** in `docker-compose.aliases.yml`
-2. **Updates container networking** for seamless inter-service communication
-3. **Maintains sync** when projects are added or removed
-
-```bash
-# Example: Internal API calls work automatically
-curl http://api.local/users    # From any container
-curl http://blog.local/posts   # Cross-service communication
-```
-
-**Benefits:**
-- ✅ **Internal routing**: Containers can resolve `myapp.local` directly
-- ✅ **API communication**: Services can call each other by domain name
-- ✅ **Auto-sync**: Aliases update automatically when projects are added/removed
-- ✅ **Network isolation**: Proper separation between web and backend networks
-
-## Makefile Commands
-
-```bash
-# Help & Information
-make help                 # Show this help message
-make status               # Show current system status
-
-# Environment Setup  
-make setup                # Complete environment setup (deps, hosts, SSL, nginx for .local projects)
-
-# Service Management
-make start                # Start all enabled services
-make stop                 # Stop all services
-make restart              # Restart all services
-
-# Build Management
-make build                # Build all containers
-make build-nc             # Build all containers without cache
-make rebuild              # Rebuild everything and start
-
-# Development Tools
-make shell                # Enter workspace container shell
-make shell-nginx          # Enter nginx container shell  
-make shell-root           # Enter workspace as root
-
-# Cleanup & Maintenance
-make reset                # Clean project resources (safer)
-
-# System Checks & Diagnostics
-make health               # Check container health status
-```
-
-## Tools Directory Structure
-
-The `tools/` directory contains the automated environment configuration system:
-
-```text
-tools/
-├── setup.sh                          # Main setup orchestrator
-├── status.sh                         # System status checker
-├── lib/                              # Modular library components
-│   ├── core/                         # Core functionality
-│   │   ├── base.sh                   # Base constants and utilities
-│   │   ├── colors.sh                 # Terminal color definitions
-│   │   ├── config.sh                 # Configuration management
-│   │   ├── utils.sh                  # Utility functions
-│   │   └── validation.sh             # Input validation
-│   ├── services/                     # Service management
-│   │   ├── hosts.sh                  # Host file management
-│   │   ├── nginx.sh                  # Nginx configuration
-│   │   ├── packages.sh               # Package installation
-│   │   ├── projects.sh               # Project discovery
-│   │   ├── ssl.sh                    # SSL certificate management
-│   │   └── templates.sh              # Template processing
-│   └── status/                       # Status checking modules
-│       ├── docker-status.sh          # Docker container status
-│       ├── site-status.sh            # Website availability status
-│       ├── system-status.sh          # System requirements status
-│       └── tools-status.sh           # Tools availability status
-└── templates/                        # nginx configuration templates
-    ├── laravel.conf                  # Laravel HTTP template
-    ├── laravel-ssl.conf              # Laravel HTTPS template
-    ├── symfony.conf                  # Symfony HTTP template
-    ├── symfony-ssl.conf              # Symfony HTTPS template
-    ├── wordpress.conf                # WordPress HTTP template
-    ├── wordpress-ssl.conf            # WordPress HTTPS template
-    ├── static.conf                   # Static HTML HTTP template
-    ├── static-ssl.conf               # Static HTML HTTPS template
-    ├── simple.conf                   # Simple PHP HTTP template
-    └── simple-ssl.conf               # Simple PHP HTTPS template
-
-# Container startup automation
-workspace/startup/                    # Workspace container initialization
-├── 01-aliases                        # Development aliases and autocomplete
-├── 02-composer                       # Composer environment setup
-├── 03-ca-certificates               # SSL CA certificate installation
-└── 04-local-hosts                   # Automatic hosts file generation
-
-nginx/startup/                        # Nginx container initialization
-├── 01-activate-sites                # Activate nginx site configurations
-├── 02-ca-certificates               # SSL CA certificate installation
-└── 04-local-hosts                   # Automatic hosts file generation
-
-# Configuration files
-workspace/
-├── auth.json.example                # Composer authentication template
-├── auth.json                        # Your Composer credentials (gitignored)
-└── crontab/                         # Scheduled tasks
-    └── example                      # Example crontab configuration
-```
-
-## Container Startup Automation
-
-DockerKit features intelligent container startup automation that configures your development environment automatically when containers start.
-
-### Workspace Container Automation
-
-The workspace container runs these startup scripts in sequence:
-
-#### 01-aliases
-
-- **Purpose**: Sets up development aliases and command autocomplete
-- **Features**:
-  - Enhanced bash/zsh completion for common commands
-  - Docker and Git shortcuts
-  - Laravel Artisan command shortcuts
-  - Symfony Console command shortcuts
-
-#### 02-composer
-
-- **Purpose**: Configures Composer environment and installs global packages
-- **Features**:
-  - Performance optimization (2GB memory limit, extended timeouts)
-  - Authentication setup for private repositories
-  - Global plugin installation (normalize, changelogs)
-  - Persistent cache configuration
-
-#### 03-ca-certificates
-
-- **Purpose**: Installs mkcert CA certificates for HTTPS development
-- **Features**:
-  - Automatic detection of CA certificates in `/ssl-ca/`
-  - System-wide certificate installation
-  - HTTPS support for local `.local` domains
-  - Browser-trusted certificates without warnings
-
-### Nginx Container Automation
-
-The nginx container runs these startup scripts:
-
-#### 01-activate-sites
-
-- **Purpose**: Activates nginx site configurations
-- **Features**:
-  - Links configurations from `sites-available` to `sites-enabled`
-  - Validates nginx configuration syntax
-  - Reloads nginx with new configurations
-
-#### 02-ca-certificates
-
-- **Purpose**: Installs mkcert CA certificates
-- **Features**: Same as workspace container, ensures nginx trusts local CA
-
-### Automatic SSL and Hosts Configuration
-
-The startup system provides seamless HTTPS development:
-
-```bash
-# Automatic process when containers start:
-# 1. Detect .local projects in /var/www/
-# 2. Install CA certificates if available
-# 3. Generate hosts entries for each project
-# 4. Test connectivity and SSL status
-# 5. Report status with visual indicators
-
-# Example output:
-[INFO] Found project: myapp.local
-[INFO] Adding hosts entry: myapp.local -> nginx
-[SUCCESS] ✓ myapp.local (200 OK, SSL: Valid)
-[INFO] Found project: api.local  
-[INFO] Adding hosts entry: api.local -> nginx
-[SUCCESS] ✓ api.local (200 OK, SSL: Valid)
-```
-
-### Benefits
-
-- **Zero Configuration**: Projects work immediately after `docker compose up`
-- **Automatic Discovery**: New projects are detected and configured automatically
-- **SSL by Default**: HTTPS works out of the box with proper certificates
-- **Status Monitoring**: Visual feedback on project availability and SSL status
-- **Cross-Container Communication**: Both containers can access local projects by name
-
-## Network Architecture
-
-DockerKit uses a three-tier network architecture for optimal security and performance:
-
-```text
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   WEB NETWORK   │    │ BACKEND NETWORK  │    │ MANAGEMENT NET  │
-├─────────────────┤    ├──────────────────┤    ├─────────────────┤
-│ • nginx         │    │ • postgres       │    │ • portainer     │
-│ • workspace     │    │ • mysql          │    │                 │
-│ • elasticsearch │    │ • mongo          │    │                 │
-│ • dejavu        │    │ • redis          │    │                 │
-│ • minio         │    │ • rabbitmq       │    │                 │
-│ • mailpit       │    │                  │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-        │                        │                        │
-        └────────────────────────┼────────────────────────┘
-                                 │
-                    workspace and nginx have 
-                    access to both networks
-```
-
 ### Network Segmentation
 
-**Web Network (`web`)**
-
-- Services with web interfaces accessible via browser
-- ElasticSearch, Dejavu, Minio, Mailpit web consoles
-- Nginx web server and workspace development environment
-
-**Backend Network (`backend`)**
-
-- Internal services (databases, cache, message queues)
-- PostgreSQL, MySQL, MongoDB, Redis, RabbitMQ
-- Isolated from direct web access for security
-
-**Management Network (`management`)**
-
-- Docker administration tools
-- Portainer container management interface
-- Separated from application networks
-
-### Security Benefits
-
-**Database Isolation**: Databases cannot be accessed directly from web services  
-**Principle of Least Privilege**: Services only have access to required networks  
-**Management Separation**: Admin tools are isolated from application traffic  
-**Development Flexibility**: Workspace has full access for development needs  
-
-### Service Communication
-
-```bash
-# From workspace (has access to both networks)
-curl http://postgres:5432        # Backend database access
-curl http://elasticsearch:9200   # Web service access
-
-# From dejavu (web network only)
-curl http://elasticsearch:9200   # Can access Elasticsearch
-curl http://postgres:5432        # Cannot access database
-
-# From postgres (backend network only)  
-# No web service access - only internal services
-```
-
-### Network Aliases for .local Projects
-
-DockerKit automatically generates network aliases for `.local` projects, enabling seamless domain resolution within the Docker network environment.
-
-#### How It Works
-
-When you run `make setup`, DockerKit:
-
-1. **Scans** for `.local` projects in your workspace
-2. **Generates** `docker-compose.aliases.yml` with network aliases
-3. **Configures** nginx to resolve `.local` domains in both `web` and `backend` networks
-
-#### Generated Aliases Structure
-
-```yaml
-# docker-compose.aliases.yml (auto-generated)
-services:
-  nginx:
-    networks:
-      web:
-        aliases:
-          - myproject.local
-          - api.local
-      backend:
-        aliases:
-          - myproject.local
-          - api.local
-```
-
-**External Access**: Browser requests to `https://myproject.local` → nginx  
-**Internal Access**: Workspace can make HTTP requests to `http://myproject.local` → nginx  
-**Service Discovery**: Automatic domain resolution without hardcoded IPs  
-**Multi-Project Support**: Each `.local` project gets its own aliases  
-
-#### Use Cases
-
-```bash
-# From workspace container - monitoring all local sites
-curl -I http://myproject.local     # Resolves to nginx, returns site status
-curl -I http://api.local           # Works for API endpoints
-
-# From PHP application - inter-service communication
-$response = file_get_contents('http://api.local/data');
-
-# From console commands - health checks
-php artisan health:check --url=http://myproject.local
-```
-
-#### File Management
-
-- **Auto-generated**: `docker-compose.aliases.yml` is created automatically
-- **Version controlled**: Include in git for team consistency  
-- **Self-updating**: Regenerated when new `.local` projects are added
-- **Clean removal**: `make reset` removes the aliases file
-
-## Nginx Template System
-
-### Template Structure
-
-Each project type has two templates:
-
-- `{type}.conf` - HTTP only
-- `{type}-ssl.conf` - HTTPS with SSL redirect
-
-### Template Variables
-
-Templates use placeholder variables that are replaced during generation:
-
-- `{{SITE_NAME}}` - The .local domain name
-- `{{DOCUMENT_ROOT}}` - Project-specific document root path
-
-### Custom Templates
-
-You can modify templates in `tools/templates/` to customize nginx configurations for your needs.
-
-## Custom nginx Configuration
-
-DockerKit provides flexible nginx customization through the `nginx/custom.d/` directory.
-
-### Available Custom Configurations
-
-The following configurations are automatically loaded:
+DockerKit uses a **three-tier network architecture** for optimal security and performance:
 
 ```text
-nginx/custom.d/
-├── 00-client_body_timeout.conf    # Client body timeout settings
-├── 00-client_max_body_size.conf   # Maximum upload size (100M)
-├── 00-ext-gzip.conf               # Gzip compression settings
-├── 00-proxy_timeout.conf          # Proxy timeout configuration (21600s)
-└── 00-set-variables.conf          # Custom nginx variables
+┌─────────────────┐       ┌──────────────────┐       ┌─────────────────┐
+│   WEB NETWORK   │       │ BACKEND NETWORK  │       │ MANAGEMENT NET  │
+├─────────────────┤       ├──────────────────┤       ├─────────────────┤
+│ • nginx         │───────│ • nginx          │       │ • portainer     │
+│ • workspace     │───────│ • workspace      │       │                 │
+│ • php-fpm       │───────│ • php-fpm        │       │                 │
+│ • elasticsearch │       │ • postgres       │       │                 │
+│ • dejavu        │       │ • mysql          │       │                 │
+│ • minio         │       │ • mongo          │       │                 │
+│ • mailpit       │       │ • redis          │       │                 │
+│                 │       │ • rabbitmq       │       │                 │
+└─────────────────┘       └──────────────────┘       └─────────────────┘
 ```
 
-### Adding Custom Configuration
+**Bridge Services:** nginx, workspace, and php-fpm belong to both web and backend networks, enabling seamless communication between tiers.
 
-Create new `.conf` files in the `nginx/custom.d/` directory:
+### Network Aliases
+
+Every `.local` project gets automatic network aliases across all containers:
 
 ```bash
-# Example: Custom security headers
-echo 'add_header X-Content-Type-Options nosniff;
-add_header X-Frame-Options DENY;
-add_header X-XSS-Protection "1; mode=block";' > nginx/custom.d/01-security-headers.conf
+# From any container, these work automatically:
+curl http://myapp.local/api
+curl https://blog.local/posts
+curl http://api.local/users
 ```
 
-### Configuration Priority
+#### Generated files
 
-Files are loaded in alphabetical order. Use numeric prefixes to control loading order:
+- `docker-compose.aliases.yml` - Network alias definitions
+- Updated when running `make setup`
 
-- `00-*` - Core system configurations
-- `01-*` - Security configurations  
-- `02-*` - Performance optimizations
-- `99-*` - Override configurations
+## Common Commands
 
-### SSL Configuration
+### Essential Commands
 
-SSL certificates and configurations are managed in:
+```bash
+make setup         # Initial setup (run once)
+make start         # Start all services  
+make stop          # Stop all services
+make restart       # Restart all services
+make status        # Check system status
+```
+
+### Development
+
+```bash
+make shell         # Access workspace container
+make shell-root    # Access workspace as root
+make health        # Check container health
+```
+
+### Maintenance
+
+```bash
+make build         # Rebuild containers
+make reset         # Clean project resources
+```
+
+## Project Structure
+
+### Key Directories
 
 ```text
-nginx/ssl/              # SSL certificates directory
-nginx/sites-available/  # Generated nginx site configurations
+dockerkit/
+├── nginx/conf.d/              # Auto-generated site configs
+├── nginx/templates/           # Project type templates  
+├── logs/                      # All service logs
+├── ssl-ca/                    # SSL certificates
+├── workspace/
+│   ├── crontab/              # Scheduled tasks
+│   └── auth.json             # Composer credentials
+└── tools/                     # Automation scripts
 ```
 
-## Environment Variables
+### Generated Files
 
-Copy `.env.example` to `.env` and customize:
+DockerKit automatically creates:
+
+- `docker-compose.aliases.yml` - Network aliases for .local domains
+- `nginx/conf.d/*.conf` - Site configurations
+- `/etc/hosts` entries - Local domain resolution
+
+## Troubleshooting
+
+### Services won't start
 
 ```bash
-# Project paths
-HOST_APP_PATH=../                    # Parent directory with projects
-HOST_DATA_PATH=~/.dockerkit/data     # Persistent data storage
-
-# Database credentials
-MYSQL_ROOT_PASSWORD=secret
-POSTGRES_PASSWORD=secret
-
-# Service ports
-MYSQL_PORT=3306
-POSTGRES_PORT=5432
-REDIS_PORT=6379
-
-# Service control (1 = enabled, 0 = disabled)
-ENABLE_NGINX=1                       # Core web server (required)
-ENABLE_WORKSPACE=1                   # Development environment (required)
-ENABLE_POSTGRES=1                    # PostgreSQL database
-ENABLE_MYSQL=0                       # MySQL database
-ENABLE_MONGODB=0                     # MongoDB database
-ENABLE_REDIS=1                       # Redis cache
-ENABLE_RABBITMQ=1                    # Message broker
-ENABLE_ELASTICSEARCH=0               # Search engine
-ENABLE_DEJAVU=0                      # Elasticsearch UI
-ENABLE_MINIO=1                       # Object storage
-ENABLE_MAILPIT=1                     # Email testing
-ENABLE_PORTAINER=1                   # Container management
+make status  # Comprehensive system diagnostics
+make health  # Check container health status
 ```
 
-## Logging
+### Sites not accessible
 
-All services log to the `logs/` directory:
+- Verify `/etc/hosts` entries: `hostctl list`
+- Test nginx config: `make shell-nginx` → `nginx -t`
+
+View container logs:
+
+```bash
+docker compose logs nginx     # Nginx logs
+docker compose logs php-fpm   # PHP-FPM logs
+docker compose logs workspace # Workspace logs
+```
+
+### Slow local site response on macOS (5+ seconds)
+
+macOS has IPv6 DNS resolution timeouts for `.local` domains. DockerKit automatically fixes this by adding **dual-stack entries**:
 
 ```text
-logs/
-├── nginx/                     # nginx access and error logs
-├── php-fpm/                   # PHP-FPM logs
-├── mysql/                     # MySQL logs
-├── postgres/                  # PostgreSQL logs
-└── workspace/                 # Development container logs
+# Automatic fix during `make setup`:
+127.0.0.1  myapp.local    # IPv4 entry  
+::1        myapp.local    # IPv6 entry (prevents timeout)
 ```
 
-## Composer Configuration
-
-DockerKit provides an optimized Composer environment with automatic authentication, global plugins, and performance tuning for PHP projects in the workspace container.
-
-### Features
-
-- **Performance Optimization**: 2GB memory limit, extended timeouts, and optimized caching
-- **Private Repository Authentication**: Secure credential management for GitHub, GitLab, and private repositories
-- **Global Plugins**: Automatic installation of development tools
-- **Smart Autocomplete**: Extended command completion for all Composer commands and plugins
-- **Secure Credential Handling**: Authentication files are properly managed with correct permissions
-
-The following environment variables are automatically configured:
+**Manual fix** (if adding hosts entries manually):
 
 ```bash
-COMPOSER_DISABLE_XDEBUG_WARN=1 # Suppress Xdebug performance warnings
+# Add both IPv4 and IPv6 entries
+echo "127.0.0.1 myapp.local" | sudo tee -a /etc/hosts
+echo "::1 myapp.local" | sudo tee -a /etc/hosts
 ```
 
-### Authentication Setup
+Performance impact:
 
-For private repositories, create an authentication file:
+- **Before fix:** ~5.002 seconds per request
+- **After fix:** ~0.015 seconds (**333x faster!**)
 
-```bash
-# Copy the example template
-cp workspace/auth.json.example workspace/auth.json
+### Performance issues
 
-# Edit with your credentials
-nano workspace/auth.json
-```
+System resources:
 
-**auth.json structure:**
+- Increase Docker resources (RAM/CPU in Docker Desktop)
+- Check resource usage: `docker stats`
 
-```json
-{
-    "http-basic": {
-        "repo.example.com": {
-            "username": "your-username",
-            "password": "your-password"
-        }
-    },
-    "github-oauth": {
-        "github.com": "your-github-token"
-    },
-    "gitlab-token": {
-        "gitlab.com": "your-gitlab-token"
-    }
-}
-```
+Debugging:
 
-**Security Notes:**
+- Review service logs: `tail -f logs/*/error.log`
+- Check disk space: `df -h`
+- Monitor container performance: `docker compose top`
 
-- The `auth.json` file is automatically excluded from git
-- File permissions are set to 600 (owner read/write only)
-- Credentials are copied to the user's Composer home directory inside the container
+## Comparison
 
-### Global Plugins
+### DockerKit vs Laradock
 
-Two plugins are automatically installed and configured:
+| Feature                    | DockerKit                                                    | Laradock                        |
+|----------------------------|--------------------------------------------------------------|---------------------------------|
+| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders           | ❌ Manual configuration          |
+| **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                       | ❌ Manual SSL setup              |
+| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection         | ❌ Manual nginx configuration    |
+| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl           | ❌ Manual hosts file editing     |
+| **Database Creation**      | ✅ Automatic database creation for local sites (coming soon)  | ❌ Manual database setup         |
+| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching | ⚠️ Traditional Docker approach  |
+| **Project Maturity**       | ⚠️ Modern but newer project                                  | ✅ Battle-tested, proven by time |
+| **Available Services**     | ⚠️ Focused essential toolkit                                 | ✅ Extensive service library     |
+| **Community Support**      | ⚠️ Growing community                                         | ✅ Large established community   |
 
-#### ergebnis/composer-normalize
+#### 🎯 Choose DockerKit if you want
 
-**Purpose**: Normalizes composer.json files according to a defined schema
-
-**Usage**: Manual execution required
-
-```bash
-# Inside the workspace container
-composer normalize                       # Normalize current project
-composer normalize --dry-run             # Preview changes without applying
-composer normalize path/to/composer.json # Normalize specific file
-```
-
-**Benefits**:
-
-- Consistent composer.json formatting across projects
-- Alphabetical sorting of dependencies
-- Validation of required fields
-- Standardized property ordering
-
-#### pyrech/composer-changelogs
-
-**Purpose**: Displays changelogs when updating packages
-
-**Usage**: Automatic - works during `composer update`
-
-```bash
-composer update                         # Automatically shows changelogs
-composer update --with-all-dependencies # Shows changelogs for all updates
-```
-
-**Benefits**:
-
-- Immediate visibility of changes in updated packages
-- Better understanding of breaking changes
-- Links to release notes and documentation
-- Helps with upgrade planning
-
-### Command Aliases and Autocomplete
-
-The workspace container includes enhanced command completion:
-
-```bash
-# Available composer commands with autocomplete:
-composer install require update remove show outdated validate status
-composer dump-autoload clear-cache config global search depends why-not
-composer run-script check-platform-reqs archive audit init create-project
-composer self-update bump normalize changelogs
-```
-
-## Scheduled Tasks (Cron)
-
-The workspace container includes cron support for automated task scheduling.
-
-### Configuration
-
-Cron jobs are configured in the `workspace/crontab/` directory:
-
-```text
-workspace/crontab/
-└── example                # Example crontab file
-```
-
-Cron is controlled by these environment variables:
-
-```bash
-ENABLE_CRONTAB=1           # Enable cron daemon
-CRONTAB_DIR=/workspace/crontab  # Crontab files directory
-```
-
-### Adding Cron Jobs
-
-Create crontab files in `workspace/crontab/`:
-
-```bash
-# Example: workspace/crontab/laravel-scheduler
-* * * * * cd /var/www/myproject.local && php artisan schedule:run >> /dev/null 2>&1
-
-# Example: workspace/crontab/database-backup
-0 2 * * * cd /var/www && pg_dump -h postgres -U user database > backup_$(date +\%Y\%m\%d).sql
-```
-
-Crontab files are automatically set to 644 permissions during container startup.
-
-Cron logs are available in the workspace container logs:
-
-```bash
-make shell
-sudo tail -f /var/log/cron.log
-```
-
-## DockerKit vs Laradock
-
-| Feature                    | DockerKit                                                                                                          | Laradock                        |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders                                                                 | ❌ Manual configuration          |
-| **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                                                                             | ❌ Manual SSL setup              |
-| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection<br/>(`Laravel`, `Symfony`, `WordPress`, `PHP`, `Static HTML`) | ❌ Manual nginx configuration    |
-| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl                                                                 | ❌ Manual hosts file editing     |
-| **Database Creation**      | ✅ Automatic database creation for local sites (coming soon)                                                        | ❌ Manual database setup         |
-| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching                                                       | ⚠️ Traditional Docker approach  |
-| **Project Maturity**       | ⚠️ Modern but newer project                                                                                        | ✅ Battle-tested, proven by time |
-| **Available Services**     | ⚠️ Focused essential toolkit                                                                                       | ✅ Extensive service library     |
-| **Community Support**      | ⚠️ Growing community                                                                                               | ✅ Large established community   |
-
-### 🎯 Choose DockerKit if you want:
 - **Automated workflow** for local development
 - **Modern Docker practices** with optimized performance
 - **Focus on essential tools** without complexity
 
-### 🎯 Choose Laradock if you need:
+#### 🎯 Choose Laradock if you need
+
 - **Extensive service ecosystem** out of the box
 - **Proven stability** for production-like environments
 - **Large community** support and resources
 
-## Screenshots
-
-TODO
-
-## CI (GitHub Actions)
+## CI/CD
 
 DockerKit includes comprehensive automated quality checks:
 
-| Check                     | Tool                                                                                     | Purpose                                                 |
-|---------------------------|------------------------------------------------------------------------------------------|---------------------------------------------------------|
-| **Docker Best Practices** | [Docker Build Checks](https://github.com/marketplace/actions/docker-setup-buildx)        | Dockerfile linting and best practices validation        |
-| **Dockerfile Linting**    | [Hadolint](https://github.com/marketplace/actions/hadolint-action)                       | Advanced Dockerfile static analysis and security checks |
-| **Shell Scripts**         | [ShellCheck](https://github.com/marketplace/actions/shellcheck)                          | Shell script static analysis                            |
-| **Markdown**              | [markdownlint-cli2](https://github.com/marketplace/actions/markdownlint-cli2-action)     | Markdown formatting and style consistency               |
-| **Links**                 | [Lychee](https://github.com/marketplace/actions/lychee-broken-link-checker)              | Broken link detection in documentation                  |
-| **Environment Files**     | [dotenv-linter](https://github.com/marketplace/actions/run-dotenv-linter-with-reviewdog) | .env file validation and security checks                |
+| Check                     | Tool                                                                                     | Purpose                                   |
+|---------------------------|------------------------------------------------------------------------------------------|-------------------------------------------|
+| **Docker Best Practices** | [Docker Build Checks](https://github.com/marketplace/actions/docker-setup-buildx)        | Dockerfile linting                        |
+| **Dockerfile Linting**    | [Hadolint](https://github.com/marketplace/actions/hadolint-action)                       | Advanced Dockerfile static analysis       |
+| **Shell Scripts**         | [ShellCheck](https://github.com/marketplace/actions/shellcheck)                          | Shell script static analysis              |
+| **Markdown**              | [markdownlint-cli2](https://github.com/marketplace/actions/markdownlint-cli2-action)     | Markdown formatting and style consistency |
+| **Links**                 | [Lychee](https://github.com/marketplace/actions/lychee-broken-link-checker)              | Broken link detection in documentation    |
+| **Environment Files**     | [dotenv-linter](https://github.com/marketplace/actions/run-dotenv-linter-with-reviewdog) | .env file validation and security checks  |
 
 All checks run automatically on pull requests. Docker quality checks can be executed locally with `make lint`.
 
@@ -971,26 +608,29 @@ All checks run automatically on pull requests. Docker quality checks can be exec
 - [ ] Add Laravel Horizon support for queue monitoring
 - [ ] Add pgBadger support for PostgreSQL log analysis
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
-- [ ] Implement project health monitoring service (status checks, performance metrics, alerts)
+
+## FAQ
+
+### Can I use this with existing projects?
+
+Yes! Just rename your project folder to `myproject.local` and run `make setup`.
+
+### Does it work on Windows?
+
+Yes, through WSL2. Install Docker Desktop with WSL2 backend.
+
+### Can I add custom services?
+
+Yes! Edit `docker-compose.yml` to add any Docker service you need.
 
 ## Contributing
 
-Please see [CONTRIBUTING](https://github.com/abordage/.github/blob/master/CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details.
 
 ## Security
 
-Please review [security policy](https://github.com/abordage/.github/security/policy) on how to report
-security vulnerabilities.
-
-## Feedback
-
-Find a bug or have a feature request? Open an issue, or better yet, submit a pull request - contribution welcome!
-
-## Built With
-
-- [shinsenter/php](https://github.com/shinsenter/php) - production-ready PHP Docker images with startup script system
-- [guumaster/hostctl](https://github.com/guumaster/hostctl) - cross-platform hosts file manager
-- [FiloSottile/mkcert](https://github.com/FiloSottile/mkcert) - simple tool for making locally-trusted development certificates
+Please review [security policy](https://github.com/abordage/.github/security/policy)
+on how to report security vulnerabilities.
 
 ## Credits
 
