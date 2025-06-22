@@ -183,12 +183,19 @@ For feature requests, please describe:
 - **Discussions**: Use GitHub Discussions for questions and ideas
 - **Documentation**: Check README.md and project documentation
 
-## Recognition
+## CI/CD
 
-Contributors will be recognized in:
+DockerKit includes comprehensive automated quality checks:
 
-- Release notes (automatic via semantic-release)
-- Project documentation
-- GitHub contributors list
+| Check                     | Tool                                                                                     | Purpose                                   |
+|---------------------------|------------------------------------------------------------------------------------------|-------------------------------------------|
+| **Docker Best Practices** | [Docker Build Checks](https://github.com/marketplace/actions/docker-setup-buildx)        | Dockerfile linting                        |
+| **Dockerfile Linting**    | [Hadolint](https://github.com/marketplace/actions/hadolint-action)                       | Advanced Dockerfile static analysis       |
+| **Shell Scripts**         | [ShellCheck](https://github.com/marketplace/actions/shellcheck)                          | Shell script static analysis              |
+| **Markdown**              | [markdownlint-cli2](https://github.com/marketplace/actions/markdownlint-cli2-action)     | Markdown formatting and style consistency |
+| **Links**                 | [Lychee](https://github.com/marketplace/actions/lychee-broken-link-checker)              | Broken link detection in documentation    |
+| **Environment Files**     | [dotenv-linter](https://github.com/marketplace/actions/run-dotenv-linter-with-reviewdog) | .env file validation and security checks  |
+
+All checks run automatically on pull requests.
 
 Thank you for contributing to DockerKit!

@@ -14,16 +14,15 @@ DockerKit is a comprehensive Docker-based development environment that provides 
    - [Nginx Configuration](#nginx-configuration)
    - [Composer Configuration](#composer-configuration)
    - [Scheduled Tasks](#scheduled-tasks)
-3. [Development Tools](#development-tools)
-4. [Architecture Overview](#architecture-overview)
-5. [Common Commands](#common-commands)
-6. [Project Structure](#project-structure)
+3. [Web Interfaces](#web-interfaces)
+4. [Development Tools](#development-tools)
+5. [Architecture Overview](#architecture-overview)
+6. [Common Commands](#common-commands)
 7. [Troubleshooting](#troubleshooting)
 8. [Comparison](#comparison)
-9. [CI/CD](#cicd)
-10. [Roadmap](#roadmap)
-11. [FAQ](#faq)
-12. [Contributing](#contributing)
+9. [Roadmap](#roadmap)
+10. [FAQ](#faq)
+11. [Contributing](#contributing)
 
 ## Quick Start
 
@@ -172,8 +171,8 @@ DockerKit provides flexible nginx customization through configuration snippets:
 nginx/snippets/
 ├── security.conf          # Security headers and restrictions
 ├── ssl-params.conf        # SSL/TLS configuration  
-├── php-fpm.conf          # PHP-FPM backend settings
-└── modern-fpm.conf       # Optimized PHP-FPM config
+├── php-fpm.conf           # PHP-FPM backend settings
+└── modern-fpm.conf        # Optimized PHP-FPM config
 ```
 
 #### Adding Custom Rules
@@ -258,6 +257,15 @@ Create crontab files in `workspace/crontab/`:
 ```
 
 **Apply changes:** `make restart`
+
+## Web Interfaces
+
+| Service           | URL                      | Credentials           | Purpose           |
+|-------------------|--------------------------|-----------------------|-------------------|
+| **Mailpit**       | <http://localhost:8125>  | -                     | Email testing     |
+| **MinIO Console** | <http://localhost:9001>  | dockerkit / dockerkit | File storage      |
+| **RabbitMQ**      | <http://localhost:15672> | dockerkit / dockerkit | Message queues    |
+| **Portainer**     | <http://localhost:9010>  | Setup on first visit  | Docker management |
 
 ## Development Tools
 
@@ -429,6 +437,37 @@ curl https://blog.local/posts
 curl http://api.local/users
 ```
 
+### External Ports (accessible from host)
+
+| Port  | Service             | URL                      | Description                 |
+|-------|---------------------|--------------------------|-----------------------------|
+| 80    | Nginx HTTP          | <http://localhost>       | Web server (HTTP)           |
+| 443   | Nginx HTTPS         | <https://localhost>      | Web server (HTTPS)          |
+| 3000  | BrowserSync         | <http://localhost:3000>  | Live reload server          |
+| 3001  | BrowserSync UI      | <http://localhost:3001>  | BrowserSync control panel   |
+| 5173  | Vite                | <http://localhost:5173>  | Frontend dev server         |
+| 5432  | PostgreSQL          | localhost:5432           | Database connection         |
+| 6379  | Redis               | localhost:6379           | Cache/session storage       |
+| 8125  | Mailpit             | <http://localhost:8125>  | Email testing interface     |
+| 9001  | MinIO Console       | <http://localhost:9001>  | Object storage management   |
+| 9002  | MinIO API           | <http://localhost:9002>  | S3-compatible API           |
+| 9010  | Portainer           | <http://localhost:9010>  | Docker management interface |
+| 15672 | RabbitMQ Management | <http://localhost:15672> | Message queue management    |
+
+```text
+Host Machine Ports:
+├── 9001 → MinIO Console
+├── 9002 → MinIO API  
+└── 9010 → Portainer
+
+Docker Internal Networks:
+├── php-fpm:9000 ← Nginx (FastCGI)
+├── minio:9000 (S3 API)
+└── portainer:9000 (Web UI)
+```
+
+**Note:** Multiple containers can use the same internal port (9000) because they're mapped to different external ports.
+
 #### Generated files
 
 - `docker-compose.aliases.yml` - Network alias definitions
@@ -460,30 +499,6 @@ make health        # Check container health
 make build         # Rebuild containers
 make reset         # Clean project resources
 ```
-
-## Project Structure
-
-### Key Directories
-
-```text
-dockerkit/
-├── nginx/conf.d/              # Auto-generated site configs
-├── nginx/templates/           # Project type templates  
-├── logs/                      # All service logs
-├── ssl-ca/                    # SSL certificates
-├── workspace/
-│   ├── crontab/              # Scheduled tasks
-│   └── auth.json             # Composer credentials
-└── tools/                     # Automation scripts
-```
-
-### Generated Files
-
-DockerKit automatically creates:
-
-- `docker-compose.aliases.yml` - Network aliases for .local domains
-- `nginx/conf.d/*.conf` - Site configurations
-- `/etc/hosts` entries - Local domain resolution
 
 ## Troubleshooting
 
@@ -571,21 +586,6 @@ Debugging:
 - **Proven stability** for production-like environments
 - **Large community** support and resources
 
-## CI/CD
-
-DockerKit includes comprehensive automated quality checks:
-
-| Check                     | Tool                                                                                     | Purpose                                   |
-|---------------------------|------------------------------------------------------------------------------------------|-------------------------------------------|
-| **Docker Best Practices** | [Docker Build Checks](https://github.com/marketplace/actions/docker-setup-buildx)        | Dockerfile linting                        |
-| **Dockerfile Linting**    | [Hadolint](https://github.com/marketplace/actions/hadolint-action)                       | Advanced Dockerfile static analysis       |
-| **Shell Scripts**         | [ShellCheck](https://github.com/marketplace/actions/shellcheck)                          | Shell script static analysis              |
-| **Markdown**              | [markdownlint-cli2](https://github.com/marketplace/actions/markdownlint-cli2-action)     | Markdown formatting and style consistency |
-| **Links**                 | [Lychee](https://github.com/marketplace/actions/lychee-broken-link-checker)              | Broken link detection in documentation    |
-| **Environment Files**     | [dotenv-linter](https://github.com/marketplace/actions/run-dotenv-linter-with-reviewdog) | .env file validation and security checks  |
-
-All checks run automatically on pull requests. Docker quality checks can be executed locally with `make lint`.
-
 ## Roadmap
 
 ### Recently Completed
@@ -603,11 +603,12 @@ All checks run automatically on pull requests. Docker quality checks can be exec
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [ ] Implement automatic database creation for detected projects
 - [ ] Add IDEs integration support (terminal, plugins, .devcontainer)
-- [ ] Add RoadRunner support as alternative to PHP-FPM
+- [ ] Add RoadRunner support as an alternative to PHP-FPM
 - [ ] Add FrankenPHP support for modern PHP applications
 - [ ] Add Laravel Horizon support for queue monitoring
 - [ ] Add pgBadger support for PostgreSQL log analysis
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
+- [ ] Migrate Portainer to secure HTTPS port 9443* (currently using HTTP on 9010)
 
 ## FAQ
 
