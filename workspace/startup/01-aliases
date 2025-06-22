@@ -23,15 +23,15 @@ log_info() {
 }
 
 log_success() {
-    echo "✓ $*"
+    echo "[OK] $*"
 }
 
 log_warning() {
-    echo "⚠ $*"
+    echo "[WARN] $*"
 }
 
 log_error() {
-    echo "✗ $*" >&2
+    echo "[ERROR] $*" >&2
 }
 
 # Input validation

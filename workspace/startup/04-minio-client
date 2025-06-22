@@ -1,0 +1,288 @@
+#!/bin/bash
+
+#   $$$$$$$\                      $$\                           $$\   $$\ $$\   $$\
+#   $$  __$$\                     $$ |                          $$ | $$  |\__|  $$ |
+#   $$ |  $$ | $$$$$$\   $$$$$$$\ $$ |  $$\  $$$$$$\   $$$$$$\  $$ |$$  / $$\ $$$$$$\
+#   $$ |  $$ |$$  __$$\ $$  _____|$$ | $$  |$$  __$$\ $$  __$$\ $$$$$  /  $$ |\_$$  _|
+#   $$ |  $$ |$$ /  $$ |$$ /      $$$$$$  / $$$$$$$$ |$$ |  \__|$$  $$<   $$ |  $$ |
+#   $$ |  $$ |$$ |  $$ |$$ |      $$  _$$<  $$   ____|$$ |      $$ |\$$\  $$ |  $$ |$$\
+#   $$$$$$$  |\$$$$$$  |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |      $$ | \$$\ $$ |  \$$$$  |
+#   \_______/  \______/  \_______|\__|  \__| \_______|\__|      \__|  \__|\__|   \____/
+
+# Enable strict error handling
+set -euo pipefail
+
+# Configuration constants
+readonly SCRIPT_NAME="MinIO Client Setup"
+readonly MC_ALIAS="local"
+readonly MINIO_URL="http://minio:9000"
+readonly MAX_WAIT_TIME="${MINIO_CLIENT_WAIT_TIME:-60}"
+readonly CHECK_INTERVAL=3
+
+# Output formatting functions
+log_info() {
+    echo "$*"
+}
+
+log_success() {
+    echo "[OK] $*"
+}
+
+log_warning() {
+    echo "[WARN] $*"
+}
+
+log_error() {
+    echo "[ERROR] $*" >&2
+}
+
+# Input validation
+validate_environment() {
+    if [[ -z "${APP_USER:-}" ]]; then
+        log_error "APP_USER environment variable is not set"
+        return 1
+    fi
+}
+
+# Check if MinIO Client is installed
+check_mc_installation() {
+    if ! command -v mc >/dev/null 2>&1; then
+        log_info "MinIO Client not installed, skipping configuration"
+        return 1
+    fi
+    return 0
+}
+
+# Check if curl is available
+check_curl_available() {
+    if ! command -v curl >/dev/null 2>&1; then
+        log_error "curl command not found, required for MinIO health checks"
+        return 1
+    fi
+    return 0
+}
+
+# Check if MinIO service is enabled
+check_minio_enabled() {
+    if [[ "${ENABLE_MINIO:-0}" != "1" ]]; then
+        log_info "MinIO service disabled, skipping MinIO Client configuration"
+        return 1
+    fi
+    return 0
+}
+
+# Check if bucket creation is enabled
+check_bucket_creation_enabled() {
+    # Check if any bucket variables are defined
+    if [[ -n "${MINIO_BUCKETS_PUBLIC:-}" ]] || \
+       [[ -n "${MINIO_BUCKETS_UPLOAD:-}" ]] || \
+       [[ -n "${MINIO_BUCKETS_DOWNLOAD:-}" ]] || \
+       [[ -n "${MINIO_BUCKETS_PRIVATE:-}" ]]; then
+        return 0
+    fi
+
+    # Fallback to explicit enable flag
+    if [[ "${MINIO_CREATE_BUCKETS:-false}" = "true" ]]; then
+        return 0
+    fi
+
+    log_info "No bucket configuration found, skipping bucket creation"
+    return 1
+}
+
+# Wait for MinIO to be available (non-blocking)
+wait_for_minio() {
+    local count=0
+
+    log_info "Checking MinIO service availability..."
+
+    while [ $count -lt "$MAX_WAIT_TIME" ]; do
+        if curl -f -s --connect-timeout 5 --max-time 5 "$MINIO_URL/minio/health/live" >/dev/null 2>&1; then
+            log_success "MinIO service is available"
+            return 0
+        fi
+
+        sleep $CHECK_INTERVAL
+        count=$((count + CHECK_INTERVAL))
+    done
+
+    log_warning "MinIO service not available after ${MAX_WAIT_TIME}s, skipping configuration"
+    return 1
+}
+
+# Configure MinIO alias
+configure_minio_alias() {
+    log_info "Configuring MinIO alias: $MC_ALIAS"
+
+    if [[ -z "${MINIO_ROOT_USER:-}" ]] || [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
+        log_error "MINIO_ROOT_USER and MINIO_ROOT_PASSWORD must be set"
+        return 1
+    fi
+
+    mc alias set "$MC_ALIAS" \
+        "$MINIO_URL" \
+        "$MINIO_ROOT_USER" \
+        "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1
+
+    if mc admin info "$MC_ALIAS" >/dev/null 2>&1; then
+        log_success "MinIO alias configured successfully"
+        return 0
+    else
+        log_error "Failed to configure MinIO alias"
+        return 1
+    fi
+}
+
+# Parse bucket list from comma-separated string
+parse_bucket_list() {
+    local bucket_string="$1"
+    if [[ -n "$bucket_string" ]]; then
+        echo "$bucket_string" | tr ',' '\n' | sed '/^[[:space:]]*$/d' | tr '\n' ' '
+    fi
+}
+
+# Check if bucket exists
+bucket_exists() {
+    local bucket="$1"
+    mc ls "$MC_ALIAS/$bucket" >/dev/null 2>&1
+}
+
+# Create bucket with policy
+create_bucket_with_policy() {
+    local bucket="$1"
+    local policy="$2"
+
+    # Check if bucket already exists
+    if bucket_exists "$bucket"; then
+        log_info "Bucket already exists: $bucket"
+        return 0
+    fi
+
+    # Create bucket
+    if mc mb "$MC_ALIAS/$bucket" >/dev/null 2>&1; then
+        log_success "Created bucket: $bucket"
+    else
+        log_error "Failed to create bucket: $bucket"
+        return 1
+    fi
+
+    # Set policy if not private
+    if [ "$policy" != "none" ]; then
+        if mc anonymous set "$policy" "$MC_ALIAS/$bucket" >/dev/null 2>&1; then
+            log_success "Set $policy policy for bucket: $bucket"
+        else
+            log_warning "Failed to set policy for bucket: $bucket"
+        fi
+    fi
+}
+
+# Create buckets based on environment variables
+create_buckets() {
+    log_info "Creating MinIO buckets..."
+
+    local buckets_created=0
+
+    # Create public buckets
+    for bucket in $(parse_bucket_list "${MINIO_BUCKETS_PUBLIC:-}"); do
+        if [[ -n "$bucket" ]]; then
+            create_bucket_with_policy "$bucket" "public"
+            buckets_created=$((buckets_created + 1))
+        fi
+    done
+
+    # Create upload buckets
+    for bucket in $(parse_bucket_list "${MINIO_BUCKETS_UPLOAD:-}"); do
+        if [[ -n "$bucket" ]]; then
+            create_bucket_with_policy "$bucket" "upload"
+            buckets_created=$((buckets_created + 1))
+        fi
+    done
+
+    # Create download buckets
+    for bucket in $(parse_bucket_list "${MINIO_BUCKETS_DOWNLOAD:-}"); do
+        if [[ -n "$bucket" ]]; then
+            create_bucket_with_policy "$bucket" "download"
+            buckets_created=$((buckets_created + 1))
+        fi
+    done
+
+    # Create private buckets
+    for bucket in $(parse_bucket_list "${MINIO_BUCKETS_PRIVATE:-}"); do
+        if [[ -n "$bucket" ]]; then
+            create_bucket_with_policy "$bucket" "none"
+            buckets_created=$((buckets_created + 1))
+        fi
+    done
+
+    # Enable versioning if requested
+    if [[ "${MINIO_ENABLE_VERSIONING:-false}" = "true" ]]; then
+        enable_versioning_for_all_buckets
+    fi
+
+    if [ $buckets_created -eq 0 ]; then
+        log_info "No buckets configured for creation"
+    else
+        log_success "Bucket creation completed ($buckets_created buckets processed)"
+    fi
+}
+
+# Enable versioning for all configured buckets
+enable_versioning_for_all_buckets() {
+    log_info "Enabling versioning for all buckets..."
+
+    # Process each bucket category separately
+    for bucket_var in "MINIO_BUCKETS_PUBLIC" "MINIO_BUCKETS_UPLOAD" "MINIO_BUCKETS_DOWNLOAD" "MINIO_BUCKETS_PRIVATE"; do
+        local bucket_list
+        bucket_list=$(parse_bucket_list "${!bucket_var}")
+
+        for bucket in $bucket_list; do
+            if [[ -n "$bucket" ]] && bucket_exists "$bucket"; then
+                if mc version enable "$MC_ALIAS/$bucket" >/dev/null 2>&1; then
+                    log_success "Enabled versioning for: $bucket"
+                else
+                    log_warning "Failed to enable versioning for: $bucket"
+                fi
+            fi
+        done
+    done
+}
+
+# Main execution
+main() {
+    log_info "Starting $SCRIPT_NAME..."
+
+    # Validate environment
+    if ! validate_environment; then
+        return 1
+    fi
+
+    # Check if MinIO Client is installed
+    if ! check_mc_installation; then
+        return 0
+    fi
+
+    # Check if curl is available
+    if ! check_curl_available; then
+        return 1
+    fi
+
+    # Check if MinIO service is enabled
+    if ! check_minio_enabled; then
+        return 0
+    fi
+
+    # Wait for MinIO service and configure
+    if wait_for_minio && configure_minio_alias; then
+        # Create buckets if enabled
+        if check_bucket_creation_enabled; then
+            create_buckets
+        fi
+        log_success "$SCRIPT_NAME completed successfully"
+    else
+        log_warning "$SCRIPT_NAME completed with warnings"
+        return 0  # Don't fail the container startup
+    fi
+}
+
+# Execute main function
+main

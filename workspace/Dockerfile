@@ -32,6 +32,9 @@ ARG NODE_VERSION=22
 ARG INSTALL_VACUUM=false
 ARG INSTALL_OPENAPI_GENERATOR=false
 
+# MinIO Client
+ARG INSTALL_MINIO_CLIENT=true
+
 # Performance and Security
 ARG ENABLE_NON_ROOT_USER=true
 
@@ -58,6 +61,7 @@ ARG INSTALL_NODE=false
 ARG NODE_VERSION=22
 ARG INSTALL_VACUUM=false
 ARG INSTALL_OPENAPI_GENERATOR=false
+ARG INSTALL_MINIO_CLIENT=true
 ARG ENABLE_NON_ROOT_USER=true
 
 # OCI Standard Labels
@@ -86,6 +90,7 @@ LABEL dockerkit.tools.node="${INSTALL_NODE}"
 LABEL dockerkit.tools.java="${INSTALL_JAVA}"
 LABEL dockerkit.tools.postgres_client="${INSTALL_POSTGRES_CLIENT}"
 LABEL dockerkit.tools.mysql_client="${INSTALL_MYSQL_CLIENT}"
+LABEL dockerkit.tools.minio_client="${INSTALL_MINIO_CLIENT}"
 LABEL dockerkit.healthcheck.enabled="true"
 
 # Environment variables
@@ -173,9 +178,22 @@ RUN if [ "$INSTALL_NODE" = "true" ] && [ "$INSTALL_OPENAPI_GENERATOR" = "true" ]
     fi
 
 # ============================================================================
+# Stage: MinIO Client Tools
+# ============================================================================
+FROM node-tools AS minio-tools
+
+# Install MinIO Client (mc) if requested
+RUN if [ "$INSTALL_MINIO_CLIENT" = "true" ]; then \
+    curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
+        --output /usr/local/bin/mc && \
+    chmod +x /usr/local/bin/mc && \
+    echo "MinIO Client installed successfully"; \
+    fi
+
+# ============================================================================
 # Stage: Python Environment
 # ============================================================================
-FROM node-tools AS python-env
+FROM minio-tools AS python-env
 
 # Create and configure Python virtual environment
 RUN python3 -m venv /opt/venv && \
@@ -227,4 +245,5 @@ RUN set -eux; \
     [ "$INSTALL_OPENAPI_GENERATOR" = "true" ] && openapi-generator-cli version || true; \
     [ "$INSTALL_POSTGRES_CLIENT" = "true" ] && psql --version || true; \
     [ "$INSTALL_MYSQL_CLIENT" = "true" ] && mysql --version || true; \
-    echo "✓ All tools validated successfully"
+    [ "$INSTALL_MINIO_CLIENT" = "true" ] && mc --version || true; \
+    echo "All tools validated successfully"

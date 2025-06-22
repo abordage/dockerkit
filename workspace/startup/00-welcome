@@ -28,11 +28,11 @@ EOF
 
 # Function to show system status
 show_system_status() {
+    echo
     log_info "System Status:"
     log_info "    ├─ PHP         → $(php -v 2>/dev/null | head -n1 | cut -d' ' -f2 || echo 'Loading...')"
     log_info "    ├─ Composer    → $(composer --version 2>/dev/null | cut -d' ' -f3 || echo 'Loading...')"
-    log_info "    ├─ Node.js     → $(node -v 2>/dev/null || echo 'Not installed')"
-    log_info "    └─ Memory      → $(free -h 2>/dev/null | awk '/^Mem:/ {print $3"/"$2}' || echo 'Unknown')"
+    log_info "    └─ Node.js     → $(node -v 2>/dev/null || echo 'Not installed')"
     echo
 }
 

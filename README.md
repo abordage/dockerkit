@@ -20,8 +20,8 @@ DockerKit is a comprehensive Docker-based development environment that provides 
 6. [Common Commands](#common-commands)
 7. [Troubleshooting](#troubleshooting)
 8. [Comparison](#comparison)
-9. [Roadmap](#roadmap)
-10. [FAQ](#faq)
+9. [FAQ](#faq)
+10. [Roadmap](#roadmap)
 11. [Contributing](#contributing)
 
 ## Quick Start
@@ -130,7 +130,8 @@ workspace/startup/
 ├── 00-welcome           # Display DockerKit logo and system status
 ├── 01-aliases           # Configure Laravel/PHP development aliases  
 ├── 02-composer          # Setup Composer authentication and plugins
-└── 03-ca-certificates   # Install SSL CA certificates for HTTPS
+├── 03-ca-certificates   # Install SSL CA certificates for HTTPS
+└── 04-minio-client      # Configure MinIO Client and create buckets
 ```
 
 #### Key features
@@ -139,6 +140,7 @@ workspace/startup/
 - **Auto-completion:** Laravel Artisan and Composer commands
 - **Composer auth:** Automatic setup from `workspace/auth.json`
 - **SSL support:** Local HTTPS certificates for development sites
+- **MinIO buckets:** Automatic bucket creation with configurable policies
 
 #### PHP-FPM Container Startup
 
@@ -258,6 +260,67 @@ Create crontab files in `workspace/crontab/`:
 
 **Apply changes:** `make restart`
 
+### MinIO Object Storage Configuration
+
+DockerKit provides automated MinIO bucket management with configurable access policies.
+
+#### Environment Configuration
+
+Configure bucket creation in your `.env` file:
+
+```bash
+# MinIO Client Configuration
+INSTALL_MINIO_CLIENT=true
+MINIO_CLIENT_WAIT_TIME=60
+
+# Bucket Categories with Access Policies
+MINIO_BUCKETS_PUBLIC=documents,shared       # Public read/write access
+MINIO_BUCKETS_UPLOAD=uploads,forms          # Upload-only access
+MINIO_BUCKETS_DOWNLOAD=media,assets         # Download-only access  
+MINIO_BUCKETS_PRIVATE=backups,logs          # Private access only
+
+# Optional Features
+MINIO_ENABLE_VERSIONING=false               # Enable bucket versioning
+```
+
+#### Bucket Access Policies
+
+| Policy Type  | Read Access | Write Access | Use Case            |
+|--------------|-------------|--------------|---------------------|
+| **public**   | ✅ Anonymous | ✅ Anonymous  | Public file sharing |
+| **upload**   | ❌ Auth only | ✅ Anonymous  | File upload forms   |
+| **download** | ✅ Anonymous | ❌ Auth only  | Public downloads    |
+| **private**  | ❌ Auth only | ❌ Auth only  | Secure storage      |
+
+#### Automatic Setup Process
+
+During container startup, DockerKit automatically:
+
+1. **Validates** MinIO service availability
+2. **Creates** configured buckets if they don't exist
+3. **Applies** access policies based on bucket categories
+4. **Enables** versioning if configured
+5. **Logs** setup status for debugging
+
+#### Manual Bucket Management
+
+Access workspace container for manual operations:
+
+```bash
+# Enter workspace container
+make shell
+
+# List existing buckets
+mc ls minio
+
+# Create bucket with specific policy
+mc mb minio/new-bucket
+mc anonymous set download minio/new-bucket
+
+# Check bucket policy
+mc anonymous get minio/new-bucket
+```
+
 ## Web Interfaces
 
 | Service           | URL                      | Credentials           | Purpose           |
@@ -366,6 +429,39 @@ mysql -h mysql -u dockerkit -p
 # Export database
 mysqldump -h mysql -u dockerkit -p default > backup.sql
 ```
+
+### Object Storage Tools
+
+#### MinIO Client (mc)
+
+MinIO Client provides command-line interface for object storage operations and bucket management:
+
+```bash
+# List all buckets
+mc ls minio
+
+# Create new bucket
+mc mb minio/my-new-bucket
+
+# Set bucket policy (public, upload, download, private)
+mc anonymous set public minio/documents
+mc anonymous set upload minio/uploads
+mc anonymous set download minio/media
+
+# Copy files to bucket
+mc cp ./file.txt minio/documents/
+
+# Sync directory with bucket
+mc mirror ./assets/ minio/assets/
+
+# Enable versioning
+mc version enable minio/backups
+
+# Get bucket info
+mc stat minio/documents
+```
+
+**Automatic Bucket Creation:** DockerKit automatically creates and configures buckets based on environment variables during container startup.
 
 ## Architecture Overview
 
@@ -522,6 +618,36 @@ docker compose logs php-fpm   # PHP-FPM logs
 docker compose logs workspace # Workspace logs
 ```
 
+#### MinIO Buckets not created automatically
+
+Check workspace container logs:
+
+```bash
+docker compose logs workspace | grep -i minio
+```
+
+Common solutions:
+- Increase `MINIO_CLIENT_WAIT_TIME=120` in `.env`
+- Verify MinIO service is running: `docker compose ps minio`
+- Check bucket names are valid (lowercase, no spaces)
+
+#### MinIO Console not accessible
+
+Verify service status and port mapping:
+
+```bash
+docker compose ps minio           # Check container status
+curl http://localhost:9001        # Test console access
+```
+
+#### S3 API connection issues
+
+Test MinIO API endpoint:
+
+```bash
+curl http://localhost:9002/minio/health/live
+```
+
 ### Slow local site response on macOS (5+ seconds)
 
 macOS has IPv6 DNS resolution timeouts for `.local` domains. DockerKit automatically fixes this by adding **dual-stack entries**:
@@ -562,17 +688,18 @@ Debugging:
 
 ### DockerKit vs Laradock
 
-| Feature                    | DockerKit                                                    | Laradock                        |
-|----------------------------|--------------------------------------------------------------|---------------------------------|
-| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders           | ❌ Manual configuration          |
-| **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                       | ❌ Manual SSL setup              |
-| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection         | ❌ Manual nginx configuration    |
-| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl           | ❌ Manual hosts file editing     |
-| **Database Creation**      | ✅ Automatic database creation for local sites (coming soon)  | ❌ Manual database setup         |
-| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching | ⚠️ Traditional Docker approach  |
-| **Project Maturity**       | ⚠️ Modern but newer project                                  | ✅ Battle-tested, proven by time |
-| **Available Services**     | ⚠️ Focused essential toolkit                                 | ✅ Extensive service library     |
-| **Community Support**      | ⚠️ Growing community                                         | ✅ Large established community   |
+| Feature                     | DockerKit                                                    | Laradock                        |
+|-----------------------------|--------------------------------------------------------------|---------------------------------|
+| **Site Discovery**          | ✅ Automatic scanning for `.local` suffixed folders           | ❌ Manual configuration          |
+| **SSL Certificates**        | ✅ Automatic SSL generation with mkcert                       | ❌ Manual SSL setup              |
+| **Nginx Configuration**     | ✅ Auto-generated configs with project type detection         | ❌ Manual nginx configuration    |
+| **Hosts Management**        | ✅ Automatic `.local` domains addition with hostctl           | ❌ Manual hosts file editing     |
+| **MinIO Bucket Management** | ✅ Automatic bucket creation with configurable policies       | ❌ Manual bucket setup           |
+| **Database Creation**       | ✅ Automatic database creation for local sites (coming soon)  | ❌ Manual database setup         |
+| **Container Optimization**  | ✅ Multi-stage builds, smaller images, faster builds, caching | ⚠️ Traditional Docker approach  |
+| **Project Maturity**        | ⚠️ Modern but newer project                                  | ✅ Battle-tested, proven by time |
+| **Available Services**      | ⚠️ Focused essential toolkit                                 | ✅ Extensive service library     |
+| **Community Support**       | ⚠️ Growing community                                         | ✅ Large established community   |
 
 #### 🎯 Choose DockerKit if you want
 
@@ -586,10 +713,46 @@ Debugging:
 - **Proven stability** for production-like environments
 - **Large community** support and resources
 
+## FAQ
+
+### Can I use this with existing projects?
+
+Yes! Just rename your project folder to `myproject.local` and run `make setup`.
+
+### Does it work on Windows?
+
+Yes, through WSL2. Install Docker Desktop with WSL2 backend.
+
+### Can I add custom services?
+
+Yes! Edit `docker-compose.yml` to add any Docker service you need.
+
+### How do I manage MinIO buckets?
+
+Buckets are automatically created during container startup based on your `.env` configuration. For manual management:
+
+```bash
+make shell              # Enter workspace container
+mc ls minio             # List buckets
+mc mb minio/new-bucket  # Create bucket
+```
+
+### Can I change bucket policies after creation?
+
+Yes! Use MinIO Client commands:
+
+```bash
+mc anonymous set public minio/my-bucket    # Make public
+mc anonymous set private minio/my-bucket   # Make private
+```
+
 ## Roadmap
 
 ### Recently Completed
 
+- [x] Add MinIO Client integration with automatic bucket management
+- [x] Implement configurable bucket access policies (public, upload, download, private)
+- [x] Add bucket versioning support for MinIO storage
 - [x] Add Composer configuration for private repositories (GitLab, GitHub, etc)
 - [x] Add flexible service management with environment variables (ENABLE_* flags)
 - [x] Implement container startup automation system
@@ -609,20 +772,6 @@ Debugging:
 - [ ] Add pgBadger support for PostgreSQL log analysis
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
 - [ ] Migrate Portainer to secure HTTPS port 9443* (currently using HTTP on 9010)
-
-## FAQ
-
-### Can I use this with existing projects?
-
-Yes! Just rename your project folder to `myproject.local` and run `make setup`.
-
-### Does it work on Windows?
-
-Yes, through WSL2. Install Docker Desktop with WSL2 backend.
-
-### Can I add custom services?
-
-Yes! Edit `docker-compose.yml` to add any Docker service you need.
 
 ## Contributing
 

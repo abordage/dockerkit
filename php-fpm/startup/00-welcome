@@ -28,11 +28,12 @@ EOF
 
 # Function to show system status
 show_system_status() {
+    echo
     log_info "PHP-FPM Service Status:"
     log_info "    ├─ PHP Version → $(php -v 2>/dev/null | head -n1 | cut -d' ' -f2 || echo 'Loading...')"
     log_info "    ├─ PHP-FPM     → $(php-fpm -v 2>/dev/null | head -n1 | cut -d' ' -f2 || echo 'Loading...')"
     log_info "    ├─ Extensions  → $(php -m 2>/dev/null | wc -l || echo '0') loaded"
-    log_info "    └─ Process     → $(ps aux | grep -c '[p]hp-fpm' || echo '0') workers"
+    log_info "    └─ Process     → $(pgrep -c php-fpm 2>/dev/null || echo '0') workers"
     echo
 }
 

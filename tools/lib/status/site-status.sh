@@ -57,7 +57,10 @@ discover_sites_from_configs() {
         if [ -f "$config_file" ]; then
             local site_name
             site_name=$(basename "$config_file" .conf)
-            sites+=("$site_name")
+            # Skip default site
+            if [ "$site_name" != "default" ]; then
+                sites+=("$site_name")
+            fi
         fi
     done
 
