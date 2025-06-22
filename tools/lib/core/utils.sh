@@ -129,10 +129,6 @@ request_sudo() {
     esac
 }
 
-
-
-
-
 # Create directory with proper permissions
 ensure_directory() {
     local directory="$1"
@@ -198,4 +194,22 @@ version_compare() {
     done
 
     return "$EXIT_SUCCESS"
+}
+
+# Confirm action with user
+confirm_action() {
+    local message="$1"
+    local response
+
+    echo -e "${YELLOW}$message${NC} (Y/N): " >&2
+    read -r response
+
+    case "$response" in
+        [yY]|[yY][eE][sS])
+            return "$EXIT_SUCCESS"
+            ;;
+        *)
+            return "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
 }

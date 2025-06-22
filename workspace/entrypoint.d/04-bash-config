@@ -1,0 +1,394 @@
+#!/bin/bash
+
+# ============================================================================
+# BASH CONFIGURATION GENERATOR SCRIPT
+# ============================================================================
+# Generates bash configuration files from environment variables at runtime
+# Optimized for DockerKit local development environment
+# ============================================================================
+set -euo pipefail
+
+readonly DEBUG_MODE=0              # Set to 1 for debugging output
+readonly BASH_HISTSIZE=10000       # History size
+readonly BASH_HISTFILESIZE=20000   # History file size
+
+# User configurable (optional tools that may conflict)
+readonly FZF_ENABLED="${ENABLE_FZF:-1}"
+readonly STARSHIP_ENABLED="${ENABLE_STARSHIP:-1}"
+
+# Color output functions
+log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
+log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
+log_info() { echo "[$SCRIPT_NAME] $*"; }
+
+SCRIPT_NAME=$(basename "$0")
+USER_HOME="/home/${APP_USER}"
+
+# ============================================================================
+# Validation and utilities
+# ============================================================================
+validate_environment() {
+    local errors=0
+
+    if ! id "${APP_USER}" >/dev/null 2>&1; then
+        log_error "User ${APP_USER} does not exist"
+        ((errors++))
+    fi
+
+    if [ ! -d "${USER_HOME}" ]; then
+        log_error "Home directory ${USER_HOME} does not exist"
+        ((errors++))
+    fi
+
+    if [ ! -w "${USER_HOME}" ]; then
+        log_error "No write permissions to ${USER_HOME}"
+        ((errors++))
+    fi
+
+    return $errors
+}
+
+ensure_directories() {
+    local dirs=(
+        "${USER_HOME}/.config"       # User configuration files (starship, etc.)
+        "${USER_HOME}/.local/bin"    # User local executables
+        "${USER_HOME}/.local/share"  # User application data
+        "${USER_HOME}/.cache"        # User application cache
+    )
+
+    for dir in "${dirs[@]}"; do
+        if [ ! -d "$dir" ]; then
+            log_info "Creating directory: $dir"
+            if ! mkdir -p "$dir"; then
+                log_error "Failed to create directory: $dir"
+                return 1
+            fi
+
+            # Set proper ownership immediately
+            if ! chown "${APP_USER}:${APP_GID}" "$dir"; then
+                log_warn "Could not set ownership for: $dir"
+            fi
+        fi
+    done
+
+    log_ok "All required directories ensured"
+    return 0
+}
+
+create_file_safely() {
+    local file_path="$1"
+    local temp_file="${file_path}.tmp"
+
+    # Create temporary file
+    if ! cat > "$temp_file"; then
+        log_error "Failed to create temporary file: $temp_file"
+        return 1
+    fi
+
+    # Check file is not empty
+    if [ ! -s "$temp_file" ]; then
+        log_error "Generated file is empty: $temp_file"
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    # Atomic move
+    if ! mv "$temp_file" "$file_path"; then
+        log_error "Failed to move file to final location: $file_path"
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    log_ok "Created: $file_path"
+    return 0
+}
+
+set_ownership() {
+    if chown "${APP_USER}:${APP_GID}" "${USER_HOME}/.bashrc" "${USER_HOME}/.bash_aliases" 2>/dev/null; then
+        log_ok "Set proper file ownership"
+        return 0
+    else
+        log_warn "Could not set file ownership (non-critical)"
+        return 1
+    fi
+}
+
+# ============================================================================
+# Generate .bash_aliases (always full set for development)
+# ============================================================================
+generate_aliases_content() {
+    cat << 'EOF'
+# Laravel/PHP aliases
+alias art='php artisan'
+alias fresh='php artisan migrate:fresh'
+alias migrate='php artisan migrate'
+alias rollback='php artisan migrate:rollback'
+alias seed='php artisan db:seed'
+alias routes='php artisan route:list'
+alias config-cache='php artisan config:cache'
+alias config-clear='php artisan config:clear'
+
+# Development tools
+alias pint='./vendor/bin/pint'
+alias pest='./vendor/bin/pest'
+alias phpstan='./vendor/bin/phpstan'
+alias phpunit='./vendor/bin/phpunit'
+
+# Composer shortcuts
+alias ci='composer install'
+alias cu='composer update'
+alias cr='composer require'
+alias crd='composer require --dev'
+alias cda='composer dump-autoload'
+
+# Modern file listing
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias tree='tree -I vendor'
+
+# Git shortcuts
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add --all'
+alias gc='git commit'
+alias gcm='git commit -m'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias gco='git checkout'
+alias gb='git branch'
+alias glog='git log --oneline --graph --decorate'
+
+# Docker shortcuts
+alias dps='docker ps'
+alias dlog='docker logs -f'
+alias dexec='docker exec -it'
+
+# Quick navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+EOF
+}
+
+# ============================================================================
+# Generate .bashrc (always full development setup)
+# ============================================================================
+generate_bashrc_content() {
+    cat << EOF
+# .bashrc for ${APP_USER} user - DockerKit Local Development
+# Generated automatically at $(date)
+
+# If not running interactively, don't do anything
+[[ \$- != *i* ]] && return
+
+# Load aliases
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+
+# Bash configuration optimized for development
+export HISTCONTROL=ignoredups:erasedups
+export HISTSIZE=${BASH_HISTSIZE}
+export HISTFILESIZE=${BASH_HISTFILESIZE}
+shopt -s histappend
+shopt -s checkwinsize
+
+# Enable bash completion
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+# Development environment variables (always enabled)
+export EDITOR=\${EDITOR:-nano}
+export PAGER=\${PAGER:-less}
+export COMPOSER_MEMORY_LIMIT=-1
+export PHP_IDE_CONFIG="${PHP_IDE_CONFIG:-}"
+export APP_ENV=\${APP_ENV:-local}
+export LOG_CHANNEL=\${LOG_CHANNEL:-stderr}
+
+$(generate_optional_tools)
+$(generate_development_functions)
+EOF
+}
+
+# ============================================================================
+# Optional tools (fzf and starship only)
+# ============================================================================
+generate_optional_tools() {
+    local content=""
+
+    # fzf integration
+    if [[ "${FZF_ENABLED}" = "1" ]] && command -v fzf >/dev/null 2>&1; then
+        content="${content}
+# fzf integration
+source /opt/fzf/shell/key-bindings.bash 2>/dev/null || true
+source /opt/fzf/shell/completion.bash 2>/dev/null || true
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+export FZF_CTRL_T_OPTS=\"--preview 'cat {}' --preview-window=right:60%:wrap\"
+"
+    fi
+
+    # Starship prompt
+    if [[ "${STARSHIP_ENABLED}" = "1" ]] && command -v starship >/dev/null 2>&1; then
+        content="${content}
+# Starship prompt
+eval \"\$(starship init bash)\"
+"
+    fi
+
+    echo "$content"
+}
+
+# ============================================================================
+# Development functions (always enabled)
+# ============================================================================
+generate_development_functions() {
+    cat << 'EOF'
+
+# Laravel/PHP development functions
+artisan() {
+    if [ -f artisan ]; then
+        php artisan "$@"
+    else
+        echo "No artisan file found in current directory"
+        return 1
+    fi
+}
+
+composer-update() {
+    composer update "$@" && composer dump-autoload
+}
+
+# Git helpers
+git-clean-branches() {
+    git branch --merged | grep -v "\*\|main\|master\|develop" | xargs -n 1 git branch -d
+}
+
+# Development shortcuts
+serve() {
+    if [ -f artisan ]; then
+        php artisan serve "$@"
+    else
+        php -S localhost:8000 "$@"
+    fi
+}
+
+tinker() {
+    if [ -f artisan ]; then
+        php artisan tinker
+    else
+        echo "Laravel not detected"
+        return 1
+    fi
+}
+
+# Quick project helpers
+fresh-install() {
+    if [ -f composer.json ]; then
+        composer install
+        if [ -f artisan ]; then
+            php artisan key:generate
+            php artisan migrate:fresh --seed
+        fi
+    fi
+}
+EOF
+}
+
+show_summary() {
+    log_info "Bash configuration summary:"
+    log_info "  • Development environment: ✓ (always enabled)"
+    log_info "  • Custom functions: ✓ (always enabled)"
+    log_info "  • Laravel helpers: ✓ (always enabled)"
+    log_info "  • Git shortcuts: ✓ (always enabled)"
+
+    # Check fzf integration safely
+    local fzf_status="✗"
+    if [[ "${FZF_ENABLED}" = "1" ]]; then
+        if command -v fzf >/dev/null 2>&1; then
+            fzf_status="✓"
+        fi
+    fi
+    log_info "  • fzf integration: ${fzf_status}"
+
+    # Check starship prompt safely
+    local starship_status="✗"
+    if [[ "${STARSHIP_ENABLED}" = "1" ]]; then
+        if command -v starship >/dev/null 2>&1; then
+            starship_status="✓"
+        fi
+    fi
+    log_info "  • Starship prompt: ${starship_status}"
+
+    log_info "  • Bash history: ${BASH_HISTSIZE}/${BASH_HISTFILESIZE}"
+
+    [[ "${DEBUG_MODE}" = "1" ]] && show_debug_info || true
+}
+
+show_debug_info() {
+    log_info "=== DEBUG INFO ==="
+    log_info ".bash_aliases content:"
+    if [ -f "${USER_HOME}/.bash_aliases" ]; then
+        head -10 "${USER_HOME}/.bash_aliases" || true
+    else
+        log_warn ".bash_aliases not found"
+    fi
+    log_info "..."
+    log_info ".bashrc content:"
+    if [ -f "${USER_HOME}/.bashrc" ]; then
+        head -15 "${USER_HOME}/.bashrc" || true
+    else
+        log_warn ".bashrc not found"
+    fi
+    log_info "..."
+    log_info "=================="
+}
+
+# ============================================================================
+# Main execution
+# ============================================================================
+main() {
+    log_info "Configuring bash for DockerKit local development (user: ${APP_USER})"
+
+    # Validation
+    if ! validate_environment; then
+        log_error "Environment validation failed"
+        exit 1
+    fi
+
+    # Create directories (moved from Dockerfile)
+    if ! ensure_directories; then
+        log_error "Failed to create required directories"
+        exit 1
+    fi
+
+    # Generate .bash_aliases
+    if ! create_file_safely "${USER_HOME}/.bash_aliases" < <(generate_aliases_content); then
+        log_error "Failed to create .bash_aliases"
+        exit 1
+    fi
+
+    # Generate .bashrc
+    if ! create_file_safely "${USER_HOME}/.bashrc" < <(generate_bashrc_content); then
+        log_error "Failed to create .bashrc"
+        exit 1
+    fi
+
+    # Set ownership (non-critical)
+    set_ownership
+
+    log_ok "Bash configuration completed successfully"
+    show_summary
+
+    # Ensure successful exit
+    exit 0
+}
+
+main "$@"

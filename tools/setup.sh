@@ -25,6 +25,8 @@ source "$SCRIPT_DIR/lib/core/utils.sh"
 source "$SCRIPT_DIR/lib/core/config.sh"
 # shellcheck source=lib/core/validation.sh
 source "$SCRIPT_DIR/lib/core/validation.sh"
+# shellcheck source=lib/core/files.sh
+source "$SCRIPT_DIR/lib/core/files.sh"
 
 # Load service libraries
 # shellcheck source=lib/services/packages.sh
@@ -69,7 +71,7 @@ show_help() {
 DockerKit Environment Setup
 
 USAGE:
-    ./setup-environment.sh [OPTIONS]
+    ./setup.sh [OPTIONS]
 
     DESCRIPTION:
     Complete setup of DockerKit development environment including:
@@ -84,7 +86,7 @@ OPTIONS:
     -h, --help          Show this help message
 
 EXAMPLES:
-    ./setup-environment.sh                  # Full environment setup
+    ./setup.sh                  # Full environment setup
 
     PROCESS:
     1. Check system dependencies (homebrew, hostctl, mkcert)
@@ -107,14 +109,18 @@ EOF
 main() {
     print_header "DOCKERKIT ENVIRONMENT SETUP"
 
-    # Step 1: Check system dependencies
+    # Step 1: Create configuration files and directories
+    create_managed_files
+    create_logs_directory
+
+    # Step 2: Check system dependencies
     check_system_dependencies || {
         print_error "Missing required dependencies"
         print_tip "Please install the missing dependencies and run again"
         exit "$EXIT_MISSING_DEPENDENCY"
     }
 
-    # Step 2: Scan for projects
+    # Step 3: Scan for projects
     local projects
     if ! projects=$(scan_local_projects 2>/dev/null); then
         print_warning "No .local projects found"
@@ -128,15 +134,15 @@ main() {
         projects_array+=("$project")
     done <<< "$projects"
 
-    # Step 3: Initialize SSL environment
+    # Step 4: Initialize SSL environment
     print_section "Initializing SSL environment"
     initialize_ssl_environment || print_warning "  ◆ Skipped step: SSL initialization"
 
-    # Step 4: Generate SSL certificates
+    # Step 5: Generate SSL certificates
     print_section "Generating SSL certificates"
     generate_ssl_certificates "${projects_array[@]}" || print_warning "  ◆ Skipped step: SSL generation"
 
-    # Step 5: Generate nginx configurations
+    # Step 6: Generate nginx configurations
     print_section "Generating nginx configurations"
 
     # Validate templates (only show if there are issues)
@@ -147,11 +153,11 @@ main() {
 
     generate_nginx_configs "${projects_array[@]}" || true
 
-    # Step 6: Generate network aliases
+    # Step 7: Generate network aliases
     print_section "Generating network aliases"
     setup_network_aliases "${projects_array[@]}" || print_warning "  ◆ Skipped step: Network aliases generation"
 
-    # Step 7: Set up hosts entries
+    # Step 8: Set up hosts entries
     # Request sudo privileges first with user warning
     echo ""
     print_warning "◆ Administrator password required for hosts file modification"
@@ -163,7 +169,7 @@ main() {
     print_section "Setting up hosts entries"
     setup_hosts_entries "${projects_array[@]}" || print_warning "  ◆ Skipped step: Hosts setup"
 
-    # Step 8: Show summary
+    # Step 9: Show summary
     show_setup_summary "${projects_array[@]}"
 }
 

@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# ============================================================================
+# PHP CONFIGURATION GENERATOR SCRIPT
+# ============================================================================
+# Generates PHP configuration from environment variables at runtime
+# Optimized for php-fpm container
+# ============================================================================
+set -euo pipefail
+
+# Color output functions
+log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
+log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
+log_info() { echo "[$SCRIPT_NAME] $*"; }
+
+# PHP configuration file path
+readonly PHP_CONFIG_FILE="/usr/local/etc/php/conf.d/99-dockerkit.ini"
+SCRIPT_NAME=$(basename "$0")
+
+log_info "Generating PHP configuration from environment variables..."
+
+# Generate PHP configuration
+sudo tee "$PHP_CONFIG_FILE" > /dev/null << EOF
+; DockerKit PHP Configuration
+; Generated from environment variables at $(date)
+
+; Core PHP Settings
+date.timezone = ${PHP_DATE_TIMEZONE:-UTC}
+display_errors = ${PHP_DISPLAY_ERRORS:-Off}
+display_startup_errors = ${PHP_DISPLAY_STARTUP_ERRORS:-Off}
+error_log = ${PHP_ERROR_LOG:-/dev/stderr}
+error_reporting = ${PHP_ERROR_REPORTING:-22527}
+max_execution_time = ${PHP_MAX_EXECUTION_TIME:-3600}
+max_input_time = ${PHP_MAX_INPUT_TIME:--1}
+memory_limit = ${PHP_MEMORY_LIMIT:-512M}
+output_buffering = ${PHP_OUTPUT_BUFFERING:-0}
+post_max_size = ${PHP_POST_MAX_SIZE:-100M}
+upload_max_filesize = ${PHP_UPLOAD_MAX_FILE_SIZE:-100M}
+open_basedir = ${PHP_OPEN_BASEDIR:-}
+session.cookie_secure = ${PHP_SESSION_COOKIE_SECURE:-false}
+
+; OPcache Settings
+opcache.enable = ${PHP_OPCACHE_ENABLE:-0}
+
+; Xdebug Configuration (if extension is loaded)
+xdebug.mode = ${PHP_XDEBUG_MODE:-debug}
+xdebug.start_with_request = ${PHP_XDEBUG_START_WITH_REQUEST:-trigger}
+xdebug.client_host = ${PHP_XDEBUG_CLIENT_HOST:-host.docker.internal}
+xdebug.client_port = ${PHP_XDEBUG_CLIENT_PORT:-9003}
+xdebug.discover_client_host = ${PHP_XDEBUG_DISCOVER_CLIENT_HOST:-0}
+xdebug.idekey = ${PHP_XDEBUG_IDEKEY:-PHPSTORM}
+EOF
+
+log_ok "PHP configuration generated successfully"
+log_info "Configuration file: $PHP_CONFIG_FILE"
+
+# Show generated configuration for debugging
+if [[ "${DEBUG_PHP_CONFIG:-0}" = "1" ]]; then
+    echo ""
+    log_info "Generated PHP configuration:"
+    log_info "----------------------------------------"
+    cat "$PHP_CONFIG_FILE"
+    log_info "----------------------------------------"
+fi
+
+log_info "PHP configuration setup completed"
+echo ""

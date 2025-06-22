@@ -126,12 +126,11 @@ DockerKit uses automated startup scripts to configure development environment on
 The workspace container automatically executes these initialization scripts:
 
 ```text
-workspace/startup/
-├── 00-welcome           # Display DockerKit logo and system status
-├── 01-aliases           # Configure Laravel/PHP development aliases  
-├── 02-composer          # Setup Composer authentication and plugins
-├── 03-ca-certificates   # Install SSL CA certificates for HTTPS
-└── 04-minio-client      # Configure MinIO Client and create buckets
+workspace/entrypoint.d/
+├── 01-ca-certificates   # Install SSL CA certificates for HTTPS
+├── 02-php-config        # todo
+└── 03-minio-client      # Configure MinIO Client and create buckets
+└── 04-bash-config       # todo
 ```
 
 #### Key features
@@ -154,10 +153,10 @@ php-fpm/startup/
 
 #### Custom Startup Scripts
 
-Add custom scripts to `workspace/startup/` or `php-fpm/startup/`:
+Add custom scripts to `workspace/entrypoint.d/` or `php-fpm/entrypoint.d/`:
 
 ```bash
-# workspace/startup/99-custom-setup
+# workspace/entrypoint.d/99-custom-setup
 #!/bin/bash
 echo "Running custom workspace setup..."
 # Your custom initialization code
@@ -229,7 +228,6 @@ Automated task execution using cron in the workspace container.
 Cron is enabled by default and reads jobs from `workspace/crontab/` directory:
 
 ```bash
-ENABLE_CRONTAB=1            # Enable cron daemon  
 CRONTAB_DIR=/etc/crontab.d  # Crontab directory (mapped from workspace/crontab)
 ```
 
@@ -496,7 +494,7 @@ DockerKit implements intelligent **multi-network architecture** with automatic s
 │         Container-to-container communication:                         │
 │         HTTP:  curl http://api.local/users                            │
 │         HTTPS: curl https://myapp.local/api (with SSL certs)          │
-│         nginx → php-fmp:9000 (FastCGI protocol)                       │
+│         nginx → php-fpm:9000 (FastCGI protocol)                       │
 │                                                                       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -627,6 +625,7 @@ docker compose logs workspace | grep -i minio
 ```
 
 Common solutions:
+
 - Increase `MINIO_CLIENT_WAIT_TIME=120` in `.env`
 - Verify MinIO service is running: `docker compose ps minio`
 - Check bucket names are valid (lowercase, no spaces)

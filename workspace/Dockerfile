@@ -1,22 +1,17 @@
 # syntax=docker/dockerfile:1.4
 # check=error=true
 
-# Build arguments - centralized configuration
 ARG PHP_VERSION=8.4
 ARG TZ=UTC
 ARG APP_USER=dockerkit
-ARG APP_GROUP=dockerkit
 ARG APP_UID=1000
 ARG APP_GID=1000
-ARG APP_PATH=/var/www
 
-# PHP Extensions
-ARG INSTALL_AST=false
-ARG INSTALL_XDEBUG=false
-ARG XDEBUG_PORT=9003
-ARG INSTALL_PCOV=false
-ARG INSTALL_MONGO=false
-ARG INSTALL_AMQP=false
+# PHP Extensions (from .env)
+ARG DEPENDENCY_PHP_EXTENSIONS
+
+# Xdebug Configuration
+ARG PHP_XDEBUG_CLIENT_PORT=9003
 
 # System Utilities
 ARG INSTALL_JAVA=true
@@ -35,34 +30,13 @@ ARG INSTALL_OPENAPI_GENERATOR=false
 # MinIO Client
 ARG INSTALL_MINIO_CLIENT=true
 
-# Performance and Security
-ARG ENABLE_NON_ROOT_USER=true
-
-FROM shinsenter/php:${PHP_VERSION}-cli AS base
+FROM php:${PHP_VERSION}-cli AS base
 
 # Import ARG values into this stage
 ARG TZ=UTC
 ARG APP_USER=dockerkit
-ARG APP_GROUP=dockerkit
 ARG APP_UID=1000
 ARG APP_GID=1000
-ARG APP_PATH=/var/www
-ARG INSTALL_AST=false
-ARG INSTALL_XDEBUG=false
-ARG XDEBUG_PORT=9003
-ARG INSTALL_PCOV=false
-ARG INSTALL_MONGO=false
-ARG INSTALL_AMQP=false
-ARG INSTALL_JAVA=true
-ARG POSTGRES_CLIENT_VERSION=15
-ARG INSTALL_POSTGRES_CLIENT=true
-ARG INSTALL_MYSQL_CLIENT=false
-ARG INSTALL_NODE=false
-ARG NODE_VERSION=22
-ARG INSTALL_VACUUM=false
-ARG INSTALL_OPENAPI_GENERATOR=false
-ARG INSTALL_MINIO_CLIENT=true
-ARG ENABLE_NON_ROOT_USER=true
 
 # OCI Standard Labels
 LABEL org.opencontainers.image.title="DockerKit Workspace"
@@ -73,177 +47,312 @@ LABEL org.opencontainers.image.url="https://github.com/abordage/dockerkit"
 LABEL org.opencontainers.image.source="https://github.com/abordage/dockerkit"
 LABEL org.opencontainers.image.documentation="https://github.com/abordage/dockerkit/blob/main/README.md"
 LABEL org.opencontainers.image.licenses="MIT"
-
-# DockerKit Specific Labels
-LABEL dockerkit.service.type="workspace"
-LABEL dockerkit.service.role="development"
-LABEL dockerkit.php.version="${PHP_VERSION}"
-LABEL dockerkit.user.name="${APP_USER}"
-LABEL dockerkit.user.uid="${APP_UID}"
-LABEL dockerkit.path.app="${APP_PATH}"
-LABEL dockerkit.extensions.xdebug="${INSTALL_XDEBUG}"
-LABEL dockerkit.extensions.pcov="${INSTALL_PCOV}"
-LABEL dockerkit.extensions.mongo="${INSTALL_MONGO}"
-LABEL dockerkit.extensions.amqp="${INSTALL_AMQP}"
-LABEL dockerkit.extensions.ast="${INSTALL_AST}"
-LABEL dockerkit.tools.node="${INSTALL_NODE}"
-LABEL dockerkit.tools.java="${INSTALL_JAVA}"
-LABEL dockerkit.tools.postgres_client="${INSTALL_POSTGRES_CLIENT}"
-LABEL dockerkit.tools.mysql_client="${INSTALL_MYSQL_CLIENT}"
-LABEL dockerkit.tools.minio_client="${INSTALL_MINIO_CLIENT}"
-LABEL dockerkit.healthcheck.enabled="true"
+LABEL org.opencontainers.image.vendor="DockerKit"
+LABEL org.opencontainers.image.created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
 # Environment variables
 ENV TZ=${TZ} \
     APP_USER=${APP_USER} \
-    APP_GROUP=${APP_GROUP} \
     APP_UID=${APP_UID} \
     APP_GID=${APP_GID} \
-    APP_PATH=${APP_PATH} \
-    ENABLE_CRONTAB=1 \
-    DISABLE_AUTORUN_COMPOSER_INSTALL=1 \
-    ALLOW_RUNTIME_PHP_ENVVARS=1 \
     DEBIAN_FRONTEND=noninteractive
 
-# Start as root for system setup
-USER root
+# Create user and group early for security
+RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
+    useradd --no-log-init -u "${APP_UID}" -g "${APP_GID}" -m -s /bin/bash "${APP_USER}"
 
 # ============================================================================
 # Stage: System Dependencies
 # ============================================================================
 FROM base AS dependencies
 
-# Update package lists and install base system tools
+USER root
+
+# Import ARG values needed in this stage
+ARG INSTALL_JAVA=true
+ARG INSTALL_MYSQL_CLIENT=false
+ARG INSTALL_POSTGRES_CLIENT=true
+ARG POSTGRES_CLIENT_VERSION=15
+
+# Install only essential system tools
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
+    # Install packages with standard git
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     # Core system tools
-    nano xz-utils build-essential curl parallel dnsutils ca-certificates graphviz sudo \
+    bash-completion build-essential ca-certificates cron curl debianutils dnsutils git gosu  \
+    graphviz htop iputils-ping jq nano rsync sqlite3 sudo tree unzip wget xz-utils \
+    # Archive utilities
+    zip p7zip-full \
     # Graphics utilities
-    jpegoptim optipng pngquant gifsicle \
-    # Python environment
-    python3 python3-dev python3-venv \
-    # System dependencies for PHP extensions
-    libmagickwand-dev \
-    $([ "$INSTALL_MONGO" = "true" ] && echo "libssl-dev") \
-    $([ "$INSTALL_AMQP" = "true" ] && echo "librabbitmq-dev") \
-    # Conditional utilities
-    $([ "$INSTALL_JAVA" = "true" ] && echo "default-jdk ca-certificates-java") \
-    # Database clients
-    $([ "$INSTALL_POSTGRES_CLIENT" = "true" ] && echo "postgresql-client-${POSTGRES_CLIENT_VERSION}") \
-    $([ "$INSTALL_MYSQL_CLIENT" = "true" ] && echo "default-mysql-client") \
-    && rm -rf /var/lib/apt/lists/*
+    gifsicle jpegoptim optipng pngquant \
+    # Documentation
+    man-db manpages manpages-dev \
+    && \
+    # Fix CA certificates
+    update-ca-certificates --fresh && \
+    c_rehash /etc/ssl/certs/ 2>/dev/null || true && \
+    # Update manual pages database
+    (command -v mandb >/dev/null 2>&1 && mandb) || true && \
+    rm -rf /var/lib/apt/lists/*
 
-# Update Java certificates if Java is installed
-RUN if [ "$INSTALL_JAVA" = "true" ]; then update-ca-certificates -f; fi
+# Install mlocati/docker-php-extension-installer
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+# Install conditional packages
+RUN set -eux; \
+    packages=""; \
+    [ "${INSTALL_JAVA}" = "true" ] && packages="${packages} ca-certificates-java default-jdk"; \
+    [ "${INSTALL_MYSQL_CLIENT}" = "true" ] && packages="${packages} default-mysql-client"; \
+    [ "${INSTALL_POSTGRES_CLIENT}" = "true" ] && packages="${packages} postgresql-client-${POSTGRES_CLIENT_VERSION}"; \
+    if [ -n "${packages}" ]; then \
+        echo "Installing conditional packages:${packages}"; \
+        apt-get update; \
+        apt-get install -y --no-install-recommends ${packages}; \
+        rm -rf /var/lib/apt/lists/*; \
+    else \
+        echo "No conditional packages to install"; \
+    fi
+
+USER ${APP_UID}:${APP_GID}
 
 # ============================================================================
 # Stage: PHP Extensions
 # ============================================================================
 FROM dependencies AS php-extensions
 
-# Install always-on PHP extensions
-RUN phpaddmod bz2 gmp imagick inotify soap xlswriter
+USER root
 
-# Install conditional PHP extensions in parallel where possible
+# Import ARG values needed in this stage
+ARG DEPENDENCY_PHP_EXTENSIONS
+
+RUN install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
+
+USER ${APP_UID}:${APP_GID}
+
+# ============================================================================
+# Stage: Composer Installation
+# ============================================================================
+FROM php-extensions AS composer-install
+
+USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ENV COMPOSER_NO_INTERACTION=1 \
+    COMPOSER_DISABLE_XDEBUG_WARN=1
+
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+USER ${APP_UID}:${APP_GID}
+
 RUN set -eux; \
-    extensions=""; \
-    [ "$INSTALL_AMQP" = "true" ] && extensions="$extensions amqp"; \
-    [ "$INSTALL_AST" = "true" ] && extensions="$extensions ast"; \
-    [ "$INSTALL_MONGO" = "true" ] && extensions="$extensions mongodb"; \
-    [ "$INSTALL_PCOV" = "true" ] && extensions="$extensions pcov"; \
-    [ "$INSTALL_XDEBUG" = "true" ] && extensions="$extensions xdebug"; \
-    [ -n "$extensions" ] && phpaddmod $extensions || true
+    # Configure and install plugins
+    composer config --global allow-plugins.ergebnis/composer-normalize true --no-interaction; \
+    composer config --global allow-plugins.pyrech/composer-changelogs true --no-interaction; \
+    composer global require ergebnis/composer-normalize pyrech/composer-changelogs --no-interaction; \
+    # Verify installation
+    composer --version
 
 # ============================================================================
 # Stage: Node.js Tools
 # ============================================================================
-FROM php-extensions AS node-tools
+FROM composer-install AS node-tools
+
+USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Import ARG values needed in this stage
+ARG INSTALL_NODE=false
+ARG NODE_VERSION=22
+ARG INSTALL_VACUUM=false
+ARG INSTALL_OPENAPI_GENERATOR=false
 
 # Install Node.js if requested
-RUN if [ "$INSTALL_NODE" = "true" ]; then \
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    if [ "${INSTALL_NODE}" = "true" ]; then \
+    curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
-    npm install -g npm-check-updates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Install additional Node.js tools
-RUN if [ "$INSTALL_NODE" = "true" ] && [ "$INSTALL_VACUUM" = "true" ]; then \
-    npm install -g @quobix/vacuum; \
+# Install Node.js tools with NPM cache
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    if [ "${INSTALL_NODE}" = "true" ]; then \
+        npm install -g npm-check-updates; \
+        if [ "${INSTALL_VACUUM}" = "true" ]; then \
+            npm install -g @quobix/vacuum; \
+        fi; \
+        if [ "${INSTALL_OPENAPI_GENERATOR}" = "true" ]; then \
+            npm install -g @openapitools/openapi-generator-cli; \
+        fi; \
     fi
 
-RUN if [ "$INSTALL_NODE" = "true" ] && [ "$INSTALL_OPENAPI_GENERATOR" = "true" ]; then \
-    npm install -g @openapitools/openapi-generator-cli; \
-    fi
+USER ${APP_UID}:${APP_GID}
 
 # ============================================================================
 # Stage: MinIO Client Tools
 # ============================================================================
 FROM node-tools AS minio-tools
 
-# Install MinIO Client (mc) if requested
-RUN if [ "$INSTALL_MINIO_CLIENT" = "true" ]; then \
-    curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc \
-        --output /usr/local/bin/mc && \
-    chmod +x /usr/local/bin/mc && \
-    echo "MinIO Client installed successfully"; \
-    fi
+USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# ============================================================================
-# Stage: Python Environment
-# ============================================================================
-FROM minio-tools AS python-env
+# Import ARG values needed in this stage
+ARG INSTALL_MINIO_CLIENT=true
 
-# Create and configure Python virtual environment
-RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/python -m pip install --upgrade pip virtualenv && \
-    /opt/venv/bin/pip install --upgrade powerline-status psutil
-
-# Add venv to PATH for powerline scripts
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Configure powerline for bash
-RUN PYTHON_VERSION=$(/opt/venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && \
-    { \
-        echo ""; \
-        echo "# Python virtual environment"; \
-        echo "export PATH=\"/opt/venv/bin:\$PATH\""; \
-        echo ""; \
-        echo "# Powerline configuration"; \
-        echo ". /opt/venv/lib/python${PYTHON_VERSION}/site-packages/powerline/bindings/bash/powerline.sh"; \
-    } >> /etc/bash.bashrc
-
-# ============================================================================
-# Stage: Final Configuration
-# ============================================================================
-FROM python-env AS final
-
-# Ensure user exists (shinsenter/php base image should handle this automatically)
-# But we add sudo access for development convenience
-RUN if [ "$ENABLE_NON_ROOT_USER" = "true" ]; then \
-    # Check if user already exists, if not create it
-    id -u ${APP_USER} >/dev/null 2>&1 || { \
-        groupadd -g ${APP_GID} ${APP_GROUP} 2>/dev/null || true && \
-        useradd -u ${APP_UID} -g ${APP_GID} -m -s /bin/bash ${APP_USER} 2>/dev/null || true; \
-    } && \
-    # Add to sudo group for development convenience
-    usermod -aG sudo ${APP_USER} 2>/dev/null || true; \
-    fi
-
-# Set working directory
-WORKDIR ${APP_PATH}
-
-# Validation step - ensure critical tools are available
 RUN set -eux; \
-    php --version; \
-    python3 --version; \
-    /opt/venv/bin/python --version; \
-    [ "$INSTALL_NODE" = "true" ] && node --version || true; \
-    [ "$INSTALL_NODE" = "true" ] && npm --version || true; \
-    [ "$INSTALL_VACUUM" = "true" ] && vacuum --version || true; \
-    [ "$INSTALL_OPENAPI_GENERATOR" = "true" ] && openapi-generator-cli version || true; \
-    [ "$INSTALL_POSTGRES_CLIENT" = "true" ] && psql --version || true; \
-    [ "$INSTALL_MYSQL_CLIENT" = "true" ] && mysql --version || true; \
-    [ "$INSTALL_MINIO_CLIENT" = "true" ] && mc --version || true; \
-    echo "All tools validated successfully"
+    if [ "${INSTALL_MINIO_CLIENT}" = "true" ]; then \
+        echo "Installing MinIO Client..."; \
+        # Test network connectivity first
+        curl -fsSL --connect-timeout 10 --max-time 30 https://dl.min.io/ > /dev/null && \
+        echo "MinIO download server is accessible"; \
+        # Detect architecture for MinIO Client
+        ARCH=$(uname -m); \
+        case "$ARCH" in \
+            x86_64) MC_ARCH="linux-amd64" ;; \
+            aarch64) MC_ARCH="linux-arm64" ;; \
+            armv7l) MC_ARCH="linux-arm" ;; \
+            *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+        esac; \
+        echo "Detected architecture: $ARCH, using MinIO Client variant: ${MC_ARCH}"; \
+        # Download MinIO Client with retry logic
+        for attempt in 1 2 3; do \
+            echo "Download attempt ${attempt}/3..."; \
+            if curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 \
+                "https://dl.min.io/client/mc/release/${MC_ARCH}/mc" \
+                -o /usr/local/bin/mc; then \
+                echo "MinIO Client binary downloaded successfully"; \
+                break; \
+            else \
+                echo "Download attempt ${attempt} failed"; \
+                [ ${attempt} -eq 3 ] && exit 1; \
+                sleep 5; \
+            fi; \
+        done; \
+        # Set executable permissions immediately after download
+        chmod +x /usr/local/bin/mc && \
+        echo "MinIO Client permissions set successfully"; \
+        # Test installation
+        /usr/local/bin/mc --version && \
+        echo "MinIO Client installed and tested successfully"; \
+    else \
+        echo "MinIO Client installation skipped"; \
+    fi
+
+USER ${APP_UID}:${APP_GID}
+
+# ============================================================================
+# Stage: Modern Terminal Tools (fzf + ble.sh + starship)
+# ============================================================================
+FROM minio-tools AS modern-terminal-tools
+
+USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN set -eux; \
+    echo "Installing modern terminal tools..."; \
+    \
+    # Verify git is available (should be inherited from dependencies stage)
+    echo "Verifying git: $(git --version)"; \
+    \
+    # Install Nerd Fonts Symbols Only for optimal terminal experience (2MB vs 123MB)
+    echo "Installing Nerd Fonts Symbols Only..."; \
+    curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz -o /tmp/symbols.tar.xz && \
+    tar -xf /tmp/symbols.tar.xz -C /usr/share/fonts && \
+    rm /tmp/symbols.tar.xz && \
+    fc-cache -fv && \
+    \
+    # Install fzf (fuzzy finder)
+    echo "Installing fzf..."; \
+    git clone --depth 1 https://github.com/junegunn/fzf.git /opt/fzf && \
+    /opt/fzf/install --bin && \
+    cp /opt/fzf/bin/fzf /usr/local/bin/ && \
+    chmod +x /usr/local/bin/fzf && \
+    fzf --version && \
+    \
+    # Install Starship (modern prompt)
+    echo "Installing Starship..."; \
+    curl -sS https://starship.rs/install.sh | sh -s -- -y && \
+    starship --version && \
+    \
+    # Install yq (YAML processor) for config management - multi-arch support
+    echo "Installing yq..."; \
+    ARCH=$(uname -m); \
+    case "$ARCH" in \
+        x86_64) YQ_ARCH="amd64" ;; \
+        aarch64) YQ_ARCH="arm64" ;; \
+        armv7l) YQ_ARCH="arm" ;; \
+        *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+    esac; \
+    echo "Detected architecture: $ARCH, using yq variant: linux_${YQ_ARCH}"; \
+    curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}" -o /usr/local/bin/yq && \
+    chmod +x /usr/local/bin/yq && \
+    yq --version && \
+    \
+    echo "All modern terminal tools installed successfully"
+
+USER ${APP_UID}:${APP_GID}
+
+# ============================================================================
+# Stage: Final Image
+# ============================================================================
+FROM modern-terminal-tools AS final
+
+USER root
+
+# Import ARG values needed in this stage
+ARG APP_USER=dockerkit
+ARG APP_UID=1000
+ARG APP_GID=1000
+
+# Configure user for sudo access
+RUN usermod -aG sudo "${APP_USER}" && \
+    echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
+
+# Setup bash completion for all development tools
+RUN set -eux; \
+    # Create bash completion directory
+    mkdir -p /etc/bash_completion.d && \
+    # Composer completion
+    composer completion bash > /etc/bash_completion.d/composer && \
+    # Docker completion (if available)
+    if command -v docker >/dev/null 2>&1; then \
+        docker completion bash > /etc/bash_completion.d/docker 2>/dev/null || true; \
+    fi && \
+    # Git completion is usually included with git package but ensure it's there
+    curl -fsSL https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash \
+         -o /etc/bash_completion.d/git-completion.bash 2>/dev/null || true
+
+# Configure cron
+RUN set -eux; \
+    # Create cron log directory with proper permissions
+    mkdir -p /var/log/cron && \
+    chown "${APP_USER}:${APP_GID}" "/var/log/cron" && \
+    # Create cron log file
+    touch /var/log/cron/cron.log && \
+    chown "${APP_USER}:${APP_GID}" "/var/log/cron/cron.log" && \
+    chmod 644 /var/log/cron/cron.log && \
+    # Ensure cron spool directory exists with proper permissions
+    mkdir -p /var/spool/cron/crontabs && \
+    chmod 755 /var/spool/cron/crontabs
+
+# ============================================================================
+# ENTRYPOINT Configuration (keeping root for final setup)
+# ============================================================================
+# Copy and setup entrypoint script with proper permissions
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/
+
+# Add healthcheck for container monitoring
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD php --version > /dev/null || exit 1
+
+# Set final configuration
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["bash"]
+
+WORKDIR /var/www
+
+USER ${APP_UID}:${APP_GID}

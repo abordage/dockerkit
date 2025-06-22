@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# ============================================================================
+# CA CERTIFICATES SETUP SCRIPT
+# ============================================================================
+# Installs mkcert CA certificates for HTTPS development
+# ============================================================================
+set -euo pipefail
+
+# Color output functions
+log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
+log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
+log_info() { echo "[$SCRIPT_NAME] $*"; }
+
+CA_CERT_SOURCE="/ssl-ca/rootCA.crt"
+CA_CERT_TARGET="/usr/local/share/ca-certificates/mkcert-rootCA.crt"
+SCRIPT_NAME=$(basename "$0")
+
+log_info "Setting up mkcert CA certificates for workspace container..."
+
+if [[ -f "$CA_CERT_SOURCE" ]]; then
+    log_info "Found mkcert CA certificate at $CA_CERT_SOURCE"
+
+    sudo cp "$CA_CERT_SOURCE" "$CA_CERT_TARGET" && \
+    sudo update-ca-certificates >/dev/null && \
+    log_ok "mkcert CA certificate installed successfully"
+else
+    log_warn "mkcert CA certificate not found at $CA_CERT_SOURCE"
+    log_warn "HTTPS connections to local development sites may fail"
+fi
+
+log_info "CA certificates setup completed"
+echo ""

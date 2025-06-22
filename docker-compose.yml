@@ -10,19 +10,14 @@ services:
         - PHP_VERSION
         - TZ
         - APP_USER
-        - APP_GROUP
         - APP_UID
         - APP_GID
-        - APP_PATH
-        # PHP Extensions
-        - INSTALL_XDEBUG
-        - INSTALL_PCOV
-        - INSTALL_MONGO
-        - INSTALL_AMQP
-        - INSTALL_AST
+        - DEPENDENCY_PHP_EXTENSIONS
+        # Xdebug Configuration
+        - PHP_XDEBUG_CLIENT_PORT
         # Database clients
-        - INSTALL_POSTGRES_CLIENT
         - POSTGRES_CLIENT_VERSION
+        - INSTALL_POSTGRES_CLIENT
         - INSTALL_MYSQL_CLIENT
         # Node.js
         - INSTALL_NODE
@@ -31,8 +26,6 @@ services:
         - INSTALL_OPENAPI_GENERATOR
         # MinIO Client
         - INSTALL_MINIO_CLIENT
-        # Performance and Security
-        - ENABLE_NON_ROOT_USER=true
     restart: unless-stopped
     deploy:
       replicas: ${ENABLE_WORKSPACE:-1}
@@ -49,37 +42,31 @@ services:
       - TZ
       # Container user configuration
       - APP_USER
-      - APP_GROUP
       - APP_UID
       - APP_GID
-      - APP_PATH
-      # Runtime PHP environment variables support
-      - ALLOW_RUNTIME_PHP_ENVVARS=1
-      # PHP Configuration
-      - PHP_DATE_TIMEZONE=UTC
-      - PHP_DISPLAY_ERRORS=Off
-      - PHP_LOG_ERRORS=Off
-      - PHP_OUTPUT_BUFFERING=0
-      - PHP_MEMORY_LIMIT=512M
-      - PHP_MAX_EXECUTION_TIME=21600
-      - PHP_DEFAULT_SOCKET_TIMEOUT=21600
-      # Xdebug Configuration
-      - PHP_XDEBUG_MODE=debug
-      - PHP_XDEBUG_START_WITH_REQUEST=trigger
-      - PHP_XDEBUG_CLIENT_HOST=host.docker.internal
-      - PHP_XDEBUG_CLIENT_PORT=${XDEBUG_PORT}
-      - PHP_XDEBUG_DISCOVER_CLIENT_HOST=0
-      - PHP_XDEBUG_IDEKEY=PHPSTORM
-      # Optimization and logging
-      - DEFAULT_LOG_PATH=/var/log/workspace.log
-      - DEBUG=${DEBUG_MODE:-0}
-      - DISABLE_GREETING=1
+      # PHP Configuration - Runtime
+      - PHP_DATE_TIMEZONE
+      - PHP_DISPLAY_ERRORS
+      - PHP_DISPLAY_STARTUP_ERRORS
+      - PHP_ERROR_LOG
+      - PHP_ERROR_REPORTING
+      - PHP_MEMORY_LIMIT
+      - PHP_OPCACHE_ENABLE
+      - PHP_MAX_EXECUTION_TIME
+      - PHP_MAX_INPUT_TIME
+      - PHP_OUTPUT_BUFFERING
+      - PHP_POST_MAX_SIZE
+      - PHP_UPLOAD_MAX_FILE_SIZE
+      - PHP_OPEN_BASEDIR
+      - PHP_SESSION_COOKIE_SECURE
+      - PHP_XDEBUG_MODE
+      - PHP_XDEBUG_START_WITH_REQUEST
+      - PHP_XDEBUG_CLIENT_HOST
+      - PHP_XDEBUG_CLIENT_PORT
+      - PHP_XDEBUG_DISCOVER_CLIENT_HOST
+      - PHP_XDEBUG_IDEKEY
       # Cron configuration
-      - ENABLE_CRONTAB=1
       - CRONTAB_DIR=/etc/crontab.d
-      - DISABLE_AUTORUN_CREATING_PROJECT=1
-      - DISABLE_AUTORUN_COMPOSER_INSTALL=1
-      - DISABLE_AUTORUN_GENERATING_INDEX=1
       # MinIO Client configuration
       - ENABLE_MINIO
       - INSTALL_MINIO_CLIENT
@@ -91,11 +78,17 @@ services:
       - MINIO_BUCKETS_DOWNLOAD
       - MINIO_BUCKETS_PRIVATE
       - MINIO_ENABLE_VERSIONING
+      # Bash configuration
+      - ENABLE_FZF
+      - ENABLE_STARSHIP
     volumes:
-      - ${HOST_APP_PATH}:${APP_PATH}${APP_PATH_FLAG}
+      - ${HOST_APP_PATH}:/var/www:cached
+      - ${HOST_APP_PATH}/composer/cache:/home/dockerkit/.composer/cache
       - ${HOST_LOGS_PATH}/cron:/var/log/cron
-      - ./workspace/crontab:/etc/crontab.d:ro
-      - ./workspace/startup:/startup
+      - ./workspace/entrypoint.d:/entrypoint.d:ro
+
+      - ./workspace/auth.json:/home/dockerkit/.composer/auth.json:ro
+      - ./workspace/crontab:/var/spool/cron/crontabs/${APP_USER}:ro
       - ./ssl-ca:/ssl-ca:ro
     healthcheck:
       test: [ "CMD-SHELL", "php --version" ]
@@ -116,15 +109,10 @@ services:
         - TZ
         # User configuration
         - APP_USER
-        - APP_GROUP
         - APP_UID
         - APP_GID
-        - APP_PATH
         # PHP Extensions
-        - INSTALL_XDEBUG
-        - INSTALL_MONGO
-        - INSTALL_AMQP
-        - INSTALL_AST
+        - DEPENDENCY_PHP_EXTENSIONS
     restart: unless-stopped
     deploy:
       replicas: ${ENABLE_PHP_FPM:-1}
@@ -135,42 +123,34 @@ services:
       - TZ
       # Container user configuration
       - APP_USER
-      - APP_GROUP
       - APP_UID
       - APP_GID
-      - APP_PATH
-      # Runtime PHP environment variables support
-      - ALLOW_RUNTIME_PHP_ENVVARS=1
-      # PHP Configuration
-      - PHP_DATE_TIMEZONE=UTC
-      - PHP_DISPLAY_ERRORS=Off
-      - PHP_LOG_ERRORS=Off
-      - PHP_OUTPUT_BUFFERING=0
-      - PHP_MEMORY_LIMIT=512M
-      - PHP_UPLOAD_MAX_FILESIZE=100M
-      - PHP_POST_MAX_SIZE=100M
-      - PHP_MAX_EXECUTION_TIME=21600
-      - PHP_DEFAULT_SOCKET_TIMEOUT=21600
-      - PHP_REQUEST_TERMINATE_TIMEOUT=600
-      # Xdebug Configuration
-      - PHP_XDEBUG_MODE=debug
-      - PHP_XDEBUG_START_WITH_REQUEST=trigger
-      - PHP_XDEBUG_CLIENT_HOST=host.docker.internal
-      - PHP_XDEBUG_CLIENT_PORT=${XDEBUG_PORT}
-      - PHP_XDEBUG_DISCOVER_CLIENT_HOST=0
-      - PHP_XDEBUG_IDEKEY=PHPSTORM
-      # Optimization and logging
-      - ENABLE_TUNING_FPM=1
-      - DEFAULT_LOG_PATH=/var/log/php-fpm/php-fpm.log
-      - DEBUG=${DEBUG_MODE:-0}
-      - DISABLE_GREETING=1
-      - DISABLE_AUTORUN_CREATING_PROJECT=1
-      - DISABLE_AUTORUN_COMPOSER_INSTALL=1
-      - DISABLE_AUTORUN_GENERATING_INDEX=1
+      # PHP Configuration - Runtime
+      - PHP_DATE_TIMEZONE
+      - PHP_DISPLAY_ERRORS
+      - PHP_DISPLAY_STARTUP_ERRORS
+      - PHP_ERROR_LOG
+      - PHP_ERROR_REPORTING
+      - PHP_MEMORY_LIMIT
+      - PHP_OPCACHE_ENABLE
+      - PHP_MAX_EXECUTION_TIME
+      - PHP_MAX_INPUT_TIME
+      - PHP_OUTPUT_BUFFERING
+      - PHP_POST_MAX_SIZE
+      - PHP_UPLOAD_MAX_FILE_SIZE
+      - PHP_OPEN_BASEDIR
+      - PHP_SESSION_COOKIE_SECURE
+      - PHP_XDEBUG_MODE
+      - PHP_XDEBUG_START_WITH_REQUEST
+      - PHP_XDEBUG_CLIENT_HOST
+      - PHP_XDEBUG_CLIENT_PORT
+      - PHP_XDEBUG_DISCOVER_CLIENT_HOST
+      - PHP_XDEBUG_IDEKEY
     volumes:
-      - ${HOST_APP_PATH}:${APP_PATH}${APP_PATH_FLAG}
+      - ${HOST_APP_PATH}:/var/www:cached
       - ${HOST_LOGS_PATH}/php-fpm:/var/log/php-fpm
-      - ./php-fpm/startup:/startup
+      - ./php-fpm/entrypoint.d:/entrypoint.d:ro
+
       - ./ssl-ca:/ssl-ca:ro
     healthcheck:
       test: [ "CMD-SHELL", "php-fpm -t" ]
@@ -196,7 +176,7 @@ services:
       - PHP_FPM_HOST=php-fpm
       - PROJECT_NAME=${PROJECT_NAME}
     volumes:
-      - ${HOST_APP_PATH}:${APP_PATH}${APP_PATH_FLAG}
+      - ${HOST_APP_PATH}:/var/www:cached
       - ${HOST_LOGS_PATH}/nginx:/var/log/nginx
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro

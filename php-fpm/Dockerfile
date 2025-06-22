@@ -1,47 +1,34 @@
 # syntax=docker/dockerfile:1.4
 # check=error=true
 
-# Build arguments - centralized configuration
 ARG PHP_VERSION=8.4
 ARG TZ=UTC
-
-# User configuration arguments
 ARG APP_USER=dockerkit
-ARG APP_GROUP=dockerkit
 ARG APP_UID=1000
 ARG APP_GID=1000
-ARG APP_PATH=/var/www
 
-# PHP Extensions Arguments
-ARG INSTALL_AST=false
-ARG INSTALL_XDEBUG=false
-ARG XDEBUG_PORT=9003
-ARG INSTALL_MONGO=false
-ARG INSTALL_AMQP=false
+# PHP Extensions (from .env)
+ARG DEPENDENCY_PHP_EXTENSIONS
 
-FROM shinsenter/php:${PHP_VERSION}-fpm AS base
+FROM php:${PHP_VERSION}-fpm AS base
 
 # Import ARG values into this stage
 ARG TZ=UTC
 ARG APP_USER=dockerkit
-ARG APP_GROUP=dockerkit
 ARG APP_UID=1000
 ARG APP_GID=1000
-ARG APP_PATH=/var/www
-ARG INSTALL_AST=false
-ARG INSTALL_XDEBUG=false
-ARG INSTALL_MONGO=false
-ARG INSTALL_AMQP=false
 
 # OCI Standard Labels
 LABEL org.opencontainers.image.title="DockerKit PHP-FPM"
-LABEL org.opencontainers.image.description="PHP-FPM for automated local development environment"
+LABEL org.opencontainers.image.description="PHP-FPM service for DockerKit development environment"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.authors="Pavel Bychko <box@abordage.dev>"
 LABEL org.opencontainers.image.url="https://github.com/abordage/dockerkit"
 LABEL org.opencontainers.image.source="https://github.com/abordage/dockerkit"
 LABEL org.opencontainers.image.documentation="https://github.com/abordage/dockerkit/blob/main/README.md"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.vendor="DockerKit"
+LABEL org.opencontainers.image.created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
 # DockerKit Specific Labels
 LABEL dockerkit.service.type="web"
@@ -49,77 +36,129 @@ LABEL dockerkit.service.role="php-fpm"
 LABEL dockerkit.php.version="${PHP_VERSION}"
 LABEL dockerkit.user.name="${APP_USER}"
 LABEL dockerkit.user.uid="${APP_UID}"
-LABEL dockerkit.path.app="${APP_PATH}"
-LABEL dockerkit.extensions.xdebug="${INSTALL_XDEBUG}"
-LABEL dockerkit.extensions.mongo="${INSTALL_MONGO}"
-LABEL dockerkit.extensions.amqp="${INSTALL_AMQP}"
-LABEL dockerkit.healthcheck.enabled="true"
 
-# Configure user environment
-ENV APP_USER=${APP_USER}
-ENV APP_GROUP=${APP_GROUP}
-ENV APP_UID=${APP_UID}
-ENV APP_GID=${APP_GID}
+# Environment variables
+ENV TZ=${TZ} \
+    APP_USER=${APP_USER} \
+    APP_UID=${APP_UID} \
+    APP_GID=${APP_GID} \
+    DEBIAN_FRONTEND=noninteractive
 
-# Application path configuration
-ENV APP_PATH=${APP_PATH}
-
-# Enable automatic composer install and other autorun features
-ENV DISABLE_AUTORUN_COMPOSER_INSTALL=1
-
-# Runtime PHP environment variables support
-ENV ALLOW_RUNTIME_PHP_ENVVARS=1
-
-# Timezone configuration
-ENV TZ=${TZ}
-
-# Start as root for system setup
-USER root
+# Create user and group early for security
+RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
+    useradd --no-log-init -u "${APP_UID}" -g "${APP_GID}" -m -s /bin/bash "${APP_USER}"
 
 # ============================================================================
 # Stage: System Dependencies
 # ============================================================================
 FROM base AS dependencies
 
-# Update package lists and install system tools
+USER root
+
+# Install minimal system tools for PHP-FPM operation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     # Core system tools
-    xz-utils build-essential curl parallel dnsutils ca-certificates \
+    ca-certificates curl gosu sudo \
+    # System utilities
+    xz-utils \
     # Graphics utilities for image processing
-    jpegoptim optipng pngquant gifsicle \
-    # System dependencies for PHP extensions
-    libmagickwand-dev \
-    $([ "$INSTALL_MONGO" = "true" ] && echo "libssl-dev") \
-    $([ "$INSTALL_AMQP" = "true" ] && echo "librabbitmq-dev") \
-    && rm -rf /var/lib/apt/lists/*
+    gifsicle jpegoptim optipng pngquant \
+    # Build tools (needed for PHP extensions)
+    build-essential \
+    # Libraries for PHP extensions
+    libmagickwand-dev libssl-dev librabbitmq-dev \
+    && \
+    # Fix CA certificates
+    update-ca-certificates --fresh && \
+    c_rehash /etc/ssl/certs/ 2>/dev/null || true && \
+    rm -rf /var/lib/apt/lists/*
+
+USER ${APP_UID}:${APP_GID}
 
 # ============================================================================
 # Stage: PHP Extensions
 # ============================================================================
 FROM dependencies AS php-extensions
 
-# Install always-on PHP extensions
-RUN phpaddmod bz2 gmp imagick inotify soap xlswriter
+USER root
 
-# Install conditional PHP extensions in parallel where possible
+# Import ARG values needed in this stage
+ARG DEPENDENCY_PHP_EXTENSIONS
+
+# Install mlocati/docker-php-extension-installer
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+# Install PHP extensions
+RUN install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
+
+USER ${APP_UID}:${APP_GID}
+
+# ============================================================================
+# Stage: PHP-FPM Configuration
+# ============================================================================
+FROM php-extensions AS fpm-config
+
+USER root
+
+# Configure PHP-FPM pool
 RUN set -eux; \
-    extensions=""; \
-    [ "$INSTALL_AMQP" = "true" ] && extensions="$extensions amqp"; \
-    [ "$INSTALL_AST" = "true" ] && extensions="$extensions ast"; \
-    [ "$INSTALL_MONGO" = "true" ] && extensions="$extensions mongodb"; \
-    [ "$INSTALL_XDEBUG" = "true" ] && extensions="$extensions xdebug"; \
-    [ -n "$extensions" ] && phpaddmod $extensions || true
+    # Create PHP-FPM log directory
+    mkdir -p /var/log/php-fpm && \
+    chown "${APP_USER}:${APP_GID}" /var/log/php-fpm && \
+    chmod 755 /var/log/php-fpm && \
+    \
+    # Configure FPM pool to run as our user
+    sed -i "s/user = www-data/user = ${APP_USER}/g" /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i "s/group = www-data/group = ${APP_USER}/g" /usr/local/etc/php-fpm.d/www.conf && \
+    \
+    # Configure FPM to log to our directory
+    sed -i "s|;access.log = log/\$pool.access.log|access.log = /var/log/php-fpm/access.log|g" /usr/local/etc/php-fpm.d/www.conf && \
+    \
+    # Configure FPM to catch worker output
+    sed -i "s|;catch_workers_output = yes|catch_workers_output = yes|g" /usr/local/etc/php-fpm.d/www.conf && \
+    \
+    # Configure error log
+    echo "php_admin_value[error_log] = /var/log/php-fpm/error.log" >> /usr/local/etc/php-fpm.d/www.conf
 
-# Set working directory
-WORKDIR ${APP_PATH}
+USER ${APP_UID}:${APP_GID}
 
-# Validation step - ensure critical services are configured
-RUN set -eux; \
-    php --version; \
-    php-fpm -t; \
-    echo "✓ All services validated successfully"
+# ============================================================================
+# Stage: Final Image
+# ============================================================================
+FROM fpm-config AS final
 
-# Expose ports
+USER root
+
+# Import ARG values needed in this stage
+ARG APP_USER=dockerkit
+ARG APP_UID=1000
+ARG APP_GID=1000
+
+# Configure user for sudo access (needed for entrypoint scripts)
+RUN usermod -aG sudo "${APP_USER}" && \
+    echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
+
+# ============================================================================
+# ENTRYPOINT Configuration
+# ============================================================================
+# Copy and setup entrypoint script with proper permissions
+COPY --chmod=0755 entrypoint.sh /usr/local/bin/
+
+# Add healthcheck for PHP-FPM monitoring
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD php-fpm -t || exit 1
+
+# Set final configuration
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["php-fpm", "-F"]
+
+WORKDIR /var/www
+
+# Expose PHP-FPM port
 EXPOSE 9000
+
+USER ${APP_UID}:${APP_GID}
