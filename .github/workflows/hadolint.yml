@@ -32,6 +32,6 @@ jobs:
         with:
           dockerfile: |
             workspace/Dockerfile
-            nginx/Dockerfile
+            php-fpm/Dockerfile
           format: gcc
           failure-threshold: error
