@@ -1,2 +1,6 @@
 extends:
-  - '@commitlint/config-conventional' 
+  - '@commitlint/config-conventional'
+
+rules:
+  header-max-length: [0]  # disable header length check
+  body-max-line-length: [0]  # disable body line length check

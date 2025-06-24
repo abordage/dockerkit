@@ -1,0 +1,41 @@
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# Git directory
+.git
+.gitignore
+
+# CI/CD files
+.github
+.gitlab-ci.yml
+
+# Documentation
+README.md
+*.md
+
+# Docker files (except current)
+Dockerfile.*
+!Dockerfile
+
+# Logs and cache
+logs/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# Development files
+.env*
+auth.json*
+

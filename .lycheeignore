@@ -1,0 +1,16 @@
+# Exclude example domains
+example\.com
+example\.org
+example\.net
+
+# Exclude localhost and local IPs
+localhost
+127\.0\.0\.1
+0\.0\.0\.0
+
+# Exclude placeholder URLs
+your-domain\.com
+yourdomain\.com
+
+# Exclude authentication-required URLs
+.*\.local

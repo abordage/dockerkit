@@ -1,0 +1,16 @@
+.idea
+/logs
+.env
+
+/nginx/ssl/*.crt
+/nginx/ssl/*.key
+/nginx/ssl/*.csr
+/nginx/conf.d/*.local.conf
+.DS_Store
+
+# Composer authentication
+/workspace/auth.json
+
+# Auto-generated network aliases
+docker-compose.aliases.yml
+

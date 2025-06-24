@@ -1,0 +1,36 @@
+name: ShellCheck
+
+on:
+  push:
+    paths:
+      - '**/*.sh'
+      - 'tools/**'
+      - '.shellcheckrc'
+  pull_request:
+    paths:
+      - '**/*.sh'
+      - 'tools/**'
+      - '.shellcheckrc'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          severity: warning
+          format: gcc
+          check_together: 'yes'

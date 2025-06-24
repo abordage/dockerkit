@@ -1,0 +1,28 @@
+-- PostgreSQL initialization script example
+-- Rename this file to init.sql to enable automatic execution
+
+-- Create additional databases
+-- CREATE DATABASE example_db;
+-- CREATE DATABASE test_db;
+
+-- Create users
+-- CREATE USER app_user WITH ENCRYPTED PASSWORD 'password';
+-- GRANT ALL PRIVILEGES ON DATABASE example_db TO app_user;
+
+-- Create extensions
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Example table creation
+-- \c example_db;
+-- CREATE TABLE users (
+--     id SERIAL PRIMARY KEY,
+--     username VARCHAR(50) UNIQUE NOT NULL,
+--     email VARCHAR(100) UNIQUE NOT NULL,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- );
+
+-- Insert sample data
+-- INSERT INTO users (username, email) VALUES
+--     ('admin', 'admin@example.com'),
+--     ('user1', 'user1@example.com');

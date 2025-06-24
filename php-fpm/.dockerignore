@@ -1,0 +1,12 @@
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp

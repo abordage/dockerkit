@@ -43,6 +43,14 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for automate
 | `tools`     | Scripts and utility tools              |
 | `project`   | Project-wide changes                   |
 
+### Message Length Requirements
+
+To maintain consistency and readability:
+
+- **Header** (first line): Maximum 100 characters
+- **Body lines**: Maximum 100 characters per line
+- **Footer**: No length restrictions
+
 ### Examples
 
 ```bash
@@ -73,6 +81,21 @@ feat(docker)!: migrate to Docker Compose v2
 
 BREAKING CHANGE: Docker Compose v1 is no longer supported.
 Users must upgrade to Docker Compose v2 to use this version.
+
+# Proper body formatting (max 100 chars per line)
+ci: add Docker Build Checks workflow
+
+- Introduced `.github/workflows/docker-build-checks.yml` for automated
+  Docker build validation and docker-compose linting.
+- Refined `nginx/Dockerfile` and `workspace/Dockerfile` with OCI standard
+  labels for metadata and improved maintainability.
+- Added `check-dockerfiles` and `lint` targets in `Makefile` to facilitate
+  quality assurance tasks.
+
+feat: add project setup and maintenance targets
+
+- Add `reset`, `check-env`, and `create-logs-dir` targets to improve
+  project setup and maintenance workflow.
 ```
 
 ## Release Process
@@ -183,12 +206,19 @@ For feature requests, please describe:
 - **Discussions**: Use GitHub Discussions for questions and ideas
 - **Documentation**: Check README.md and project documentation
 
-## Recognition
+## CI/CD
 
-Contributors will be recognized in:
+DockerKit includes comprehensive automated quality checks:
 
-- Release notes (automatic via semantic-release)
-- Project documentation
-- GitHub contributors list
+| Check                     | Tool                                                                                     | Purpose                                   |
+|---------------------------|------------------------------------------------------------------------------------------|-------------------------------------------|
+| **Docker Best Practices** | [Docker Build Checks](https://github.com/marketplace/actions/docker-setup-buildx)        | Dockerfile linting                        |
+| **Dockerfile Linting**    | [Hadolint](https://github.com/marketplace/actions/hadolint-action)                       | Advanced Dockerfile static analysis       |
+| **Shell Scripts**         | [ShellCheck](https://github.com/marketplace/actions/shellcheck)                          | Shell script static analysis              |
+| **Markdown**              | [markdownlint-cli2](https://github.com/marketplace/actions/markdownlint-cli2-action)     | Markdown formatting and style consistency |
+| **Links**                 | [Lychee](https://github.com/marketplace/actions/lychee-broken-link-checker)              | Broken link detection in documentation    |
+| **Environment Files**     | [dotenv-linter](https://github.com/marketplace/actions/run-dotenv-linter-with-reviewdog) | .env file validation and security checks  |
+
+All checks run automatically on pull requests.
 
 Thank you for contributing to DockerKit!

@@ -1,0 +1,1 @@
+# * * * * * dockerkit /usr/bin/php /var/www/some-project.local/artisan schedule:run >> /dev/null 2>&1
