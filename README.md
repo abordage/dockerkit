@@ -1,6 +1,6 @@
 # 🚀 Modern Docker Stack for Local Development
 
-![GitHub Tag](https://img.shields.io/github/v/tag/abordage/dockerkit)
+![GitHub Release](https://img.shields.io/github/v/release/abordage/dockerkit)
 ![GitHub last commit](https://img.shields.io/github/last-commit/abordage/dockerkit)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
@@ -9,7 +9,7 @@
 **What you get:**
 
 - **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
-- **Full site automation** — nginx config generation, SSL certificate creation, /etc/hosts management
+- **Full site automation** — generate nginx configs, SSL certificates, auto-create databases, /etc/hosts management
 - **HTTPS between microservices** — containers communicate securely out of the box
 - **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer pre-installed
 - **Streamlined workflow** — `make setup`, `make start`, `make status` covers everything
@@ -704,7 +704,7 @@ Debugging:
 | **Nginx Configuration**     | ✅ Auto-generated configs with project type detection         | ❌ Manual nginx configuration    |
 | **Hosts Management**        | ✅ Automatic `.local` domains addition with hostctl           | ❌ Manual hosts file editing     |
 | **MinIO Bucket Management** | ✅ Automatic bucket creation with configurable policies       | ❌ Manual bucket setup           |
-| **Database Creation**       | ✅ Automatic database creation for local sites (coming soon)  | ❌ Manual database setup         |
+| **Database Creation**       | ✅ Automatic database creation for local sites                | ❌ Manual database setup         |
 | **Container Optimization**  | ✅ Multi-stage builds, smaller images, faster builds, caching | ⚠️ Traditional Docker approach  |
 | **Project Maturity**        | ⚠️ Modern but newer project                                  | ✅ Battle-tested, proven by time |
 | **Available Services**      | ⚠️ Focused essential toolkit                                 | ✅ Extensive service library     |
