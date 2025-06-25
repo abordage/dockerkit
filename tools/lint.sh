@@ -134,9 +134,16 @@ check_bash_scripts() {
             scripts+=("$script")
         done < <(find . -name "*.sh" -type f ! -path "./.git/*" -print0)
 
-        # Find executable files with bash shebang
+        # Find files in entrypoint.d directories (they should all be bash scripts)
         while IFS= read -r -d '' script; do
-            if [[ "$script" != *.sh ]] && head -1 "$script" 2>/dev/null | grep -q "^#!/bin/bash"; then
+            if head -1 "$script" 2>/dev/null | grep -q "^#!/bin/bash"; then
+                scripts+=("$script")
+            fi
+        done < <(find . -path "*/entrypoint.d/*" -type f ! -path "./.git/*" -print0)
+
+        # Find other executable files with bash shebang (excluding .sh and entrypoint.d already covered)
+        while IFS= read -r -d '' script; do
+            if [[ "$script" != *.sh ]] && [[ "$script" != */entrypoint.d/* ]] && head -1 "$script" 2>/dev/null | grep -q "^#!/bin/bash"; then
                 scripts+=("$script")
             fi
         done < <(find . -type f -executable ! -path "./.git/*" -print0 2>/dev/null)
@@ -145,13 +152,17 @@ check_bash_scripts() {
         for script in "${scripts[@]}"; do
             ((script_count++))
 
-            if shellcheck "$script" >/dev/null 2>&1; then
+            # Run shellcheck and capture exit status
+            shellcheck "$script" >/dev/null 2>&1
+            local shellcheck_status=$?
+
+            if [ $shellcheck_status -eq 0 ]; then
                 print_success "$(basename "$script")"
             else
                 print_error "$(basename "$script") - issues found"
                 ((error_count++))
                 # Show actual errors for failed files
-                shellcheck "$script" 2>&1 | sed 's/^/    /'
+                shellcheck "$script" 2>&1 | sed 's/^/    /' || true
             fi
         done
 

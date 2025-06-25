@@ -773,13 +773,16 @@ mc anonymous set private minio/my-bucket   # Make private
 
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
-- [ ] Implement automatic database creation for detected projects
+- [x] Implement automatic database creation for detected projects
+- [ ] Add support for Python project type detection (requirements.txt, pyproject.toml)
+- [ ] Add support for Node.js project type detection (package.json, next.config.js)
+- [ ] Add MongoDB database support with automatic collection setup
+- [ ] Add automatic database migrations after creation
 - [ ] Add IDEs integration support (terminal, plugins, .devcontainer)
 - [ ] Add RoadRunner support as an alternative to PHP-FPM
 - [ ] Add FrankenPHP support for modern PHP applications
 - [ ] Add Laravel Horizon support for queue monitoring
 - [ ] Add pgBadger support for PostgreSQL log analysis
-- [ ] Add support for Node.js project type detection (package.json, next.config.js)
 - [ ] Migrate Portainer to secure HTTPS port 9443* (currently using HTTP on 9010)
 
 ## Contributing
