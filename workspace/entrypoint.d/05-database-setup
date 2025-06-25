@@ -1,0 +1,385 @@
+#!/bin/bash
+
+# ============================================================================
+# DATABASE SETUP SCRIPT
+# ============================================================================
+# Automatically creates databases for detected .local projects
+# Supports Laravel, Symfony, WordPress and other PHP projects
+# ============================================================================
+set -euo pipefail
+
+# Color output functions
+log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
+log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
+log_info() { echo "[$SCRIPT_NAME] $*"; }
+log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
+
+SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
+
+# Service mapping (extensible for future database types)
+declare -A SERVICE_MAPPING=(
+    ["mysql"]="mysql"
+    ["pgsql"]="postgres"
+)
+
+declare -A CLIENT_COMMANDS=(
+    ["mysql"]="mysql"
+    ["pgsql"]="psql"
+)
+
+# Global arrays for discovered data
+declare -a discovered_projects=()
+declare -a discovered_databases=()
+
+# ============================================================================
+# PROJECT SCANNING AND DETECTION
+# ============================================================================
+
+# Scan for .local projects in /var/www directory
+scan_local_projects() {
+    local projects_dir="/var/www"
+    discovered_projects=()
+
+    if [ ! -d "$projects_dir" ]; then
+        log_warn "Projects directory not found: $projects_dir"
+        return 0
+    fi
+
+    # Look for directories with .local suffix
+    for dir in "$projects_dir"/*.local; do
+        if [ -d "$dir" ]; then
+            local project_name
+            project_name=$(basename "$dir")
+            discovered_projects+=("$project_name")
+        fi
+    done
+
+    if [ ${#discovered_projects[@]} -eq 0 ]; then
+        log_info "No .local projects found in $projects_dir"
+        return 0
+    fi
+
+    log_info "Found ${#discovered_projects[@]} .local projects: ${discovered_projects[*]}"
+    return 0
+}
+
+# Detect project type based on files and structure
+detect_project_type() {
+    local project_path="$1"
+
+    if [ ! -d "$project_path" ]; then
+        echo "unknown"
+        return 0
+    fi
+
+    # Laravel detection - artisan file is the key indicator
+    if [ -f "$project_path/artisan" ] && [ -f "$project_path/composer.json" ]; then
+        # Double-check it's Laravel by looking for Laravel-specific files
+        if grep -q "laravel/framework" "$project_path/composer.json" 2>/dev/null; then
+            echo "laravel"
+            return 0
+        fi
+    fi
+
+    # Symfony detection - multiple indicators
+    if [ -f "$project_path/bin/console" ] && [ -f "$project_path/composer.json" ]; then
+        if grep -q "symfony/framework-bundle\|symfony/console" "$project_path/composer.json" 2>/dev/null; then
+            echo "symfony"
+            return 0
+        fi
+    fi
+
+    # Alternative Symfony detection
+    if [ -f "$project_path/symfony.lock" ]; then
+        echo "symfony"
+        return 0
+    fi
+
+    # WordPress detection - multiple indicators
+    if [ -f "$project_path/wp-config.php" ] || [ -f "$project_path/wp-config-sample.php" ]; then
+        echo "wordpress"
+        return 0
+    fi
+
+    if [ -f "$project_path/wp-content/index.php" ] || [ -f "$project_path/wp-includes/version.php" ]; then
+        echo "wordpress"
+        return 0
+    fi
+
+    # Static HTML detection - has index.html but no PHP
+    if [ -f "$project_path/index.html" ] && [ ! -f "$project_path/index.php" ]; then
+        # Check if it's really static (no server-side processing)
+        if [ ! -f "$project_path/composer.json" ] && [ ! -f "$project_path/package.json" ]; then
+            echo "static"
+            return 0
+        fi
+    fi
+
+    # Simple PHP detection - has PHP files but no framework
+    if find "$project_path" -name "*.php" -type f 2>/dev/null | head -1 | grep -q "\.php$"; then
+        echo "simple"
+        return 0
+    fi
+
+    # Default fallback
+    echo "simple"
+    return 0
+}
+
+# ============================================================================
+# ENVIRONMENT FILE PARSING
+# ============================================================================
+
+# Parse environment files for database configuration
+parse_env_files() {
+    local project_path="$1"
+    local env_files=(".env" ".env.testing")
+
+    # Clear global array
+    discovered_databases=()
+
+    for env_file in "${env_files[@]}"; do
+        local env_path="$project_path/$env_file"
+        if [ -f "$env_path" ]; then
+            parse_single_env_file "$env_path" "$env_file"
+        fi
+    done
+}
+
+# Parse single environment file for database settings
+parse_single_env_file() {
+    local env_path="$1"
+    local env_name="$2"
+
+    # Extract database configuration
+    local db_connection
+    local db_database
+
+    # Read DB_CONNECTION with various possible formats (handle CRLF line endings)
+    db_connection=$(grep "^DB_CONNECTION=" "$env_path" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs)
+    db_database=$(grep "^DB_DATABASE=" "$env_path" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs)
+
+    # Validate extracted values
+    if [[ -n "$db_connection" && -n "$db_database" ]]; then
+        # Check if this database type is supported
+        if [[ "${SERVICE_MAPPING[$db_connection]:-}" ]]; then
+            discovered_databases+=("$db_connection:$db_database:$env_name")
+            log_info "Found database config: $db_connection/$db_database in $env_name"
+        else
+            log_warn "Unsupported database type '$db_connection' in $env_name"
+        fi
+    fi
+}
+
+# ============================================================================
+# SERVICE AND CLIENT VALIDATION
+# ============================================================================
+
+# Check if database service is running and accessible
+check_service_status() {
+    local service_name="$1"
+
+    case "$service_name" in
+        "mysql")
+            # Use credentials from docker-compose environment or defaults
+            local mysql_user="${MYSQL_USER:-dockerkit}"
+            local mysql_password="${MYSQL_PASSWORD:-dockerkit}"
+
+            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "SELECT 1;" >/dev/null 2>&1; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        "postgres")
+            # Use credentials from docker-compose environment or defaults
+            local postgres_user="${POSTGRES_USER:-dockerkit}"
+            local postgres_password="${POSTGRES_PASSWORD:-dockerkit}"
+            local postgres_db="${POSTGRES_DB:-default}"
+
+            if PGPASSWORD="$postgres_password" psql -h postgres -U "$postgres_user" -d "$postgres_db" -c "SELECT 1;" >/dev/null 2>&1; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unknown service: $service_name"
+            return 1
+            ;;
+    esac
+}
+
+# Check if database client is available in container
+check_client_availability() {
+    local db_type="$1"
+    local client_cmd="${CLIENT_COMMANDS[$db_type]:-}"
+
+    if [[ -z "$client_cmd" ]]; then
+        log_error "No client command defined for database type: $db_type"
+        return 1
+    fi
+
+    if ! command -v "$client_cmd" >/dev/null 2>&1; then
+        log_error "Client '$client_cmd' not available for $db_type"
+        return 1
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# DATABASE CREATION
+# ============================================================================
+
+# Create database for specific type and name
+create_database() {
+    local db_type="$1"
+    local db_name="$2"
+    local env_file="$3"
+
+    case "$db_type" in
+        "mysql")
+            local mysql_user="${MYSQL_USER:-dockerkit}"
+            local mysql_password="${MYSQL_PASSWORD:-dockerkit}"
+
+            # Check if database already exists by trying to use it
+            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "USE \`$db_name\`; SELECT 1;" >/dev/null 2>&1; then
+                log_skip "Database '$db_name' already exists (MySQL, $env_file)"
+                return 0
+            fi
+
+            # Create database
+            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "CREATE DATABASE IF NOT EXISTS \`$db_name\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >/dev/null 2>&1; then
+                log_ok "Database '$db_name' created (MySQL, $env_file)"
+                return 0
+            else
+                log_error "Failed to create database '$db_name' (MySQL, $env_file)"
+                return 1
+            fi
+            ;;
+        "pgsql")
+            local postgres_user="${POSTGRES_USER:-dockerkit}"
+            local postgres_password="${POSTGRES_PASSWORD:-dockerkit}"
+
+            # Check if database already exists by trying to connect to it
+            if PGPASSWORD="$postgres_password" psql -h postgres -U "$postgres_user" -d "$db_name" -c "SELECT 1;" >/dev/null 2>&1; then
+                log_skip "Database '$db_name' already exists (PostgreSQL, $env_file)"
+                return 0
+            fi
+
+            # Create database
+            if PGPASSWORD="$postgres_password" createdb -h postgres -U "$postgres_user" "$db_name" >/dev/null 2>&1; then
+                log_ok "Database '$db_name' created (PostgreSQL, $env_file)"
+                return 0
+            else
+                log_error "Failed to create database '$db_name' (PostgreSQL, $env_file)"
+                return 1
+            fi
+            ;;
+        *)
+            log_warn "Unsupported database type: $db_type"
+            return 1
+            ;;
+    esac
+}
+
+# ============================================================================
+# PROJECT PROCESSING
+# ============================================================================
+
+# Process database creation for a single database configuration
+process_database_creation() {
+    local db_type="$1"
+    local db_name="$2"
+    local env_file="$3"
+
+    # Check if database type is supported
+    if [[ ! "${SERVICE_MAPPING[$db_type]:-}" ]]; then
+        log_warn "Unsupported database type '$db_type' in $env_file"
+        return 0
+    fi
+
+    local service_name="${SERVICE_MAPPING[$db_type]}"
+
+    # Check client availability
+    if ! check_client_availability "$db_type"; then
+        return 0
+    fi
+
+    # Check service status
+    if ! check_service_status "$service_name"; then
+        log_skip "Database creation for '$db_name' ($service_name service not running, $env_file)"
+        return 0
+    fi
+
+    # Create database
+    create_database "$db_type" "$db_name" "$env_file" || true
+}
+
+# Process single project for database creation
+process_project() {
+    local project_name="$1"
+    local project_path="/var/www/$project_name"
+
+    if [ ! -d "$project_path" ]; then
+        log_warn "Project directory not found: $project_path"
+        return 0
+    fi
+
+    # Detect project type
+    local project_type
+    project_type=$(detect_project_type "$project_path")
+    log_info "Processing $project_name (type: $project_type)"
+
+    # Skip non-PHP projects that typically don't use databases
+    if [[ "$project_type" == "static" ]]; then
+        log_info "Skipping static project: $project_name"
+        return 0
+    fi
+
+    # Parse environment files for database configuration
+    parse_env_files "$project_path"
+
+    if [[ ${#discovered_databases[@]} -eq 0 ]]; then
+        log_info "No database configuration found for $project_name"
+        return 0
+    fi
+
+    # Process each database configuration
+    for db_config in "${discovered_databases[@]}"; do
+        IFS=':' read -r db_type db_name env_file <<< "$db_config"
+        process_database_creation "$db_type" "$db_name" "$env_file"
+    done
+
+    return 0
+}
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+# Main function - entry point for database automation
+main() {
+    log_info "Starting database automation for .local projects..."
+
+    # Step 1: Scan for .local projects
+    if ! scan_local_projects; then
+        log_info "Database automation completed (no projects found)"
+        echo ""
+        return 0
+    fi
+
+    # Step 2: Process each discovered project
+    for project in "${discovered_projects[@]}"; do
+        process_project "$project" || true
+    done
+
+    log_info "Database automation completed"
+    echo ""
+}
+
+# Execute main function
+main "$@"
