@@ -329,7 +329,9 @@ show_summary() {
 
     log_info "  • Bash history: ${BASH_HISTSIZE}/${BASH_HISTFILESIZE}"
 
-    [[ "${DEBUG_MODE}" = "1" ]] && show_debug_info || true
+    if [[ "${DEBUG_MODE}" = "1" ]]; then
+        show_debug_info
+    fi
 }
 
 show_debug_info() {
