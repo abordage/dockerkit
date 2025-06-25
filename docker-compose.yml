@@ -16,7 +16,6 @@ services:
         # Xdebug Configuration
         - PHP_XDEBUG_CLIENT_PORT
         # Database clients
-        - POSTGRES_CLIENT_VERSION
         - INSTALL_POSTGRES_CLIENT
         - INSTALL_MYSQL_CLIENT
         # Node.js
