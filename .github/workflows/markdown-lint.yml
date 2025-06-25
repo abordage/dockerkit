@@ -30,5 +30,7 @@ jobs:
       - name: Run markdownlint-cli2
         uses: DavidAnson/markdownlint-cli2-action@v20
         with:
-          globs: '**/*.md'
+          globs: |
+            **/*.md
+            !CHANGELOG.md
           separator: '\n'
