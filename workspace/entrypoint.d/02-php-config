@@ -12,10 +12,15 @@ log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
 log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
 log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
 log_info() { echo "[$SCRIPT_NAME] $*"; }
+log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
 
-# PHP configuration file path
 readonly PHP_CONFIG_FILE="/usr/local/etc/php/conf.d/99-dockerkit.ini"
 SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
 
 log_info "Generating PHP configuration from environment variables..."
 
@@ -56,7 +61,6 @@ log_info "Configuration file: $PHP_CONFIG_FILE"
 
 # Show generated configuration for debugging
 if [[ "${DEBUG_PHP_CONFIG:-0}" = "1" ]]; then
-    echo ""
     log_info "Generated PHP configuration:"
     log_info "----------------------------------------"
     cat "$PHP_CONFIG_FILE"

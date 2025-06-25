@@ -80,6 +80,12 @@ services:
       # Bash configuration
       - ENABLE_FZF
       - ENABLE_STARSHIP
+      # Database connection configuration (for automatic database creation)
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - MYSQL_USER
+      - MYSQL_PASSWORD
     volumes:
       - ${HOST_APP_PATH}:/var/www:cached
       - ${HOST_APP_PATH}/composer/cache:/home/dockerkit/.composer/cache
