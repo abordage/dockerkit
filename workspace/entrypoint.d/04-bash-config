@@ -8,7 +8,6 @@
 # ============================================================================
 set -euo pipefail
 
-readonly DEBUG_MODE=0              # Set to 1 for debugging output
 readonly BASH_HISTSIZE=10000       # History size
 readonly BASH_HISTFILESIZE=20000   # History file size
 
@@ -23,7 +22,8 @@ log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
 log_info() { echo "[$SCRIPT_NAME] $*"; }
 
 SCRIPT_NAME=$(basename "$0")
-USER_HOME="/home/${APP_USER}"
+readonly SCRIPT_NAME
+readonly USER_HOME="/home/${APP_USER}"
 
 # ============================================================================
 # Validation and utilities
@@ -302,54 +302,7 @@ fresh-install() {
 EOF
 }
 
-show_summary() {
-    log_info "Bash configuration summary:"
-    log_info "  • Development environment: ✓ (always enabled)"
-    log_info "  • Custom functions: ✓ (always enabled)"
-    log_info "  • Laravel helpers: ✓ (always enabled)"
-    log_info "  • Git shortcuts: ✓ (always enabled)"
 
-    # Check fzf integration safely
-    local fzf_status="✗"
-    if [[ "${FZF_ENABLED}" = "1" ]]; then
-        if command -v fzf >/dev/null 2>&1; then
-            fzf_status="✓"
-        fi
-    fi
-    log_info "  • fzf integration: ${fzf_status}"
-
-    # Check starship prompt safely
-    local starship_status="✗"
-    if [[ "${STARSHIP_ENABLED}" = "1" ]]; then
-        if command -v starship >/dev/null 2>&1; then
-            starship_status="✓"
-        fi
-    fi
-    log_info "  • Starship prompt: ${starship_status}"
-
-    log_info "  • Bash history: ${BASH_HISTSIZE}/${BASH_HISTFILESIZE}"
-
-    [[ "${DEBUG_MODE}" = "1" ]] && show_debug_info || true
-}
-
-show_debug_info() {
-    log_info "=== DEBUG INFO ==="
-    log_info ".bash_aliases content:"
-    if [ -f "${USER_HOME}/.bash_aliases" ]; then
-        head -10 "${USER_HOME}/.bash_aliases" || true
-    else
-        log_warn ".bash_aliases not found"
-    fi
-    log_info "..."
-    log_info ".bashrc content:"
-    if [ -f "${USER_HOME}/.bashrc" ]; then
-        head -15 "${USER_HOME}/.bashrc" || true
-    else
-        log_warn ".bashrc not found"
-    fi
-    log_info "..."
-    log_info "=================="
-}
 
 # ============================================================================
 # Main execution
@@ -385,7 +338,7 @@ main() {
     set_ownership
 
     log_ok "Bash configuration completed successfully"
-    show_summary
+    echo ""
 
     # Ensure successful exit
     exit 0

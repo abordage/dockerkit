@@ -14,8 +14,12 @@ log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
 log_info() { echo "[$SCRIPT_NAME] $*"; }
 log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
 
-# Simple MinIO client setup
 SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
 
 log_info "Setting up MinIO client for workspace container..."
 

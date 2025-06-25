@@ -16,7 +16,6 @@ services:
         # Xdebug Configuration
         - PHP_XDEBUG_CLIENT_PORT
         # Database clients
-        - POSTGRES_CLIENT_VERSION
         - INSTALL_POSTGRES_CLIENT
         - INSTALL_MYSQL_CLIENT
         # Node.js
@@ -81,6 +80,12 @@ services:
       # Bash configuration
       - ENABLE_FZF
       - ENABLE_STARSHIP
+      # Database connection configuration (for automatic database creation)
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - MYSQL_USER
+      - MYSQL_PASSWORD
     volumes:
       - ${HOST_APP_PATH}:/var/www:cached
       - ${HOST_APP_PATH}/composer/cache:/home/dockerkit/.composer/cache

@@ -5,11 +5,13 @@ on:
     paths:
       - '**/*.sh'
       - 'tools/**'
+      - '**/entrypoint.d/*'
       - '.shellcheckrc'
   pull_request:
     paths:
       - '**/*.sh'
       - 'tools/**'
+      - '**/entrypoint.d/*'
       - '.shellcheckrc'
 
 concurrency:

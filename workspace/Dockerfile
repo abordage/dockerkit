@@ -17,7 +17,6 @@ ARG PHP_XDEBUG_CLIENT_PORT=9003
 ARG INSTALL_JAVA=true
 
 # Database Clients
-ARG POSTGRES_CLIENT_VERSION=15
 ARG INSTALL_POSTGRES_CLIENT=true
 ARG INSTALL_MYSQL_CLIENT=false
 
@@ -72,7 +71,6 @@ USER root
 ARG INSTALL_JAVA=true
 ARG INSTALL_MYSQL_CLIENT=false
 ARG INSTALL_POSTGRES_CLIENT=true
-ARG POSTGRES_CLIENT_VERSION=15
 
 # Install only essential system tools
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -105,7 +103,7 @@ RUN set -eux; \
     packages=""; \
     [ "${INSTALL_JAVA}" = "true" ] && packages="${packages} ca-certificates-java default-jdk"; \
     [ "${INSTALL_MYSQL_CLIENT}" = "true" ] && packages="${packages} default-mysql-client"; \
-    [ "${INSTALL_POSTGRES_CLIENT}" = "true" ] && packages="${packages} postgresql-client-${POSTGRES_CLIENT_VERSION}"; \
+    [ "${INSTALL_POSTGRES_CLIENT}" = "true" ] && packages="${packages} postgresql-client-15"; \
     if [ -n "${packages}" ]; then \
         echo "Installing conditional packages:${packages}"; \
         apt-get update; \
