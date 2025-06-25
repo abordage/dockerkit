@@ -1,10 +1,20 @@
-# DockerKit
+# 🚀 Modern Docker Stack for Local Development
 
-> Modern Docker development environment with automated local setup
+![GitHub Tag](https://img.shields.io/github/v/tag/abordage/dockerkit)
+![GitHub last commit](https://img.shields.io/github/last-commit/abordage/dockerkit)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
+![GitHub License](https://img.shields.io/github/license/abordage/dockerkit)
 
-## Overview
+**What you get:**
 
-DockerKit is a comprehensive Docker-based development environment that provides a complete stack for web development.
+- **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
+- **Full site automation** — nginx config generation, SSL certificate creation, /etc/hosts management
+- **HTTPS between microservices** — containers communicate securely out of the box
+- **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer pre-installed
+- **Streamlined workflow** — `make setup`, `make start`, `make status` covers everything
+
+ **It simply works.** No kidding.
 
 ## Table of Contents
 
