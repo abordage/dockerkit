@@ -134,6 +134,65 @@ EOF
 }
 
 # ============================================================================
+# Input/readline configuration for better tab completion
+# ============================================================================
+setup_inputrc() {
+    log_info "Setting up readline configuration for better tab completion..."
+
+    create_file_safely "${USER_HOME}/.inputrc" << 'EOF'
+# ~/.inputrc - readline configuration for improved tab completion
+# DockerKit optimized settings
+
+# Show completions immediately on first Tab press
+set show-all-if-ambiguous on
+
+# Show completions immediately if nothing has changed
+set show-all-if-unmodified on
+
+# Case insensitive completion
+set completion-ignore-case on
+
+# Match case variations (e.g., Test -> test)
+set completion-map-case on
+
+# Colorize the common prefix of completions
+set colored-completion-prefix on
+
+# Don't ask before showing completions
+set completion-query-items -1
+
+# Show completions in multiple columns
+set print-completions-horizontally off
+
+# Page completions if too many
+set page-completions off
+
+# Don't ring bell on completion
+set bell-style none
+
+# Better history navigation
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Alt+Left/Right for word navigation
+"\e[1;3D": backward-word
+"\e[1;3C": forward-word
+
+# Ctrl+Left/Right for word navigation (alternative)
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word
+EOF
+
+    if [ $? -eq 0 ]; then
+        chown "${APP_USER}:${APP_GID}" "${USER_HOME}/.inputrc" 2>/dev/null || true
+        log_ok "Created readline configuration for improved tab completion"
+    else
+        log_error "Failed to create readline configuration"
+        return 1
+    fi
+}
+
+# ============================================================================
 # Color configuration
 # ============================================================================
 setup_colors() {
@@ -279,6 +338,11 @@ alias pest='./vendor/bin/pest'
 alias phpstan='./vendor/bin/phpstan'
 alias phpunit='./vendor/bin/phpunit'
 
+# OPcache management (when enabled)
+alias opcache-status='php -r "print_r(opcache_get_status());"'
+alias opcache-reset='php -r "opcache_reset(); echo \"OPcache cleared!\n\";"'
+alias opcache-info='php -r "print_r(opcache_get_configuration());"'
+
 # Modern file listing (with colors)
 alias ll='ls -alF --color=auto'
 alias la='ls -A --color=auto'
@@ -396,6 +460,11 @@ main() {
     if ! create_file_safely "${USER_HOME}/.bashrc" < <(generate_bashrc_content); then
         log_error "Failed to create .bashrc"
         exit 1
+    fi
+
+    # Setup readline configuration for better tab completion
+    if ! setup_inputrc; then
+        log_warn "Failed to setup readline configuration (non-critical)"
     fi
 
     # Set ownership (non-critical)
