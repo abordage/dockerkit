@@ -115,19 +115,163 @@ set_ownership() {
 }
 
 # ============================================================================
+# Shell environment configuration
+# ============================================================================
+setup_shell_environment() {
+    cat << 'EOF'
+
+# === Shell Detection Fix ===
+export SHELL=/bin/bash
+export BASH_ENV=/home/dockerkit/.bashrc
+export ENV=/home/dockerkit/.bashrc
+
+# Ensure bash is properly detected
+if [ -n "$BASH_VERSION" ]; then
+    export SHELL_NAME=bash
+    export CURRENT_SHELL=bash
+fi
+EOF
+}
+
+# ============================================================================
+# Color configuration
+# ============================================================================
+setup_colors() {
+    cat << 'EOF'
+
+# === Color support configuration ===
+export FORCE_COLOR=1
+export CLICOLOR=1
+export CLICOLOR_FORCE=1
+export COMPOSER_NO_ANSI=0
+
+# Configure Git colors
+if command -v git >/dev/null 2>&1; then
+    git config --global color.ui auto
+    git config --global color.branch auto
+    git config --global color.diff auto
+    git config --global color.status auto
+fi
+
+# Terminal color support
+if [[ -t 1 ]]; then
+    export COLORTERM=truecolor
+    export TERM=xterm-256color
+fi
+EOF
+}
+
+# ============================================================================
+# Laravel artisan completion (static implementation for performance)
+# ============================================================================
+setup_laravel_completion() {
+    cat << 'EOF'
+
+# Laravel artisan completion - static implementation
+# Based on Symfony Console completion template for optimal performance
+if command -v php >/dev/null 2>&1; then
+    # Static completion function (no dynamic Laravel bootstrap)
+    _sf_artisan() {
+        # Use newline as only separator to allow space in completion values
+        IFS=$'\n'
+        local sf_cmd="${COMP_WORDS[0]}"
+
+        # for an alias, get the real script behind it
+        sf_cmd_type=$(type -t $sf_cmd)
+        if [[ $sf_cmd_type == "alias" ]]; then
+            sf_cmd=$(alias $sf_cmd | sed -E "s/alias $sf_cmd='(.*)'/\1/")
+        elif [[ $sf_cmd_type == "file" ]]; then
+            sf_cmd=$(type -p $sf_cmd)
+        fi
+
+        if [[ $sf_cmd_type != "function" && ! -x $sf_cmd ]]; then
+            return 1
+        fi
+
+        local cur prev words cword
+        _get_comp_words_by_ref -n := cur prev words cword
+
+        local completecmd=("$sf_cmd" "_complete" "--no-interaction" "-sbash" "-c$cword")
+        for w in ${words[@]}; do
+            w=$(printf -- '%b' "$w")
+            # remove quotes from typed values
+            quote="${w:0:1}"
+            if [ "$quote" == \' ]; then
+                w="${w%\'}"
+                w="${w#\'}"
+            elif [ "$quote" == \" ]; then
+                w="${w%\"}"
+                w="${w#\"}"
+            fi
+            # empty values are ignored
+            if [ ! -z "$w" ]; then
+                completecmd+=("-i$w")
+            fi
+        done
+
+        local sfcomplete
+        if sfcomplete=$(${completecmd[@]} 2>&1); then
+            local quote suggestions
+            quote=${cur:0:1}
+
+            # Use single quotes by default if suggestions contains backslash (FQCN)
+            if [ "$quote" == '' ] && [[ "$sfcomplete" =~ \\ ]]; then
+                quote=\'
+            fi
+
+            if [ "$quote" == \' ]; then
+                # single quotes: no additional escaping (does not accept ' in values)
+                suggestions=$(for s in $sfcomplete; do printf $'%q%q%q\n' "$quote" "$s" "$quote"; done)
+            elif [ "$quote" == \" ]; then
+                # double quotes: double escaping for \ $ ` "
+                suggestions=$(for s in $sfcomplete; do
+                    s=${s//\\/\\\\}
+                    s=${s//\$/\\\$}
+                    s=${s//\`/\\\`}
+                    s=${s//\"/\\\"}
+                    printf $'%q%q%q\n' "$quote" "$s" "$quote";
+                done)
+            else
+                # no quotes: double escaping
+                suggestions=$(for s in $sfcomplete; do printf $'%q\n' $(printf '%q' "$s"); done)
+            fi
+            COMPREPLY=($(IFS=$'\n' compgen -W "$suggestions" -- $(printf -- "%q" "$cur")))
+            __ltrim_colon_completions "$cur"
+        else
+            if [[ "$sfcomplete" != *"Command \"_complete\" is not defined."* ]]; then
+                >&2 echo
+                >&2 echo $sfcomplete
+            fi
+            return 1
+        fi
+    }
+
+    # Register completion for multiple artisan command variants
+    complete -F _sf_artisan artisan
+    complete -F _sf_artisan art
+
+    # Fast command functions without dynamic completion setup
+    artisan() {
+        php artisan --ansi "$@"
+    }
+
+    art() {
+        php artisan --ansi "$@"
+    }
+fi
+EOF
+}
+
+# ============================================================================
 # Generate .bash_aliases (always full set for development)
 # ============================================================================
 generate_aliases_content() {
     cat << 'EOF'
-# Laravel/PHP aliases
-alias art='php artisan'
-alias fresh='php artisan migrate:fresh'
-alias migrate='php artisan migrate'
-alias rollback='php artisan migrate:rollback'
-alias seed='php artisan db:seed'
-alias routes='php artisan route:list'
-alias config-cache='php artisan config:cache'
-alias config-clear='php artisan config:clear'
+# Laravel/PHP aliases (artisan/art handled by functions in bashrc)
+alias fresh='php artisan migrate:fresh --ansi'
+alias migrate='php artisan migrate --ansi'
+alias rollback='php artisan migrate:rollback --ansi'
+alias seed='php artisan db:seed --ansi'
 
 # Development tools
 alias pint='./vendor/bin/pint'
@@ -135,36 +279,12 @@ alias pest='./vendor/bin/pest'
 alias phpstan='./vendor/bin/phpstan'
 alias phpunit='./vendor/bin/phpunit'
 
-# Composer shortcuts
-alias ci='composer install'
-alias cu='composer update'
-alias cr='composer require'
-alias crd='composer require --dev'
-alias cda='composer dump-autoload'
-
-# Modern file listing
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-alias tree='tree -I vendor'
-
-# Git shortcuts
-alias gs='git status'
-alias ga='git add'
-alias gaa='git add --all'
-alias gc='git commit'
-alias gcm='git commit -m'
-alias gp='git push'
-alias gl='git pull'
-alias gd='git diff'
-alias gco='git checkout'
-alias gb='git branch'
-alias glog='git log --oneline --graph --decorate'
-
-# Docker shortcuts
-alias dps='docker ps'
-alias dlog='docker logs -f'
-alias dexec='docker exec -it'
+# Modern file listing (with colors)
+alias ll='ls -alF --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias ls='ls --color=auto'
+alias tree='tree -I vendor -C'
 
 # Quick navigation
 alias ..='cd ..'
@@ -213,8 +333,10 @@ export PHP_IDE_CONFIG="${PHP_IDE_CONFIG:-}"
 export APP_ENV=\${APP_ENV:-local}
 export LOG_CHANNEL=\${LOG_CHANNEL:-stderr}
 
+$(setup_shell_environment)
+$(setup_colors)
+$(setup_laravel_completion)
 $(generate_optional_tools)
-$(generate_development_functions)
 EOF
 }
 
@@ -245,64 +367,6 @@ eval \"\$(starship init bash)\"
 
     echo "$content"
 }
-
-# ============================================================================
-# Development functions (always enabled)
-# ============================================================================
-generate_development_functions() {
-    cat << 'EOF'
-
-# Laravel/PHP development functions
-artisan() {
-    if [ -f artisan ]; then
-        php artisan "$@"
-    else
-        echo "No artisan file found in current directory"
-        return 1
-    fi
-}
-
-composer-update() {
-    composer update "$@" && composer dump-autoload
-}
-
-# Git helpers
-git-clean-branches() {
-    git branch --merged | grep -v "\*\|main\|master\|develop" | xargs -n 1 git branch -d
-}
-
-# Development shortcuts
-serve() {
-    if [ -f artisan ]; then
-        php artisan serve "$@"
-    else
-        php -S localhost:8000 "$@"
-    fi
-}
-
-tinker() {
-    if [ -f artisan ]; then
-        php artisan tinker
-    else
-        echo "Laravel not detected"
-        return 1
-    fi
-}
-
-# Quick project helpers
-fresh-install() {
-    if [ -f composer.json ]; then
-        composer install
-        if [ -f artisan ]; then
-            php artisan key:generate
-            php artisan migrate:fresh --seed
-        fi
-    fi
-}
-EOF
-}
-
-
 
 # ============================================================================
 # Main execution
