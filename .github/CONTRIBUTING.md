@@ -98,6 +98,55 @@ feat: add project setup and maintenance targets
   project setup and maintenance workflow.
 ```
 
+### AI Assistant Prompt
+
+For users of PhpStorm's AI Assistant, you can use the following prompt to generate commit messages that adhere to our conventions. This helps ensure consistency and leverages AI to speed up your workflow.
+
+```text
+Generate a commit message for the given code changes.
+
+Strictly adhere to the following rules based on the project's contributing guidelines:
+
+1.  Format: The commit message must follow the Conventional Commits specification.
+    - The format is: `<type>(scope): <description>`
+    - The header (first line) must not exceed 100 characters.
+    - Each line of the optional body must be wrapped at 100 characters.
+
+2.  Type: The `<type>` must be one of the following, based on the nature of the changes:
+    - `feat`: A new feature for the user.
+    - `fix`: A bug fix for the user.
+    - `perf`: A code change that improves performance.
+    - `refactor`: A code change that neither fixes a bug nor adds a feature.
+    - `docs`: Documentation-only changes.
+    - `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc).
+    - `test`: Adding missing tests or correcting existing tests.
+    - `chore`: Changes to the build process or auxiliary tools and libraries.
+    - `ci`: Changes to CI configuration files and scripts.
+
+3.  Scope: The `<scope>` must be one of the following, reflecting the area of the codebase that was changed. Choose the most relevant one.
+    - `docker`: Docker configuration, Dockerfiles, or compose files.
+    - `nginx`: Nginx server configuration.
+    - `workspace`: The PHP workspace container.
+    - `mysql`: MySQL database configuration.
+    - `postgres`: PostgreSQL database configuration.
+    - `ssl`: SSL certificates and HTTPS setup.
+    - `tools`: Scripts and utility tools.
+    - `project`: Project-wide changes or when multiple scopes are affected.
+
+4.  Description: Write a short, imperative summary of the code changes. Start with a lowercase letter and do not end with a period.
+
+5.  Body:
+    - If the change is complex, add an optional body after the header, separated by a blank line.
+    - Explain the "what" and "why" of the change, not the "how".
+    - Use bullet points for lists if it improves readability.
+
+6.  Breaking Changes:
+    - If the commit introduces a breaking change, append `!` after the `type(scope)`.
+    - Add a footer starting with `BREAKING CHANGE:` on a new line after the body, explaining the breaking change and what users need to do.
+
+Analyze the provided diff and output only the raw commit message text without any introductory phrases.
+```
+
 ## Release Process
 
 Our releases are fully automated using [semantic-release](https://github.com/semantic-release/semantic-release):
