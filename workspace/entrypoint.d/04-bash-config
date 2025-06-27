@@ -143,6 +143,11 @@ setup_inputrc() {
 # ~/.inputrc - readline configuration for improved tab completion
 # DockerKit optimized settings
 
+# UTF-8 and locale support
+set input-meta on
+set output-meta on
+set convert-meta off
+
 # Show completions immediately on first Tab press
 set show-all-if-ambiguous on
 
@@ -169,6 +174,11 @@ set page-completions off
 
 # Don't ring bell on completion
 set bell-style none
+
+# Visual improvements for completion
+set visible-stats on
+set colored-stats on
+set mark-directories on
 
 # Better history navigation
 "\e[A": history-search-backward

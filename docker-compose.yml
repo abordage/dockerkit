@@ -80,6 +80,9 @@ services:
       # Bash configuration
       - ENABLE_FZF
       - ENABLE_STARSHIP
+      # Locale configuration for proper UTF-8 support
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
       # Database connection configuration (for automatic database creation)
       - POSTGRES_USER
       - POSTGRES_PASSWORD
