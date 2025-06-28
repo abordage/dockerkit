@@ -91,11 +91,11 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
     volumes:
-      - ${HOST_DATA_PATH}/bash_history:/home/dockerkit/.bash_history
+      - ${HOST_DATA_PATH}/bash_history:/home/${APP_USER}/.bash_history
       - ${HOST_APP_PATH}:/var/www:cached
       - ${HOST_LOGS_PATH}/cron:/var/log/cron
       - ./workspace/entrypoint.d:/entrypoint.d:ro
-      - ./workspace/auth.json:/home/dockerkit/.composer/auth.json:ro
+      - ./workspace/auth.json:/home/${APP_USER}/.composer/auth.json:ro
       - ./workspace/crontab:/var/spool/cron/crontabs/${APP_USER}:ro
       - ./ssl-ca:/ssl-ca:ro
     healthcheck:
@@ -370,6 +370,12 @@ services:
       - xpack.security.enabled=false
       - xpack.security.transport.ssl.enabled=false
 
+      # CORS settings for Elasticvue Web UI integration
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:${ELASTICVUE_HTTP_PORT},http://127.0.0.1:${ELASTICVUE_HTTP_PORT}
+      - http.cors.allow-headers=X-Requested-With,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+
       - TZ=UTC
     volumes:
       - ${HOST_DATA_PATH}/elasticsearch-${ELASTICSEARCH_VERSION}:/usr/share/elasticsearch/data
@@ -385,18 +391,21 @@ services:
     networks:
       - web
 
-  ### Dejavu ###############################################
-  dejavu:
-    image: appbaseio/dejavu:${DEJAVU_VERSION}
+  ### Elasticvue ###########################################
+  elasticvue:
+    image: cars10/elasticvue:${ELASTICVUE_VERSION}
     restart: unless-stopped
     deploy:
-      replicas: ${ENABLE_DEJAVU:-0}
+      replicas: ${ENABLE_ELASTICVUE:-0}
     ports:
-      - "${DEJAVU_HTTP_PORT}:1358"
+      - "${ELASTICVUE_HTTP_PORT}:8080"
     environment:
       - TZ
+      - ELASTICVUE_CLUSTERS
+    volumes:
+      - ${HOST_DATA_PATH}/elasticvue-${ELASTICVUE_VERSION}:/usr/share/nginx/html/api
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:1358 || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}

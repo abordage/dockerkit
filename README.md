@@ -1,7 +1,6 @@
 # 🚀 Modern Docker Stack for Local Development
 
 ![GitHub Release](https://img.shields.io/github/v/release/abordage/dockerkit)
-![GitHub last commit](https://img.shields.io/github/last-commit/abordage/dockerkit)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
 ![GitHub License](https://img.shields.io/github/license/abordage/dockerkit)
@@ -584,7 +583,7 @@ DockerKit uses a **three-tier network architecture** for optimal security and pe
 │ • workspace     │───────│ • workspace      │       │                 │
 │ • php-fpm       │───────│ • php-fpm        │       │                 │
 │ • elasticsearch │       │ • postgres       │       │                 │
-│ • dejavu        │       │ • mysql          │       │                 │
+│ • elasticvue    │       │ • mysql          │       │                 │
 │ • minio         │       │ • mongo          │       │                 │
 │ • mailpit       │       │ • redis          │       │                 │
 │                 │       │ • rabbitmq       │       │                 │
