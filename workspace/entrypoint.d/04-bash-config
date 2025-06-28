@@ -381,7 +381,6 @@ fi
 export EDITOR=\${EDITOR:-nano}
 export PAGER=\${PAGER:-less}
 export COMPOSER_MEMORY_LIMIT=-1
-export PHP_IDE_CONFIG="${PHP_IDE_CONFIG:-}"
 export APP_ENV=\${APP_ENV:-local}
 export LOG_CHANNEL=\${LOG_CHANNEL:-stderr}
 

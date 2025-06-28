@@ -37,7 +37,6 @@ services:
     tty: true
     stdin_open: true
     environment:
-      - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
       - CHOKIDAR_USEPOLLING=true
       - TZ
       # Container user configuration
