@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/abordage/dockerkit/compare/v1.2.0...v1.3.0) (2025-06-28)
+
+
+### Features
+
+* **workspace:** enhance terminal experience with comprehensive shell improvements ([#8](https://github.com/abordage/dockerkit/issues/8)) ([a086a08](https://github.com/abordage/dockerkit/commit/a086a081acb7a7339b35d129ebe9e5031e0be7c2))
+
 # [1.2.0](https://github.com/abordage/dockerkit/compare/v1.1.0...v1.2.0) (2025-06-25)
 
 
