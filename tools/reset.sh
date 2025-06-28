@@ -3,8 +3,15 @@
 # =============================================================================
 # DOCKERKIT PROJECT RESET
 # =============================================================================
-# Reset project to initial state (clean containers, volumes, configs)
-# Usage: ./reset.sh
+# Reset project to initial state with comprehensive cleanup options
+#
+# Features:
+# • Full project cleanup (containers, volumes, configs, certificates)
+# • Optional persistent data removal with confirmation
+# • Optional system-wide Docker cleanup (dangling/unused images, cache)
+# • Modular architecture with cleanup functions from services/cleanup.sh
+#
+# Usage: ./reset.sh [OPTIONS]
 # =============================================================================
 
 set -euo pipefail
@@ -25,6 +32,12 @@ source "$SCRIPT_DIR/lib/core/utils.sh"
 source "$SCRIPT_DIR/lib/core/config.sh"
 # shellcheck source=lib/core/files.sh
 source "$SCRIPT_DIR/lib/core/files.sh"
+# shellcheck source=lib/core/docker.sh
+source "$SCRIPT_DIR/lib/core/docker.sh"
+
+# Load service libraries
+# shellcheck source=lib/services/cleanup.sh
+source "$SCRIPT_DIR/lib/services/cleanup.sh"
 
 # Parse command line arguments
 parse_arguments() {
@@ -58,6 +71,10 @@ DESCRIPTION:
     • Generated SSL certificates and nginx configs
     • Logs directory contents
     • Network aliases file
+    • Persistent data (optional, with confirmation)
+    • System-wide dangling Docker images (optional)
+    • System-wide unused Docker images (optional)
+    • System-wide Docker build cache (optional)
 
 OPTIONS:
     -h, --help          Show this help message
@@ -67,126 +84,84 @@ EXAMPLES:
 
 WARNING:
     This operation will remove all project data and cannot be undone!
+    Persistent data removal is optional and requires separate confirmation.
+    System-wide Docker cleanup affects all Docker projects on your machine.
 
 EOF
 }
 
-# Docker cleanup
-cleanup_docker() {
-    print_section "Docker cleanup"
 
-    # Check if docker compose is available
-    if ! command -v docker &> /dev/null; then
-        print_warning "Docker not found, skipping Docker cleanup"
-        return 0
-    fi
 
-    # Change to project directory for docker compose commands
-    cd "$DOCKERKIT_DIR"
+# Note: All cleanup functions are now in lib/services/cleanup.sh
 
-    if docker compose down --rmi local --volumes --remove-orphans 2>/dev/null; then
-        print_success "Docker cleanup completed"
-    else
-        print_warning "Docker cleanup had some issues (this is usually normal)"
-    fi
-}
 
-# Remove SSL certificates
-cleanup_ssl_certificates() {
-    print_section "Removing SSL certificates"
 
-    local ssl_dir="$DOCKERKIT_DIR/nginx/ssl"
-    local removed=false
 
-    if [ -d "$ssl_dir" ]; then
-        # Remove certificate files
-        if find "$ssl_dir" -name "*.crt" -delete 2>/dev/null; then
-            removed=true
-        fi
-        if find "$ssl_dir" -name "*.key" -delete 2>/dev/null; then
-            removed=true
-        fi
 
-        if $removed; then
-            print_success "Removed SSL certificates"
-        else
-            print_info "No SSL certificates found"
-        fi
-    else
-        print_info "SSL directory not found"
-    fi
-}
 
-# Remove generated nginx configurations
-cleanup_nginx_configs() {
-    print_section "Removing generated nginx configurations"
 
-    local nginx_conf_dir="$DOCKERKIT_DIR/nginx/conf.d"
-    local removed=false
 
-    if [ -d "$nginx_conf_dir" ]; then
-        # Remove .local.conf files
-        if find "$nginx_conf_dir" -name "*.local.conf" -delete 2>/dev/null; then
-            removed=true
-        fi
-
-        if $removed; then
-            print_success "Removed generated nginx configurations"
-        else
-            print_info "No generated nginx configurations found"
-        fi
-    else
-        print_info "Nginx conf.d directory not found"
-    fi
-}
-
-# Remove network aliases file
-cleanup_network_aliases() {
-    print_section "Removing network aliases"
-
-    local aliases_file="$DOCKERKIT_DIR/docker-compose.aliases.yml"
-
-    if [ -f "$aliases_file" ]; then
-        rm -f "$aliases_file"
-        print_success "Removed network aliases file"
-    else
-        print_success "Network aliases file not found"
-    fi
-}
 
 # Main reset function
 main() {
     print_header "DOCKERKIT PROJECT RESET"
 
+    # Load environment variables for HOST_DATA_PATH
+    if [ -f "$DOCKERKIT_DIR/.env" ]; then
+        # shellcheck source=/dev/null
+        source "$DOCKERKIT_DIR/.env"
+    fi
+
     print_warning "This will reset the project to initial state!"
-    print_warning "All containers, volumes, and configuration files will be removed."
+    print_warning "Project containers, volumes, configs, and certificates will be removed."
+    print_warning "Additional system-wide cleanup steps will require separate confirmation."
     echo ""
 
     # Confirm reset operation
-    if ! confirm_action "Do you want to continue with the reset?"; then
+    if ! confirm_action_default_yes "Do you want to continue with the reset?"; then
         print_info "Reset cancelled by user"
         exit "$EXIT_SUCCESS"
     fi
 
     echo ""
 
-    # Step 1: Docker cleanup
-    cleanup_docker
+    # =================================================================
+    # CORE PROJECT CLEANUP (automatic)
+    # =================================================================
 
-    # Step 2: Remove configuration files
-    # remove step
-
-    # Step 3: Clean directories
+    # Step 1: Clean logs directory
     clean_logs_directory
 
-    # Step 4: Remove SSL certificates
+    # Step 2: Remove SSL certificates
     cleanup_ssl_certificates
 
-    # Step 5: Remove generated nginx configurations
+    # Step 3: Remove nginx configurations
     cleanup_nginx_configs
 
-    # Step 6: Remove network aliases
+    # Step 4: Remove network aliases
     cleanup_network_aliases
+
+    # Step 5: Docker project cleanup (containers, volumes, images, networks)
+    local project_name
+    project_name=$(get_docker_project_name "$DOCKERKIT_DIR")
+    cleanup_docker_project "$project_name"
+
+    # =================================================================
+    # OPTIONAL CLEANUP (with confirmations)
+    # =================================================================
+
+    # Step 6: Clean persistent data (optional, default: Yes)
+    echo ""
+    cleanup_host_data
+
+    # Step 7: Clean dangling Docker images system-wide (optional, default: Yes)
+    cleanup_dangling_images
+
+    # Step 8: Clean unused Docker images system-wide (optional, default: No)
+    cleanup_unused_images
+
+    # Step 9: Clean Docker build cache system-wide (optional, default: No)
+    cleanup_docker_cache
 
     # Summary
     print_header "RESET COMPLETED SUCCESSFULLY!"

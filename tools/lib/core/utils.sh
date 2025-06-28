@@ -196,6 +196,10 @@ version_compare() {
     return "$EXIT_SUCCESS"
 }
 
+# =============================================================================
+# USER CONFIRMATION FUNCTIONS
+# =============================================================================
+
 # Confirm action with user
 confirm_action() {
     local message="$1"
@@ -203,6 +207,52 @@ confirm_action() {
 
     echo -e "${YELLOW}$message${NC} (Y/N): " >&2
     read -r response
+
+    case "$response" in
+        [yY]|[yY][eE][sS])
+            return "$EXIT_SUCCESS"
+            ;;
+        *)
+            return "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# Confirm action with default Yes (Enter = Yes)
+confirm_action_default_yes() {
+    local message="$1"
+    local response
+
+    echo -e "${YELLOW}$message${NC} (${GREEN}Y${NC}/N, default: ${GREEN}Yes${NC}): " >&2
+    read -r response
+
+    # Default to Yes if empty response
+    if [ -z "$response" ]; then
+        response="Y"
+    fi
+
+    case "$response" in
+        [yY]|[yY][eE][sS])
+            return "$EXIT_SUCCESS"
+            ;;
+        *)
+            return "$EXIT_GENERAL_ERROR"
+            ;;
+    esac
+}
+
+# Confirm action with default No (Enter = No)
+confirm_action_default_no() {
+    local message="$1"
+    local response
+
+    echo -e "${YELLOW}$message${NC} (Y/${RED}N${NC}, default: ${RED}No${NC}): " >&2
+    read -r response
+
+    # Default to No if empty response
+    if [ -z "$response" ]; then
+        response="N"
+    fi
 
     case "$response" in
         [yY]|[yY][eE][sS])
