@@ -91,11 +91,10 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
     volumes:
+      - ${HOST_DATA_PATH}/bash_history:/home/dockerkit/.bash_history
       - ${HOST_APP_PATH}:/var/www:cached
-      - ${HOST_APP_PATH}/composer/cache:/home/dockerkit/.composer/cache
       - ${HOST_LOGS_PATH}/cron:/var/log/cron
       - ./workspace/entrypoint.d:/entrypoint.d:ro
-
       - ./workspace/auth.json:/home/dockerkit/.composer/auth.json:ro
       - ./workspace/crontab:/var/spool/cron/crontabs/${APP_USER}:ro
       - ./ssl-ca:/ssl-ca:ro

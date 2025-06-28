@@ -49,32 +49,7 @@ validate_environment() {
     return $errors
 }
 
-ensure_directories() {
-    local dirs=(
-        "${USER_HOME}/.config"       # User configuration files (starship, etc.)
-        "${USER_HOME}/.local/bin"    # User local executables
-        "${USER_HOME}/.local/share"  # User application data
-        "${USER_HOME}/.cache"        # User application cache
-    )
 
-    for dir in "${dirs[@]}"; do
-        if [ ! -d "$dir" ]; then
-            log_info "Creating directory: $dir"
-            if ! mkdir -p "$dir"; then
-                log_error "Failed to create directory: $dir"
-                return 1
-            fi
-
-            # Set proper ownership immediately
-            if ! chown "${APP_USER}:${APP_GID}" "$dir"; then
-                log_warn "Could not set ownership for: $dir"
-            fi
-        fi
-    done
-
-    log_ok "All required directories ensured"
-    return 0
-}
 
 create_file_safely() {
     local file_path="$1"
@@ -133,100 +108,7 @@ fi
 EOF
 }
 
-# ============================================================================
-# Starship configuration with DockerKit theme
-# ============================================================================
-setup_starship_config() {
-    log_info "Setting up Starship configuration with DockerKit theme..."
 
-    local config_file="${USER_HOME}/.config/starship.toml"
-
-        create_file_safely "$config_file" << 'EOF'
-# Starship configuration for DockerKit
-# Minimal setup - colors only
-
-# ============================================================================
-# ACTIVATE DOCKERKIT PALETTE
-# ============================================================================
-palette = 'dockerkit'
-
-# ============================================================================
-# CUSTOM PROMPT FORMAT
-# ============================================================================
-format = """
-[┌─ ](bold white)$directory$git_branch$golang$java$nodejs$php$python$ruby$rust$scala$swift$kotlin$buf$cmd_duration$jobs$status
-[└─$character ](bold white)"""
-
-# ============================================================================
-# DOCKERKIT COLOR PALETTE
-# ============================================================================
-[palettes.dockerkit]
-# === DockerKit Brand Colors ===
-primary = "#0db7ed"      # Docker blue
-accent = "#00d4aa"       # Teal green
-success = "#43a047"      # Green
-danger = "#e53935"       # Red
-warning = "#fb8c00"      # Orange
-info = "#1e88e5"         # Blue
-muted = "#546e7a"        # Blue grey
-
-# === Standard ANSI Colors (DockerKit themed) ===
-black = "#263238"        # Dark blue-grey
-red = "#e53935"          # Same as danger
-green = "#43a047"        # Same as success
-yellow = "#fb8c00"       # Same as warning
-blue = "#0db7ed"         # Same as primary
-magenta = "#8e24aa"      # Purple
-cyan = "#00d4aa"         # Same as accent
-white = "#eceff1"        # Light grey
-
-# === Bright ANSI Colors ===
-bright-black = "#546e7a"    # Same as muted
-bright-red = "#ff5722"      # Brighter red
-bright-green = "#66bb6a"    # Brighter green
-bright-yellow = "#ffb74d"   # Brighter orange
-bright-blue = "#42a5f5"     # Brighter blue
-bright-magenta = "#ab47bc"  # Brighter purple
-bright-cyan = "#26c6da"     # Brighter cyan
-bright-white = "#ffffff"    # Pure white
-
-php-color = "#777bb3"
-golang-color = "#00add8"
-nodejs-color = "#339933"
-
-# ============================================================================
-# BASIC MODULE COLORS
-# ============================================================================
-[character]
-success_symbol = "[❯](bold white)"
-error_symbol = "[❯](bold danger)"
-
-[directory]
-style = "bold primary"
-
-[git_branch]
-symbol = ""
-style = "bold accent"
-
-[php]
-format = 'via [php $version](bold php-color) '
-
-[golang]
-format = 'via [golang $version](bold golang-color) '
-
-[nodejs]
-format = 'via [nodejs $version](bold nodejs-color) '
-EOF
-
-    if [ $? -eq 0 ]; then
-        chown "${APP_USER}:${APP_GID}" "$config_file" 2>/dev/null || true
-        log_ok "Created Starship configuration with DockerKit theme"
-        return 0
-    else
-        log_error "Failed to create Starship configuration"
-        return 1
-    fi
-}
 
 # ============================================================================
 # Input/readline configuration for better tab completion
@@ -234,7 +116,7 @@ EOF
 setup_inputrc() {
     log_info "Setting up readline configuration for better tab completion..."
 
-    create_file_safely "${USER_HOME}/.inputrc" << 'EOF'
+    if create_file_safely "${USER_HOME}/.inputrc" << 'EOF'; then
 # ~/.inputrc - readline configuration for improved tab completion
 # DockerKit optimized settings
 
@@ -287,8 +169,6 @@ set mark-directories on
 "\e[1;5D": backward-word
 "\e[1;5C": forward-word
 EOF
-
-    if [ $? -eq 0 ]; then
         chown "${APP_USER}:${APP_GID}" "${USER_HOME}/.inputrc" 2>/dev/null || true
         log_ok "Created readline configuration for improved tab completion"
     else
@@ -485,6 +365,9 @@ export HISTFILESIZE=${BASH_HISTFILESIZE}
 shopt -s histappend
 shopt -s checkwinsize
 
+# Save history immediately after each command (prevents loss on container restart)
+PROMPT_COMMAND="\${PROMPT_COMMAND:+\$PROMPT_COMMAND\$'\n'}history -a"
+
 # Enable bash completion
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
@@ -549,11 +432,7 @@ main() {
         exit 1
     fi
 
-    # Create directories (moved from Dockerfile)
-    if ! ensure_directories; then
-        log_error "Failed to create required directories"
-        exit 1
-    fi
+
 
     # Generate .bash_aliases
     if ! create_file_safely "${USER_HOME}/.bash_aliases" < <(generate_aliases_content); then
@@ -567,16 +446,9 @@ main() {
         exit 1
     fi
 
-    # Setup readline configuration for better tab completion
+        # Setup readline configuration for better tab completion
     if ! setup_inputrc; then
         log_warn "Failed to setup readline configuration (non-critical)"
-    fi
-
-    # Setup Starship configuration with DockerKit theme
-    if [[ "${STARSHIP_ENABLED}" = "1" ]] && command -v starship >/dev/null 2>&1; then
-        if ! setup_starship_config; then
-            log_warn "Failed to setup Starship configuration (non-critical)"
-        fi
     fi
 
     # Set ownership (non-critical)

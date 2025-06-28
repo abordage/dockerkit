@@ -309,6 +309,15 @@ ARG APP_GID=1000
 RUN usermod -aG sudo "${APP_USER}" && \
     echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
 
+# Create user directories (moved from entrypoint script for better performance)
+RUN mkdir -p "/home/${APP_USER}/.config" \
+             "/home/${APP_USER}/.local/bin" \
+             "/home/${APP_USER}/.local/share" \
+             "/home/${APP_USER}/.cache" && \
+    chown -R "${APP_USER}:${APP_GID}" "/home/${APP_USER}/.config" \
+                                      "/home/${APP_USER}/.local" \
+                                      "/home/${APP_USER}/.cache"
+
 # Setup bash completion for all development tools
 RUN set -eux; \
     # Create bash completion directory
@@ -341,6 +350,9 @@ RUN set -eux; \
 # ============================================================================
 # Copy and setup entrypoint script with proper permissions
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/
+
+# Copy Starship configuration directly to user config directory
+COPY --chown=${APP_USER}:${APP_GID} --chmod=0644 starship.toml /home/${APP_USER}/.config/starship.toml
 
 # Add healthcheck for container monitoring
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
