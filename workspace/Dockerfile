@@ -178,6 +178,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Install Node.js tools with NPM cache
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     if [ "${INSTALL_NODE}" = "true" ]; then \
+        npm install -g npm@latest; \
         npm install -g npm-check-updates; \
         if [ "${INSTALL_VACUUM}" = "true" ]; then \
             npm install -g @quobix/vacuum; \
