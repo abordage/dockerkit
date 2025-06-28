@@ -142,6 +142,10 @@ ENV COMPOSER_NO_INTERACTION=1 \
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
+# Update Composer to latest version
+RUN composer self-update --no-interaction && \
+    composer --version
+
 USER ${APP_UID}:${APP_GID}
 
 RUN set -eux; \
