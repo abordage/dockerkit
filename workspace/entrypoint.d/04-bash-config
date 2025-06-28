@@ -93,15 +93,15 @@ set_ownership() {
 # Shell environment configuration
 # ============================================================================
 setup_shell_environment() {
-    cat << 'EOF'
+    cat << EOF
 
 # === Shell Detection Fix ===
 export SHELL=/bin/bash
-export BASH_ENV=/home/dockerkit/.bashrc
-export ENV=/home/dockerkit/.bashrc
+export BASH_ENV=${USER_HOME}/.bashrc
+export ENV=${USER_HOME}/.bashrc
 
 # Ensure bash is properly detected
-if [ -n "$BASH_VERSION" ]; then
+if [ -n "\$BASH_VERSION" ]; then
     export SHELL_NAME=bash
     export CURRENT_SHELL=bash
 fi
@@ -221,14 +221,14 @@ if command -v php >/dev/null 2>&1; then
         local sf_cmd="${COMP_WORDS[0]}"
 
         # for an alias, get the real script behind it
-        sf_cmd_type=$(type -t $sf_cmd)
+        sf_cmd_type=$(type -t "$sf_cmd")
         if [[ $sf_cmd_type == "alias" ]]; then
-            sf_cmd=$(alias $sf_cmd | sed -E "s/alias $sf_cmd='(.*)'/\1/")
+            sf_cmd=$(alias "$sf_cmd" | sed -E "s/alias $sf_cmd='(.*)'/\1/")
         elif [[ $sf_cmd_type == "file" ]]; then
-            sf_cmd=$(type -p $sf_cmd)
+            sf_cmd=$(type -p "$sf_cmd")
         fi
 
-        if [[ $sf_cmd_type != "function" && ! -x $sf_cmd ]]; then
+        if [[ $sf_cmd_type != "function" && ! -x "$sf_cmd" ]]; then
             return 1
         fi
 
@@ -432,8 +432,6 @@ main() {
         exit 1
     fi
 
-
-
     # Generate .bash_aliases
     if ! create_file_safely "${USER_HOME}/.bash_aliases" < <(generate_aliases_content); then
         log_error "Failed to create .bash_aliases"
@@ -446,7 +444,7 @@ main() {
         exit 1
     fi
 
-        # Setup readline configuration for better tab completion
+    # Setup readline configuration for better tab completion
     if ! setup_inputrc; then
         log_warn "Failed to setup readline configuration (non-critical)"
     fi
