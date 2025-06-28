@@ -33,8 +33,6 @@ source "$CLEANUP_SCRIPT_DIR/../core/config.sh"
 # shellcheck source=../core/docker.sh
 source "$CLEANUP_SCRIPT_DIR/../core/docker.sh"
 
-# Note: confirm_action_default_yes() and confirm_action_default_no() are now in utils.sh
-
 # =============================================================================
 # GENERIC CLEANUP UTILITIES
 # =============================================================================
