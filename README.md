@@ -513,6 +513,27 @@ mc stat minio/documents
 
 **Automatic Bucket Creation:** DockerKit automatically creates and configures buckets based on environment variables during container startup.
 
+### Terminal Navigation Tools
+
+#### fzf (Fuzzy Finder)
+
+fzf is a fast, interactive command-line fuzzy finder that enhances file navigation and command history searching.
+
+#### Key Features
+
+- **Interactive file search** with fuzzy matching
+- **Command history search** with instant filtering  
+- **Directory navigation** with preview support
+- **Git integration** for branches, commits, and files
+- **Customizable preview** for files and directories
+
+#### Keyboard Shortcuts
+
+| Shortcut | Function       | Description                                |
+|----------|----------------|--------------------------------------------|
+| `Ctrl+T` | File finder    | Find files/directories in current path     |
+| `Ctrl+R` | History search | Search command history with fuzzy matching |
+
 ## Architecture Overview
 
 ### Network Topology
