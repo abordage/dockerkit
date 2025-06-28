@@ -41,7 +41,7 @@
 DockerKit scans the **parent directory** for `.local` projects:
 
 ```text
-your-projects/
+/Users/<user>/PhpstormProjects/
 ├── dockerkit/         # This repository
 ├── myapp.local/       # Detected: Laravel project
 ├── api.local/         # Detected: Symfony project
@@ -138,27 +138,31 @@ The workspace container automatically executes these initialization scripts:
 ```text
 workspace/entrypoint.d/
 ├── 01-ca-certificates   # Install SSL CA certificates for HTTPS
-├── 02-php-config        # todo
-└── 03-minio-client      # Configure MinIO Client and create buckets
-└── 04-bash-config       # todo
+├── 02-php-config        # Generate PHP configuration from environment
+├── 03-minio-client      # Configure MinIO Client and create buckets
+├── 04-bash-config       # Configure bash environment with autocomplete
+└── 05-database-setup    # Automatic database creation for .local projects
 ```
 
 #### Key features
 
+- **SSL certificates:** Local HTTPS certificates for development sites
+- **PHP configuration:** Dynamic PHP settings from environment variables
+- **MinIO buckets:** Automatic bucket creation with configurable policies
+- **Bash environment:** Complete development shell with Laravel/Symfony autocomplete
+- **Database automation:** Automatic database creation based on .env files
 - **Development aliases:** `art` (artisan), `fresh`, `migrate`, `pint`, `pest`
 - **Auto-completion:** Laravel Artisan and Composer commands
 - **Composer auth:** Automatic setup from `workspace/auth.json`
-- **SSL support:** Local HTTPS certificates for development sites
-- **MinIO buckets:** Automatic bucket creation with configurable policies
 
 #### PHP-FPM Container Startup
 
 The PHP-FPM container runs these initialization scripts:
 
 ```text
-php-fpm/startup/
-├── 00-welcome           # Display service status and PHP version
-└── 01-ca-certificates   # Install SSL CA certificates for PHP requests
+php-fpm/entrypoint.d/
+├── 01-ca-certificates   # Install SSL CA certificates for PHP requests
+└── 02-php-config        # Generate PHP configuration from environment
 ```
 
 #### Custom Startup Scripts
@@ -173,6 +177,44 @@ echo "Running custom workspace setup..."
 ```
 
 **Note:** Scripts execute in alphabetical order. Use numeric prefixes (00-, 01-, etc.) to control execution sequence.
+
+### Database Automation
+
+DockerKit automatically creates databases for your `.local` projects by scanning environment files.
+
+#### Supported Databases
+
+- **MySQL/MariaDB** (`DB_CONNECTION=mysql`)
+- **PostgreSQL** (`DB_CONNECTION=pgsql`)
+
+#### How it works
+
+1. **Project Detection:** Scans `/var/www/*.local` directories
+2. **Environment Parsing:** Reads `.env` and `.env.testing` files
+3. **Database Creation:** Creates databases based on `DB_CONNECTION` and `DB_DATABASE`
+4. **Project Types:** Supports Laravel, Symfony, WordPress, and simple PHP projects
+
+#### Configuration Example
+
+```bash
+# .env file in your project
+DB_CONNECTION=mysql
+DB_DATABASE=myapp_local
+
+# .env.testing file
+DB_CONNECTION=pgsql  
+DB_DATABASE=myapp_testing
+```
+
+#### Manual Database Creation
+
+```bash
+# MySQL
+mysql -h mysql -u dockerkit -p -e "CREATE DATABASE myapp_local;"
+
+# PostgreSQL
+PGPASSWORD=dockerkit createdb -h postgres -U dockerkit myapp_local
+```
 
 ### Nginx Configuration
 
@@ -757,8 +799,6 @@ mc anonymous set private minio/my-bucket   # Make private
 
 ## Roadmap
 
-### Recently Completed
-
 - [x] Add MinIO Client integration with automatic bucket management
 - [x] Implement configurable bucket access policies (public, upload, download, private)
 - [x] Add bucket versioning support for MinIO storage
@@ -768,17 +808,12 @@ mc anonymous set private minio/my-bucket   # Make private
 - [x] Add CA certificate installation for HTTPS development
 - [x] Add automatic hosts file generation for local projects
 - [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
-
-### Planned Features
-
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [x] Implement automatic database creation for detected projects
 - [ ] Add support for Python project type detection (requirements.txt, pyproject.toml)
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
 - [ ] Add MongoDB database support with automatic collection setup
-- [ ] Add automatic database migrations after creation
-- [ ] Add IDEs integration support (terminal, plugins, .devcontainer)
 - [ ] Add RoadRunner support as an alternative to PHP-FPM
 - [ ] Add FrankenPHP support for modern PHP applications
 - [ ] Add Laravel Horizon support for queue monitoring
