@@ -35,6 +35,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     tty: true
+    stdin_open: true
     environment:
       - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
       - CHOKIDAR_USEPOLLING=true
@@ -80,6 +81,9 @@ services:
       # Bash configuration
       - ENABLE_FZF
       - ENABLE_STARSHIP
+      # Locale configuration for proper UTF-8 support
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
       # Database connection configuration (for automatic database creation)
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -87,11 +91,10 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
     volumes:
+      - ${HOST_DATA_PATH}/bash_history:/home/dockerkit/.bash_history
       - ${HOST_APP_PATH}:/var/www:cached
-      - ${HOST_APP_PATH}/composer/cache:/home/dockerkit/.composer/cache
       - ${HOST_LOGS_PATH}/cron:/var/log/cron
       - ./workspace/entrypoint.d:/entrypoint.d:ro
-
       - ./workspace/auth.json:/home/dockerkit/.composer/auth.json:ro
       - ./workspace/crontab:/var/spool/cron/crontabs/${APP_USER}:ro
       - ./ssl-ca:/ssl-ca:ro

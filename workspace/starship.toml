@@ -1,0 +1,77 @@
+# ============================================================================
+# STARSHIP CONFIGURATION FOR DOCKERKIT
+# ============================================================================
+# Repository: https://github.com/abordage/dockerkit
+# ============================================================================
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# ============================================================================
+# ACTIVATE DOCKERKIT PALETTE
+# ============================================================================
+palette = "dockerkit"
+
+# ============================================================================
+# CUSTOM PROMPT FORMAT
+# ============================================================================
+format = """
+[┌─ ](bold white)$directory$git_branch$golang$java$nodejs$php$python$ruby$rust$scala$swift$kotlin$buf$cmd_duration$jobs$status
+[└─$character ](bold white)"""
+
+# ============================================================================
+# COLOR PALETTE
+# ============================================================================
+[palettes.dockerkit]
+
+primary = "#0db7ed"      # Docker blue
+accent = "#00d4aa"       # Teal green
+success = "#43a047"      # Green
+danger = "#e53935"       # Red
+warning = "#fb8c00"      # Orange
+info = "#1e88e5"         # Blue
+muted = "#546e7a"        # Blue gray
+
+black = "#263238"        # Dark blue-grey
+red = "#e53935"          # Same as danger
+green = "#43a047"        # Same as success
+yellow = "#fb8c00"       # Same as warning
+blue = "#0db7ed"         # Same as primary
+magenta = "#8e24aa"      # Purple
+cyan = "#00d4aa"         # Same as accent
+white = "#eceff1"        # Light gray
+
+bright-black = "#546e7a"    # Same as muted
+bright-red = "#ff5722"      # Brighter red
+bright-green = "#66bb6a"    # Brighter green
+bright-yellow = "#ffb74d"   # Brighter orange
+bright-blue = "#42a5f5"     # Brighter blue
+bright-magenta = "#ab47bc"  # Brighter purple
+bright-cyan = "#26c6da"     # Brighter cyan
+bright-white = "#ffffff"    # Pure white
+
+php-color = "#777bb3"
+golang-color = "#00add8"
+nodejs-color = "#339933"
+
+# ============================================================================
+# MODULE SETTINGS
+# ============================================================================
+[character]
+success_symbol = "[❯](bold white)"
+error_symbol = "[❯](bold danger)"
+
+[directory]
+style = "bold primary"
+
+[git_branch]
+symbol = ""
+style = "bold accent"
+
+[php]
+format = "via [php $version](bold php-color) "
+
+[golang]
+format = "via [golang $version](bold golang-color) "
+
+[nodejs]
+format = "via [nodejs $version](bold nodejs-color) "
