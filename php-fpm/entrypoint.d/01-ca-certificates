@@ -9,7 +9,7 @@ set -euo pipefail
 
 # Color output functions
 log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
-log_warn() { echo -e "[$SCRIPT_NAME] \033[33m[WARN]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
 log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
 log_info() { echo "[$SCRIPT_NAME] $*"; }
 log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
@@ -20,21 +20,104 @@ SCRIPT_NAME=$(basename "$0")
 readonly SCRIPT_NAME
 
 # ============================================================================
+# PREREQUISITES CHECK
+# ============================================================================
+
+check_prerequisites() {
+    log_info "Checking prerequisites for CA certificate installation..."
+
+    # Check if running as root or with sudo access
+    if ! sudo -n true 2>/dev/null; then
+        log_error "No sudo access available for certificate installation"
+        return 1
+    fi
+
+    # Check if update-ca-certificates is available
+    if ! command -v update-ca-certificates >/dev/null 2>&1; then
+        log_error "update-ca-certificates command not available"
+        return 1
+    fi
+
+    log_ok "Prerequisites check completed"
+    return 0
+}
+
+# ============================================================================
+# CERTIFICATE INSTALLATION
+# ============================================================================
+
+install_ca_certificate() {
+    log_info "Installing mkcert CA certificate..."
+
+    # Get certificate information
+    local cert_size
+    local cert_date
+    if [[ -f "$CA_CERT_SOURCE" ]]; then
+        cert_size=$(du -h "$CA_CERT_SOURCE" 2>/dev/null | cut -f1 || echo "unknown")
+        cert_date=$(stat -c %y "$CA_CERT_SOURCE" 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+        log_ok "Found CA certificate: $CA_CERT_SOURCE ($cert_size, created $cert_date)"
+    else
+        log_warn "mkcert CA certificate not found at $CA_CERT_SOURCE"
+        log_warn "HTTPS connections to local development sites may fail"
+        log_info "To fix this issue:"
+        log_info "  1. Run 'make setup' to generate CA certificate"
+        log_info "  2. Restart php-fpm container"
+        return 0
+    fi
+
+    # Copy certificate to system location
+    log_info "Copying CA certificate to system trust store..."
+    if sudo cp "$CA_CERT_SOURCE" "$CA_CERT_TARGET" 2>/dev/null; then
+        log_ok "CA certificate copied to $CA_CERT_TARGET"
+    else
+        log_error "Failed to copy CA certificate to system location"
+        return 1
+    fi
+
+    # Update system certificate store
+    log_info "Updating system certificate store..."
+    local update_output
+    if update_output=$(sudo update-ca-certificates 2>&1); then
+        local added_count
+        added_count=$(echo "$update_output" | grep -o '[0-9]\+ added' | cut -d' ' -f1 || echo "0")
+        if [[ "$added_count" -gt 0 ]]; then
+            log_ok "System certificate store updated ($added_count certificate(s) added)"
+        else
+            log_ok "System certificate store updated (certificate already present)"
+        fi
+    else
+        log_error "Failed to update system certificate store"
+        log_error "Output: $update_output"
+        return 1
+    fi
+
+    log_ok "mkcert CA certificate installed successfully"
+    return 0
+}
+
+# ============================================================================
 # MAIN EXECUTION
 # ============================================================================
 
-log_info "Setting up mkcert CA certificates for php-fpm container..."
+main() {
+    log_info "Setting up mkcert CA certificates for workspace container..."
 
-if [[ -f "$CA_CERT_SOURCE" ]]; then
-    log_info "Found mkcert CA certificate at $CA_CERT_SOURCE"
+    if ! check_prerequisites; then
+        log_error "Prerequisites check failed, skipping CA certificate installation"
+        echo ""
+        return 0
+    fi
 
-    sudo cp "$CA_CERT_SOURCE" "$CA_CERT_TARGET" && \
-    sudo update-ca-certificates >/dev/null && \
-    log_ok "mkcert CA certificate installed successfully"
-else
-    log_warn "mkcert CA certificate not found at $CA_CERT_SOURCE"
-    log_warn "HTTPS connections to local development sites may fail"
-fi
+    if ! install_ca_certificate; then
+        log_error "CA certificate installation failed"
+        echo ""
+        return 1
+    fi
 
-log_info "CA certificates setup completed"
-echo ""
+    log_info "CA certificates setup completed"
+    echo ""
+    return 0
+}
+
+# Execute main function
+main "$@"

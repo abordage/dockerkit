@@ -116,8 +116,10 @@ _execute_docker_command() {
         cmd_array+=(--format "$format")
     fi
 
-    # Add filters
-    cmd_array+=("${filter_args[@]+"${filter_args[@]}"}")
+    # Add filters if any provided
+    if [ ${#filter_args[@]} -gt 0 ]; then
+        cmd_array+=("${filter_args[@]}")
+    fi
 
     # Execute command
     "${cmd_array[@]}" 2>/dev/null || echo ""
@@ -129,7 +131,11 @@ count_docker_resources() {
     shift
     local filter_args=("$@")
 
-    _execute_docker_command "$resource_type" "" "${filter_args[@]}" | wc -l | tr -d ' '
+    if [ ${#filter_args[@]} -gt 0 ]; then
+        _execute_docker_command "$resource_type" "" "${filter_args[@]}" | wc -l | tr -d ' '
+    else
+        _execute_docker_command "$resource_type" "" | wc -l | tr -d ' '
+    fi
 }
 
 # Get Docker resources by filter
@@ -139,7 +145,11 @@ get_docker_resources() {
     shift 2
     local filter_args=("$@")
 
-    _execute_docker_command "$resource_type" "$format" "${filter_args[@]}"
+    if [ ${#filter_args[@]} -gt 0 ]; then
+        _execute_docker_command "$resource_type" "$format" "${filter_args[@]}"
+    else
+        _execute_docker_command "$resource_type" "$format"
+    fi
 }
 
 # Remove Docker resources by IDs
@@ -183,7 +193,7 @@ get_docker_cache_size() {
     fi
 
     local cache_size
-    cache_size=$(docker system df --format "table {{.Type}}\t{{.Size}}" 2>/dev/null | grep "Build Cache" | tr -s ' ' | cut -f2 || echo "")
+    cache_size=$(docker system df --format "table {{.Type}}\t{{.Size}}" 2>/dev/null | grep "Build Cache" | sed 's/.*[[:space:]]\([^[:space:]]*\)$/\1/' || echo "")
 
     echo "${cache_size:-0B}"
 }

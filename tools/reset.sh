@@ -69,7 +69,6 @@ DESCRIPTION:
     • Docker containers, images, volumes and networks
     • Configuration files created from examples
     • Generated SSL certificates and nginx configs
-    • Logs directory contents
     • Network aliases file
     • Persistent data (optional, with confirmation)
     • System-wide dangling Docker images (optional)
@@ -106,7 +105,7 @@ EOF
 main() {
     print_header "DOCKERKIT PROJECT RESET"
 
-    # Load environment variables for HOST_DATA_PATH
+    # Load environment variables
     if [ -f "$DOCKERKIT_DIR/.env" ]; then
         # shellcheck source=/dev/null
         source "$DOCKERKIT_DIR/.env"
@@ -123,25 +122,20 @@ main() {
         exit "$EXIT_SUCCESS"
     fi
 
-    echo ""
-
     # =================================================================
     # CORE PROJECT CLEANUP (automatic)
     # =================================================================
 
-    # Step 1: Clean logs directory
-    clean_logs_directory
-
-    # Step 2: Remove SSL certificates
+    # Step 1: Remove SSL certificates
     cleanup_ssl_certificates
 
-    # Step 3: Remove nginx configurations
+    # Step 2: Remove nginx configurations
     cleanup_nginx_configs
 
-    # Step 4: Remove network aliases
+    # Step 3: Remove network aliases
     cleanup_network_aliases
 
-    # Step 5: Docker project cleanup (containers, volumes, images, networks)
+    # Step 4: Docker project cleanup (containers, volumes, images, networks)
     local project_name
     project_name=$(get_docker_project_name "$DOCKERKIT_DIR")
     cleanup_docker_project "$project_name"
@@ -150,17 +144,13 @@ main() {
     # OPTIONAL CLEANUP (with confirmations)
     # =================================================================
 
-    # Step 6: Clean persistent data (optional, default: Yes)
-    echo ""
-    cleanup_host_data
-
-    # Step 7: Clean dangling Docker images system-wide (optional, default: Yes)
+    # Step 5: Clean dangling Docker images system-wide (optional, default: Yes)
     cleanup_dangling_images
 
-    # Step 8: Clean unused Docker images system-wide (optional, default: No)
+    # Step 6: Clean unused Docker images system-wide (optional, default: No)
     cleanup_unused_images
 
-    # Step 9: Clean Docker build cache system-wide (optional, default: No)
+    # Step 7: Clean Docker build cache system-wide (optional, default: No)
     cleanup_docker_cache
 
     # Summary

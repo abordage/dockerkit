@@ -111,7 +111,6 @@ main() {
 
     # Step 1: Create configuration files and directories
     create_managed_files
-    create_logs_directory
 
     # Step 2: Check system dependencies
     check_system_dependencies || {

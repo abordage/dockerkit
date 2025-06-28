@@ -28,10 +28,8 @@ if [ -z "${REQUIRED_ENV_VARS:-}" ]; then
     readonly REQUIRED_ENV_VARS=(
         "COMPOSE_PROJECT_NAME"
         "PROJECT_NAME"
-        "PROJECT_SUFFIX"
         "PHP_VERSION"
         "APP_USER"
-        "MYSQL_DATABASE"
         "POSTGRES_DB"
     )
 fi

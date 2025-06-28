@@ -52,7 +52,6 @@ optional_cleanup_with_confirmation() {
     fi
 
     # Show warning and ask for confirmation
-    echo ""
     if ! "$confirm_function" "$confirm_message"; then
         print_info "$skip_message"
         return "$EXIT_SUCCESS"
@@ -243,7 +242,7 @@ check_docker_cache() {
 
 # Execute Docker cache cleanup
 execute_cache_cleanup() {
-    if docker builder prune -af 2>/dev/null; then
+    if docker builder prune -af >/dev/null 2>&1; then
         print_success "Removed all Docker build cache"
     else
         print_warning "Failed to remove Docker build cache"
@@ -259,58 +258,6 @@ cleanup_docker_cache() {
         "execute_cache_cleanup" \
         "Removing Docker build cache" \
         "Docker cache cleanup skipped by user"
-}
-
-# =============================================================================
-# HOST DATA CLEANUP
-# =============================================================================
-
-# Clean HOST_DATA_PATH contents
-cleanup_host_data() {
-    # Get HOST_DATA_PATH from environment
-    local data_path="${HOST_DATA_PATH:-}"
-
-    if [ -z "$data_path" ]; then
-        print_info "HOST_DATA_PATH not configured, skipping data cleanup"
-        return "$EXIT_SUCCESS"
-    fi
-
-    if [ ! -d "$data_path" ]; then
-        print_info "Data directory not found: $data_path"
-        return "$EXIT_SUCCESS"
-    fi
-
-    # Check if directory has any content
-    local file_count
-    file_count=$(find "$data_path" -mindepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
-
-    # Skip if no files found
-    if [ "$file_count" = "0" ]; then
-        return "$EXIT_SUCCESS"
-    fi
-
-    # Show what will be removed
-    local data_size
-    data_size=$(du -sh "$data_path" 2>/dev/null | cut -f1 || echo "unknown")
-
-    print_warning "Persistent data found: $data_path ($data_size)"
-    print_warning "This includes: databases, uploads, cache, etc."
-    echo ""
-
-    if ! confirm_action_default_yes "Do you want to remove all persistent data?"; then
-        print_info "Data cleanup skipped by user"
-        return "$EXIT_SUCCESS"
-    fi
-
-    # Show section only after user confirms
-    print_section "Removing persistent data"
-
-    # Remove contents but keep directory structure
-    if find "$data_path" -mindepth 1 -delete 2>/dev/null; then
-        print_success "Removed persistent data from: $data_path"
-    else
-        print_warning "Some data could not be removed (check permissions)"
-    fi
 }
 
 # =============================================================================
@@ -346,47 +293,6 @@ remove_files_by_pattern() {
     else
         print_warning "Some files matching $pattern could not be removed"
     fi
-}
-
-# Helper: Count and remove all files from directory
-count_and_remove_all_files() {
-    local directory="$1"
-    local success_msg="$2"
-    local empty_msg="$3"
-    local error_msg="$4"
-
-    # Check if directory has any content
-    local file_count
-    file_count=$(find "$directory" -mindepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
-
-    if [ "$file_count" = "0" ]; then
-        print_info "$empty_msg"
-        return "$EXIT_SUCCESS"
-    fi
-
-    # Remove all files
-    if find "$directory" -mindepth 1 -type f -delete 2>/dev/null; then
-        print_success "$success_msg"
-    else
-        print_warning "$error_msg"
-    fi
-}
-
-# Clean logs directory
-clean_logs_directory() {
-    print_section "Cleaning logs directory"
-
-    local logs_dir="$DOCKERKIT_DIR/logs"
-
-    if [ ! -d "$logs_dir" ]; then
-        print_info "Logs directory not found"
-        return "$EXIT_SUCCESS"
-    fi
-
-    count_and_remove_all_files "$logs_dir" \
-        "Cleaned logs directory" \
-        "Logs directory is already empty" \
-        "Some log files could not be removed"
 }
 
 # Remove SSL certificates

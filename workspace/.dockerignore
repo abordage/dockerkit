@@ -28,7 +28,6 @@ Dockerfile.*
 !Dockerfile
 
 # Logs and cache
-logs/
 *.log
 
 # IDE files

@@ -10,11 +10,9 @@
 SETUP_FILES=(
     ".env.example:.env"
     "workspace/auth.json.example:workspace/auth.json"
-)
-
-# Directories to manage
-MANAGED_DIRECTORIES=(
-    "logs"
+    "php-fpm/www.conf.example:php-fpm/www.conf"
+    "php-fpm/php.ini.example:php-fpm/php.ini"
+    "workspace/php.ini.example:workspace/php.ini"
 )
 
 # Create file from example if it doesn't exist
@@ -71,15 +69,6 @@ ensure_directory() {
     fi
 }
 
-# Create all managed directories
-create_managed_directories() {
-    print_section "Creating directories"
-
-    for dir_path in "${MANAGED_DIRECTORIES[@]}"; do
-        ensure_directory "$dir_path"
-    done
-}
-
 # Remove managed file if it exists
 remove_managed_file() {
     local file_path="$1"
@@ -88,45 +77,4 @@ remove_managed_file() {
         rm -f "$DOCKERKIT_DIR/$file_path"
         print_success "Removed $file_path"
     fi
-}
-
-# Clean directory contents but keep structure
-clean_directory_contents() {
-    local dir_path="$1"
-
-    if [ -d "$DOCKERKIT_DIR/$dir_path" ]; then
-        find "$DOCKERKIT_DIR/$dir_path" -type f -delete 2>/dev/null || true
-        print_success "Cleaned directory: $dir_path"
-    fi
-}
-
-# Clean all managed directories
-clean_managed_directories() {
-    print_section "Cleaning directories"
-
-    for dir_path in "${MANAGED_DIRECTORIES[@]}"; do
-        clean_directory_contents "$dir_path"
-    done
-}
-
-# Get logs directory from environment or use default
-get_logs_directory() {
-    local logs_dir="${HOST_LOGS_PATH:-./logs}"
-    echo "$logs_dir"
-}
-
-# Create logs directory based on environment
-create_logs_directory() {
-    local logs_dir
-    logs_dir=$(get_logs_directory)
-
-    ensure_directory "$logs_dir"
-}
-
-# Clean logs directory based on environment
-clean_logs_directory() {
-    local logs_dir
-    logs_dir=$(get_logs_directory)
-
-    clean_directory_contents "$logs_dir"
 }
