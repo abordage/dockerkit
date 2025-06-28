@@ -36,6 +36,11 @@ services:
       - "host.docker.internal:host-gateway"
     tty: true
     stdin_open: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     environment:
       - CHOKIDAR_USEPOLLING=true
       - TZ
