@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Laravel/PHP aliases (artisan/art handled by functions in bashrc)
 alias fresh='php artisan migrate:fresh --ansi'
 alias migrate='php artisan migrate --ansi'

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # .bashrc for ${APP_USER} user - DockerKit Local Development
 # Source: workspace/shell/.bashrc
 
@@ -6,6 +7,7 @@
 
 # Load aliases
 if [ -f ~/.bash_aliases ]; then
+    # shellcheck source=.bash_aliases
     . ~/.bash_aliases
 fi
 
@@ -73,6 +75,7 @@ if command -v php >/dev/null 2>&1; then
         for w in '>' '>>' '&>' '<'; do
             if [[ $w = "${COMP_WORDS[COMP_CWORD-1]}" ]]; then
                 compopt -o filenames
+                # shellcheck disable=SC2207
                 COMPREPLY=($(compgen -f -- "${COMP_WORDS[COMP_CWORD]}"))
                 return 0
             fi
@@ -94,8 +97,8 @@ if command -v php >/dev/null 2>&1; then
             return 1
         fi
 
-        local cur prev words cword
-        _get_comp_words_by_ref -n := cur prev words cword
+        local cur _prev words cword
+        _get_comp_words_by_ref -n := cur _prev words cword
 
         local completecmd=("$sf_cmd" "_complete" "--no-interaction" "-sbash" "-c$cword")
         for w in "${words[@]}"; do
@@ -110,7 +113,7 @@ if command -v php >/dev/null 2>&1; then
                 w="${w#\"}"
             fi
             # empty values are ignored
-            if [ ! -z "$w" ]; then
+            if [ -n "$w" ]; then
                 completecmd+=("-i$w")
             fi
         done
@@ -141,6 +144,7 @@ if command -v php >/dev/null 2>&1; then
                 # no quotes: double escaping
                 suggestions=$(for s in $sfcomplete; do printf $'%q\n' "$(printf '%q' "$s")"; done)
             fi
+            # shellcheck disable=SC2207
             COMPREPLY=($(IFS=$'\n' compgen -W "$suggestions" -- "$(printf -- "%q" "$cur")"))
             __ltrim_colon_completions "$cur"
         else
