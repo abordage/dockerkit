@@ -63,6 +63,7 @@ DESCRIPTION:
     Run comprehensive code quality checks including:
     • Dockerfile best practices with hadolint
     • Bash script quality with shellcheck
+    • Shell configuration files (.bashrc, .bash_aliases)
     • Docker Compose file validation
 
 OPTIONS:
@@ -140,6 +141,11 @@ check_bash_scripts() {
                 scripts+=("$script")
             fi
         done < <(find . -path "*/entrypoint.d/*" -type f ! -path "./.git/*" -print0)
+
+        # Find bash configuration files (.bashrc, .bash_aliases, etc.)
+        while IFS= read -r -d '' script; do
+            scripts+=("$script")
+        done < <(find . -path "*/workspace/shell/*" -type f \( -name ".bashrc" -o -name ".bash_aliases" -o -name ".bash_profile" -o -name ".profile" \) ! -path "./.git/*" -print0)
 
         # Find other executable files with bash shebang (excluding .sh and entrypoint.d already covered)
         while IFS= read -r -d '' script; do
