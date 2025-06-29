@@ -1,6 +1,9 @@
 .idea
-/logs
 .env
+
+# Local environment configs
+/php-fpm/www.conf
+/php-fpm/php.ini
 
 /nginx/ssl/*.crt
 /nginx/ssl/*.key
@@ -10,6 +13,7 @@
 
 # Composer authentication
 /workspace/auth.json
+/workspace/php.ini
 
 # Auto-generated network aliases
 docker-compose.aliases.yml

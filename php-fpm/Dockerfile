@@ -12,6 +12,8 @@ ARG DEPENDENCY_PHP_EXTENSIONS
 
 FROM php:${PHP_VERSION}-fpm AS base
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Import ARG values into this stage
 ARG TZ=UTC
 ARG APP_USER=dockerkit
@@ -60,21 +62,24 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    # Core system tools
-    ca-certificates curl gosu sudo \
-    # System utilities
-    xz-utils \
-    # Graphics utilities for image processing
-    gifsicle jpegoptim optipng pngquant \
-    # Build tools (needed for PHP extensions)
     build-essential \
-    # Libraries for PHP extensions
-    libmagickwand-dev libssl-dev librabbitmq-dev \
-    && \
-    # Fix CA certificates
+    ca-certificates \
+    curl \
+    gifsicle \
+    gosu \
+    jpegoptim \
+    librabbitmq-dev \
+    libmagickwand-dev \
+    libssl-dev \
+    optipng \
+    pngquant \
+    sudo \
+    xz-utils && \
     update-ca-certificates --fresh && \
-    c_rehash /etc/ssl/certs/ 2>/dev/null || true && \
     rm -rf /var/lib/apt/lists/*
+
+# Configure sudo for the application user
+RUN echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${APP_USER}" && chmod 0440 "/etc/sudoers.d/${APP_USER}"
 
 USER ${APP_UID}:${APP_GID}
 
@@ -103,25 +108,9 @@ FROM php-extensions AS fpm-config
 
 USER root
 
-# Configure PHP-FPM pool
-RUN set -eux; \
-    # Create PHP-FPM log directory
-    mkdir -p /var/log/php-fpm && \
-    chown "${APP_USER}:${APP_GID}" /var/log/php-fpm && \
-    chmod 755 /var/log/php-fpm && \
-    \
-    # Configure FPM pool to run as our user
-    sed -i "s/user = www-data/user = ${APP_USER}/g" /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i "s/group = www-data/group = ${APP_USER}/g" /usr/local/etc/php-fpm.d/www.conf && \
-    \
-    # Configure FPM to log to our directory
-    sed -i "s|;access.log = log/\$pool.access.log|access.log = /var/log/php-fpm/access.log|g" /usr/local/etc/php-fpm.d/www.conf && \
-    \
-    # Configure FPM to catch worker output
-    sed -i "s|;catch_workers_output = yes|catch_workers_output = yes|g" /usr/local/etc/php-fpm.d/www.conf && \
-    \
-    # Configure error log
-    echo "php_admin_value[error_log] = /var/log/php-fpm/error.log" >> /usr/local/etc/php-fpm.d/www.conf
+# 1. Create PHP-FPM log directory and set permissions
+RUN mkdir -p /var/log/php-fpm && \
+    chown "${APP_UID}:${APP_GID}" /var/log/php-fpm
 
 USER ${APP_UID}:${APP_GID}
 
@@ -137,10 +126,6 @@ ARG APP_USER=dockerkit
 ARG APP_UID=1000
 ARG APP_GID=1000
 
-# Configure user for sudo access (needed for entrypoint scripts)
-RUN usermod -aG sudo "${APP_USER}" && \
-    echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" >> "/etc/sudoers"
-
 # ============================================================================
 # ENTRYPOINT Configuration
 # ============================================================================
@@ -149,7 +134,7 @@ COPY --chmod=0755 entrypoint.sh /usr/local/bin/
 
 # Add healthcheck for PHP-FPM monitoring
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD php-fpm -t || exit 1
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -connect 127.0.0.1:9000 || exit 1
 
 # Set final configuration
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

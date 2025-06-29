@@ -73,5 +73,3 @@ print_tip() {
     local message="$1"
     echo -e "  ${WHITE}${DOWN_ARROW_UP_ARROW}${NC} ${WHITE}$message${NC}"
 }
-
-

@@ -5,7 +5,7 @@ set -euo pipefail
 # DOCKERKIT PHP-FPM ENTRYPOINT
 # ============================================================================
 # Main entrypoint script for DockerKit php-fpm container
-# Handles user switching, php-fpm startup, and initialization scripts
+# Handles user switching, shell modes, and initialization scripts
 # ============================================================================
 
 # Print DockerKit header (moved from 01-welcome)
@@ -22,7 +22,7 @@ $$$$$$$  |\$$$$$$  |\$$$$$$$\ $$ | \$$\ \$$$$$$$\ $$ |      $$ | \$$\ $$ |  \$$$
 \_______/  \______/  \_______|\__|  \__| \_______|\__|      \__|  \__|\__|   \____/
 EOF
     echo ""
-    echo "Starting DockerKit php-fpm container..."
+    echo "Starting DockerKit pho-fpm container..."
     echo "Working directory: $(pwd)"
     echo "User: $(whoami) (UID: $(id -u))"
     echo ""
@@ -41,7 +41,7 @@ main() {
     run_entrypoint_scripts
 
     if [ $# -eq 0 ]; then
-        set -- php-fpm -F
+        set -- bash
     fi
 
     if [ "$(id -u)" = '0' ]; then

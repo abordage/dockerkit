@@ -1,0 +1,37 @@
+; DockerKit PHP Configuration
+
+; Core PHP Settings
+date.timezone = UTC
+display_errors = Off
+display_startup_errors = Off
+error_log = /dev/stderr
+error_reporting = 22527
+max_execution_time = 3600
+max_input_time = -1
+memory_limit = 512M
+output_buffering = 0
+post_max_size = 100M
+upload_max_filesize = 100M
+open_basedir =
+session.cookie_secure = false
+
+; OPcache Settings
+opcache.enable = 1
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 0
+opcache.file_update_protection = 0
+opcache.save_comments = 1
+opcache.memory_consumption = 256
+opcache.max_accelerated_files = 20000
+opcache.interned_strings_buffer = 16
+opcache.fast_shutdown = 1
+opcache.enable_file_override = 1
+opcache.huge_code_pages = 1
+
+; Xdebug Configuration (if extension is loaded)
+xdebug.mode = debug
+xdebug.start_with_request = trigger
+xdebug.client_host = host.docker.internal
+xdebug.client_port = 9003
+xdebug.discover_client_host = 0
+xdebug.idekey = PHPSTORM

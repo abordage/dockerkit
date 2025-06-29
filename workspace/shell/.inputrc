@@ -1,0 +1,51 @@
+# ~/.inputrc - readline configuration for improved tab completion
+# DockerKit optimized settings
+
+# UTF-8 and locale support
+set input-meta on
+set output-meta on
+set convert-meta off
+
+# Show completions immediately on first Tab press
+set show-all-if-ambiguous on
+
+# Show completions immediately if nothing has changed
+set show-all-if-unmodified on
+
+# Case insensitive completion
+set completion-ignore-case on
+
+# Match case variations (e.g., Test -> test)
+set completion-map-case on
+
+# Colorize the common prefix of completions
+set colored-completion-prefix on
+
+# Don't ask before showing completions
+set completion-query-items -1
+
+# Show completions in multiple columns
+set print-completions-horizontally off
+
+# Page completions if too many
+set page-completions off
+
+# Don't ring bell on completion
+set bell-style none
+
+# Visual improvements for completion
+set visible-stats on
+set colored-stats on
+set mark-directories on
+
+# Better history navigation
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Alt+Left/Right for word navigation
+"\e[1;3D": backward-word
+"\e[1;3C": forward-word
+
+# Ctrl+Left/Right for word navigation (alternative)
+"\e[1;5D": backward-word
+"\e[1;5C": forward-word

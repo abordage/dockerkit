@@ -1,7 +1,6 @@
 # 🚀 Modern Docker Stack for Local Development
 
 ![GitHub Release](https://img.shields.io/github/v/release/abordage/dockerkit)
-![GitHub last commit](https://img.shields.io/github/last-commit/abordage/dockerkit)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
 ![GitHub License](https://img.shields.io/github/license/abordage/dockerkit)
@@ -9,7 +8,7 @@
 **What you get:**
 
 - **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
-- **Full site automation** — generate nginx configs, SSL certificates, auto-create databases, /etc/hosts management
+- **Full site automation** — nginx configs, SSL certificates, auto-create databases, /etc/hosts management
 - **HTTPS between microservices** — containers communicate securely out of the box
 - **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer pre-installed
 - **Streamlined workflow** — `make setup`, `make start`, `make status` covers everything
@@ -98,10 +97,46 @@ This will automatically:
 
 ### 4. Review Configuration
 
-Edit `ENABLE_*` flags to customize your stack.
+Review and customize your `.env` file for your specific needs:
+
+#### Key Configuration Options
+
+**Service Selection:**
 
 ```bash
-nano .env
+# Choose which services to start (comma-separated)
+ENABLE_SERVICES="nginx php-fpm workspace postgres mysql redis rabbitmq elasticsearch elasticvue minio mailpit"
+```
+
+**PHP Extensions:**
+
+```bash
+# Customize PHP extensions for your projects
+DEPENDENCY_PHP_EXTENSIONS="amqp ast bcmath bz2 decimal exif gd gmp imagick intl opcache pcntl pcov pdo_mysql pdo_pgsql redis soap sockets sodium xdebug xlswriter yaml zip"
+```
+
+**Database Configuration:**
+
+```bash
+# Default database credentials
+DB_USERNAME=dockerkit
+DB_PASSWORD=dockerkit
+
+# MySQL settings
+MYSQL_ROOT_PASSWORD=dockerkit
+
+# PostgreSQL settings  
+POSTGRES_PASSWORD=dockerkit
+```
+
+**MinIO Bucket Configuration:**
+
+```bash
+# Automatic bucket creation with access policies
+MINIO_BUCKETS_PUBLIC=documents,shared       # Public read/write access
+MINIO_BUCKETS_UPLOAD=uploads,forms          # Upload-only access
+MINIO_BUCKETS_DOWNLOAD=media,assets         # Download-only access
+MINIO_BUCKETS_PRIVATE=backups,logs          # Private access only
 ```
 
 ### 5. Start Services
@@ -113,7 +148,7 @@ make start
 This command:
 
 - Checks network aliases configuration
-- Starts all enabled services (`ENABLE_*=1`) in detached mode
+- Starts all enabled services in detached mode
 - Uses `docker-compose.aliases.yml` for `.local` domain routing
 - Shows startup status for each container
 
@@ -138,16 +173,13 @@ The workspace container automatically executes these initialization scripts:
 ```text
 workspace/entrypoint.d/
 ├── 01-ca-certificates   # Install SSL CA certificates for HTTPS
-├── 02-php-config        # Generate PHP configuration from environment
-├── 03-minio-client      # Configure MinIO Client and create buckets
-├── 04-bash-config       # Configure bash environment with autocomplete
-└── 05-database-setup    # Automatic database creation for .local projects
+├── 02-minio-setup       # Configure MinIO Client and create buckets
+└── 03-database-setup    # Automatic database creation for .local projects
 ```
 
 #### Key features
 
 - **SSL certificates:** Local HTTPS certificates for development sites
-- **PHP configuration:** Dynamic PHP settings from environment variables
 - **MinIO buckets:** Automatic bucket creation with configurable policies
 - **Bash environment:** Complete development shell with Laravel/Symfony autocomplete
 - **Database automation:** Automatic database creation based on .env files
@@ -161,8 +193,7 @@ The PHP-FPM container runs these initialization scripts:
 
 ```text
 php-fpm/entrypoint.d/
-├── 01-ca-certificates   # Install SSL CA certificates for PHP requests
-└── 02-php-config        # Generate PHP configuration from environment
+└── 01-ca-certificates   # Install SSL CA certificates for PHP requests
 ```
 
 #### Custom Startup Scripts
@@ -319,18 +350,11 @@ DockerKit provides automated MinIO bucket management with configurable access po
 Configure bucket creation in your `.env` file:
 
 ```bash
-# MinIO Client Configuration
-INSTALL_MINIO_CLIENT=true
-MINIO_CLIENT_WAIT_TIME=60
-
 # Bucket Categories with Access Policies
 MINIO_BUCKETS_PUBLIC=documents,shared       # Public read/write access
 MINIO_BUCKETS_UPLOAD=uploads,forms          # Upload-only access
 MINIO_BUCKETS_DOWNLOAD=media,assets         # Download-only access  
 MINIO_BUCKETS_PRIVATE=backups,logs          # Private access only
-
-# Optional Features
-MINIO_ENABLE_VERSIONING=false               # Enable bucket versioning
 ```
 
 #### Bucket Access Policies
@@ -584,7 +608,7 @@ DockerKit uses a **three-tier network architecture** for optimal security and pe
 │ • workspace     │───────│ • workspace      │       │                 │
 │ • php-fpm       │───────│ • php-fpm        │       │                 │
 │ • elasticsearch │       │ • postgres       │       │                 │
-│ • dejavu        │       │ • mysql          │       │                 │
+│ • elasticvue    │       │ • mysql          │       │                 │
 │ • minio         │       │ • mongo          │       │                 │
 │ • mailpit       │       │ • redis          │       │                 │
 │                 │       │ • rabbitmq       │       │                 │
@@ -699,7 +723,6 @@ docker compose logs workspace | grep -i minio
 
 Common solutions:
 
-- Increase `MINIO_CLIENT_WAIT_TIME=120` in `.env`
 - Verify MinIO service is running: `docker compose ps minio`
 - Check bucket names are valid (lowercase, no spaces)
 
@@ -741,7 +764,7 @@ echo "::1 myapp.local" | sudo tee -a /etc/hosts
 Performance impact:
 
 - **Before fix:** ~5.002 seconds per request
-- **After fix:** ~0.015 seconds (**333x faster!**)
+- **After fix:** ~0.015 seconds
 
 ### Performance issues
 

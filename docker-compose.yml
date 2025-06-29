@@ -13,21 +13,9 @@ services:
         - APP_UID
         - APP_GID
         - DEPENDENCY_PHP_EXTENSIONS
-        # Xdebug Configuration
-        - PHP_XDEBUG_CLIENT_PORT
-        # Database clients
-        - INSTALL_POSTGRES_CLIENT
-        - INSTALL_MYSQL_CLIENT
         # Node.js
-        - INSTALL_NODE
         - NODE_VERSION
-        - INSTALL_VACUUM
-        - INSTALL_OPENAPI_GENERATOR
-        # MinIO Client
-        - INSTALL_MINIO_CLIENT
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_WORKSPACE:-1}
+    restart: on-failure:3
     ports:
       - "${BROWSERSYNC_HOST_PORT}:3000"
       - "${BROWSERSYNC_UI_HOST_PORT}:3001"
@@ -37,50 +25,21 @@ services:
     tty: true
     stdin_open: true
     environment:
-      - PHP_IDE_CONFIG=${PHP_IDE_CONFIG}
       - CHOKIDAR_USEPOLLING=true
       - TZ
       # Container user configuration
       - APP_USER
       - APP_UID
       - APP_GID
-      # PHP Configuration - Runtime
-      - PHP_DATE_TIMEZONE
-      - PHP_DISPLAY_ERRORS
-      - PHP_DISPLAY_STARTUP_ERRORS
-      - PHP_ERROR_LOG
-      - PHP_ERROR_REPORTING
-      - PHP_MEMORY_LIMIT
-      - PHP_OPCACHE_ENABLE
-      - PHP_MAX_EXECUTION_TIME
-      - PHP_MAX_INPUT_TIME
-      - PHP_OUTPUT_BUFFERING
-      - PHP_POST_MAX_SIZE
-      - PHP_UPLOAD_MAX_FILE_SIZE
-      - PHP_OPEN_BASEDIR
-      - PHP_SESSION_COOKIE_SECURE
-      - PHP_XDEBUG_MODE
-      - PHP_XDEBUG_START_WITH_REQUEST
-      - PHP_XDEBUG_CLIENT_HOST
-      - PHP_XDEBUG_CLIENT_PORT
-      - PHP_XDEBUG_DISCOVER_CLIENT_HOST
-      - PHP_XDEBUG_IDEKEY
       # Cron configuration
       - CRONTAB_DIR=/etc/crontab.d
       # MinIO Client configuration
-      - ENABLE_MINIO
-      - INSTALL_MINIO_CLIENT
-      - MINIO_CLIENT_WAIT_TIME
       - MINIO_ROOT_USER
       - MINIO_ROOT_PASSWORD
       - MINIO_BUCKETS_PUBLIC
       - MINIO_BUCKETS_UPLOAD
       - MINIO_BUCKETS_DOWNLOAD
       - MINIO_BUCKETS_PRIVATE
-      - MINIO_ENABLE_VERSIONING
-      # Bash configuration
-      - ENABLE_FZF
-      - ENABLE_STARSHIP
       # Locale configuration for proper UTF-8 support
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8
@@ -91,12 +50,11 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
     volumes:
-      - ${HOST_DATA_PATH}/bash_history:/home/dockerkit/.bash_history
       - ${HOST_APP_PATH}:/var/www:cached
-      - ${HOST_LOGS_PATH}/cron:/var/log/cron
+      - ./workspace/auth.json:/home/${APP_USER}/.composer/auth.json:ro
+      - ./workspace/php.ini:/usr/local/etc/php/conf.d/99-dockerkit.ini:ro
       - ./workspace/entrypoint.d:/entrypoint.d:ro
-      - ./workspace/auth.json:/home/dockerkit/.composer/auth.json:ro
-      - ./workspace/crontab:/var/spool/cron/crontabs/${APP_USER}:ro
+      - ./workspace/crontab.d:/etc/cron.d:ro
       - ./ssl-ca:/ssl-ca:ro
     healthcheck:
       test: [ "CMD-SHELL", "php --version" ]
@@ -121,9 +79,7 @@ services:
         - APP_GID
         # PHP Extensions
         - DEPENDENCY_PHP_EXTENSIONS
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_PHP_FPM:-1}
+    restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -133,32 +89,11 @@ services:
       - APP_USER
       - APP_UID
       - APP_GID
-      # PHP Configuration - Runtime
-      - PHP_DATE_TIMEZONE
-      - PHP_DISPLAY_ERRORS
-      - PHP_DISPLAY_STARTUP_ERRORS
-      - PHP_ERROR_LOG
-      - PHP_ERROR_REPORTING
-      - PHP_MEMORY_LIMIT
-      - PHP_OPCACHE_ENABLE
-      - PHP_MAX_EXECUTION_TIME
-      - PHP_MAX_INPUT_TIME
-      - PHP_OUTPUT_BUFFERING
-      - PHP_POST_MAX_SIZE
-      - PHP_UPLOAD_MAX_FILE_SIZE
-      - PHP_OPEN_BASEDIR
-      - PHP_SESSION_COOKIE_SECURE
-      - PHP_XDEBUG_MODE
-      - PHP_XDEBUG_START_WITH_REQUEST
-      - PHP_XDEBUG_CLIENT_HOST
-      - PHP_XDEBUG_CLIENT_PORT
-      - PHP_XDEBUG_DISCOVER_CLIENT_HOST
-      - PHP_XDEBUG_IDEKEY
     volumes:
       - ${HOST_APP_PATH}:/var/www:cached
-      - ${HOST_LOGS_PATH}/php-fpm:/var/log/php-fpm
+      - ./php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+      - ./php-fpm/php.ini:/usr/local/etc/php/conf.d/99-dockerkit.ini:ro
       - ./php-fpm/entrypoint.d:/entrypoint.d:ro
-
       - ./ssl-ca:/ssl-ca:ro
     healthcheck:
       test: [ "CMD-SHELL", "php-fpm -t" ]
@@ -172,9 +107,7 @@ services:
   ### NGINX ################################################
   nginx:
     image: nginx:${NGINX_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_NGINX:-1}
+    restart: on-failure:3
     ports:
       - "${NGINX_HTTP_PORT}:80"
       - "${NGINX_HTTPS_PORT}:443"
@@ -185,14 +118,13 @@ services:
       - PROJECT_NAME=${PROJECT_NAME}
     volumes:
       - ${HOST_APP_PATH}:/var/www:cached
-      - ${HOST_LOGS_PATH}/nginx:/var/log/nginx
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/snippets:/etc/nginx/snippets:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./ssl-ca:/etc/ssl/ca:ro
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:80 || exit 1" ]
+      test: [ "CMD", "nginx", "-t" ]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
@@ -203,9 +135,7 @@ services:
   ### PostgreSQL ###########################################
   postgres:
     image: postgres:${POSTGRES_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_POSTGRES:-0}
+    restart: on-failure:3
     ports:
       - "${POSTGRES_PORT}:5432"
     environment:
@@ -214,13 +144,12 @@ services:
       - POSTGRES_PASSWORD
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/postgres-${POSTGRES_VERSION}:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ${HOST_LOGS_PATH}/postgres:/var/log/postgresql
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}" ]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
@@ -231,9 +160,7 @@ services:
   ### MySQL ################################################
   mysql:
     image: mysql:${MYSQL_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_MYSQL:-0}
+    restart: on-failure:3
     environment:
       - MYSQL_DATABASE
       - MYSQL_USER
@@ -243,10 +170,9 @@ services:
     ports:
       - "${MYSQL_PORT}:3306"
     volumes:
-      - ${HOST_DATA_PATH}/mysql-${MYSQL_VERSION}:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
-      - ${HOST_LOGS_PATH}/mysql:/var/log/mysql
     healthcheck:
       test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -259,9 +185,7 @@ services:
   ### MongoDB ##############################################
   mongo:
     image: mongo:${MONGODB_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_MONGODB:-0}
+    restart: on-failure:3
     ports:
       - "${MONGODB_PORT}:27017"
     environment:
@@ -269,8 +193,8 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/mongo-${MONGODB_VERSION}/db:/data/db
-      - ${HOST_DATA_PATH}/mongo-${MONGODB_VERSION}/config:/data/configdb
+      - mongo_db_data:/data/db
+      - mongo_config_data:/data/configdb
     healthcheck:
       test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -282,16 +206,14 @@ services:
   ### Redis ################################################
   redis:
     image: redis:${REDIS_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_REDIS:-0}
+    restart: on-failure:3
     ports:
       - "${REDIS_PORT}:6379"
     command: --requirepass ${REDIS_PASSWORD}
     environment:
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/redis-${REDIS_VERSION}:/data
+      - redis_data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -303,9 +225,7 @@ services:
   ### RabbitMQ #############################################
   rabbitmq:
     image: rabbitmq:${RABBITMQ_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_RABBITMQ:-0}
+    restart: on-failure:3
     hostname: dockerkit-rabbitmq
     ports:
       - "${RABBITMQ_NODE_HOST_PORT}:5672"
@@ -317,7 +237,7 @@ services:
       - RABBITMQ_DEFAULT_PASS
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/rabbitmq-${RABBITMQ_VERSION}:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -329,9 +249,7 @@ services:
   ### ElasticSearch ########################################
   elasticsearch:
     image: elasticsearch:${ELASTICSEARCH_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_ELASTICSEARCH:-0}
+    restart: on-failure:3
     ports:
       - "${ELASTICSEARCH_HOST_HTTP_PORT}:9200"
     environment:
@@ -370,9 +288,15 @@ services:
       - xpack.security.enabled=false
       - xpack.security.transport.ssl.enabled=false
 
+      # CORS settings for Elasticvue Web UI integration
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:${ELASTICVUE_HTTP_PORT},http://127.0.0.1:${ELASTICVUE_HTTP_PORT}
+      - http.cors.allow-headers=X-Requested-With,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+
       - TZ=UTC
     volumes:
-      - ${HOST_DATA_PATH}/elasticsearch-${ELASTICSEARCH_VERSION}:/usr/share/elasticsearch/data
+      - elasticsearch_data:/usr/share/elasticsearch/data
     ulimits:
       nofile:
         soft: 65535
@@ -385,18 +309,19 @@ services:
     networks:
       - web
 
-  ### Dejavu ###############################################
-  dejavu:
-    image: appbaseio/dejavu:${DEJAVU_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_DEJAVU:-0}
+  ### Elasticvue ###########################################
+  elasticvue:
+    image: cars10/elasticvue:${ELASTICVUE_VERSION}
+    restart: on-failure:3
     ports:
-      - "${DEJAVU_HTTP_PORT}:1358"
+      - "${ELASTICVUE_HTTP_PORT}:8080"
     environment:
       - TZ
+      - ELASTICVUE_CLUSTERS
+    volumes:
+      - elasticvue_data:/usr/share/nginx/html/api
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:1358 || exit 1" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
@@ -408,9 +333,7 @@ services:
   ### Minio ################################################
   minio:
     image: minio/minio:${MINIO_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_MINIO:-0}
+    restart: on-failure:3
     command: server --console-address ":9001" /data
     ports:
       - "${MINIO_PORT}:9000"
@@ -420,8 +343,8 @@ services:
       - MINIO_ROOT_PASSWORD
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/minio-${MINIO_VERSION}/data:/data
-      - ${HOST_DATA_PATH}/minio-${MINIO_VERSION}/config:/root/.minio
+      - minio_data:/data
+      - minio_config:/root/.minio
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -433,16 +356,14 @@ services:
   ### Mailpit ##############################################
   mailpit:
     image: axllent/mailpit:${MAILPIT_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_MAILPIT:-0}
+    restart: on-failure:3
     ports:
       - "${MAILPIT_HTTP_PORT}:8025"
       - "${MAILPIT_SMTP_PORT}:1025"
     environment:
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/mailpit-${MAILPIT_VERSION}:/data
+      - mailpit_data:/data
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:8025 || exit 1" ]
       interval: ${HEALTH_CHECK_INTERVAL}
@@ -454,9 +375,7 @@ services:
   ### Portainer ############################################
   portainer:
     image: portainer/portainer-ce:${PORTAINER_VERSION}
-    restart: unless-stopped
-    deploy:
-      replicas: ${ENABLE_PORTAINER:-0}
+    restart: on-failure:3
     ports:
       - "${PORTAINER_PORT}:9000"
     extra_hosts:
@@ -464,13 +383,8 @@ services:
     environment:
       - TZ
     volumes:
-      - ${HOST_DATA_PATH}/portainer-${PORTAINER_VERSION}:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:9000 || exit 1" ]
-      interval: ${HEALTH_CHECK_INTERVAL}
-      timeout: ${HEALTH_CHECK_TIMEOUT}
-      retries: ${HEALTH_CHECK_RETRIES}
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - management
 
@@ -481,3 +395,17 @@ networks:
     driver: bridge
   management:
     driver: bridge
+
+volumes:
+  postgres_data:
+  mysql_data:
+  mongo_db_data:
+  mongo_config_data:
+  redis_data:
+  rabbitmq_data:
+  elasticsearch_data:
+  elasticvue_data:
+  minio_data:
+  minio_config:
+  mailpit_data:
+  portainer_data:

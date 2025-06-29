@@ -1,0 +1,209 @@
+#!/bin/bash
+
+# ============================================================================
+# MINIO CLIENT SETUP SCRIPT
+# ============================================================================
+# Configures MinIO client and creates buckets with policies
+# ============================================================================
+set -euo pipefail
+
+# Color output functions
+log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
+log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
+log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
+log_info() { echo "[$SCRIPT_NAME] $*"; }
+log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
+
+SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
+
+# MinIO configuration constants
+readonly MINIO_HOST="minio"
+readonly MINIO_PORT="9000"
+readonly MINIO_ALIAS="local"
+readonly MINIO_URL="http://$MINIO_HOST:$MINIO_PORT"
+
+# Default buckets to create (can be extended)
+readonly DEFAULT_BUCKETS=("uploads" "tmp" "backups")
+
+# ============================================================================
+# PREREQUISITES CHECK
+# ============================================================================
+
+check_prerequisites() {
+    log_info "Checking prerequisites for MinIO client setup..."
+
+    # Check if MinIO client is installed
+    if ! command -v mc >/dev/null 2>&1; then
+        log_skip "MinIO client (mc) not installed"
+        return 1
+    fi
+
+    local mc_version
+    mc_version=$(mc --version 2>/dev/null | head -1 | grep -o 'RELEASE[^ ]*' || echo "unknown")
+    log_ok "MinIO client (mc) available: version $mc_version"
+
+    # Check credentials
+    if [[ -z "${MINIO_ROOT_USER:-}" ]] || [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
+        log_warn "MINIO credentials not set, skipping setup"
+        log_info "Required environment variables:"
+        log_info "  - MINIO_ROOT_USER"
+        log_info "  - MINIO_ROOT_PASSWORD"
+        return 1
+    fi
+    log_ok "MinIO credentials configured"
+
+    log_ok "Prerequisites check completed"
+    return 0
+}
+
+# ============================================================================
+# MINIO SERVER CONNECTION
+# ============================================================================
+
+test_minio_connection() {
+    log_info "Testing connection to MinIO server ($MINIO_URL)..."
+
+    # Try to connect with timeout
+    local max_attempts=5
+    local attempt=1
+
+    while [[ $attempt -le $max_attempts ]]; do
+        if curl -s --connect-timeout 3 "$MINIO_URL/minio/health/live" >/dev/null 2>&1; then
+            log_ok "MinIO server is accessible"
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            log_info "Attempt $attempt/$max_attempts failed, retrying in 2 seconds..."
+            sleep 2
+        fi
+
+        ((attempt++))
+    done
+
+    log_warn "MinIO server is not accessible at $MINIO_URL"
+    log_warn "MinIO client configuration will be skipped"
+    return 1
+}
+
+# ============================================================================
+# MINIO CLIENT CONFIGURATION
+# ============================================================================
+
+configure_minio_client() {
+    log_info "Configuring MinIO client..."
+
+    # Remove existing alias if present
+    if mc alias list | grep -q "^$MINIO_ALIAS"; then
+        log_info "Removing existing alias '$MINIO_ALIAS'..."
+        mc alias remove "$MINIO_ALIAS" >/dev/null 2>&1 || true
+    fi
+
+    # Add new alias
+    log_info "Adding MinIO alias '$MINIO_ALIAS' for $MINIO_URL..."
+    if mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; then
+        log_ok "MinIO alias '$MINIO_ALIAS' configured successfully"
+    else
+        log_error "Failed to configure MinIO alias '$MINIO_ALIAS'"
+        return 1
+    fi
+
+    # Test the configuration
+    log_info "Testing MinIO client configuration..."
+    if mc admin info "$MINIO_ALIAS" >/dev/null 2>&1; then
+        log_ok "MinIO client configuration verified"
+    else
+        log_warn "MinIO client configuration test failed"
+        return 1
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# BUCKET MANAGEMENT
+# ============================================================================
+
+create_default_buckets() {
+    log_info "Checking/creating default buckets..."
+
+    local created_count=0
+    local existing_count=0
+
+    for bucket in "${DEFAULT_BUCKETS[@]}"; do
+        if mc ls "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
+            log_info "Bucket '$bucket' already exists"
+            ((existing_count++))
+        else
+            log_info "Creating bucket '$bucket'..."
+            if mc mb "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
+                log_ok "Bucket '$bucket' created"
+                ((created_count++))
+
+                # Set public-read policy for uploads bucket
+                if [[ "$bucket" == "uploads" ]]; then
+                    log_info "Setting public-read policy for '$bucket' bucket..."
+                    if mc anonymous set public "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
+                        log_ok "Public-read policy set for '$bucket' bucket"
+                    else
+                        log_warn "Failed to set public-read policy for '$bucket' bucket"
+                    fi
+                fi
+            else
+                log_error "Failed to create bucket '$bucket'"
+            fi
+        fi
+    done
+
+    if [[ $created_count -gt 0 ]]; then
+        log_ok "$created_count bucket(s) created"
+    fi
+
+    if [[ $existing_count -gt 0 ]]; then
+        log_info "$existing_count bucket(s) already existed"
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+main() {
+    log_info "Setting up MinIO client for workspace container..."
+
+    # Check prerequisites
+    if ! check_prerequisites; then
+        log_info "MinIO client setup completed (skipped)"
+        echo ""
+        return 0
+    fi
+
+    # Test MinIO server connection
+    if ! test_minio_connection; then
+        log_info "MinIO client setup completed (server not accessible)"
+        echo ""
+        return 0
+    fi
+
+    # Configure MinIO client
+    if ! configure_minio_client; then
+        log_error "MinIO client configuration failed"
+        echo ""
+        return 1
+    fi
+
+    # Create default buckets
+    if ! create_default_buckets; then
+        log_warn "Default bucket creation failed"
+    fi
+
+    log_info "MinIO client setup completed"
+    echo ""
+    return 0
+}
+
+# Execute main function
+main "$@"
