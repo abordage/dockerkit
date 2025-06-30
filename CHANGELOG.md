@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/abordage/dockerkit/compare/v1.4.0...v1.5.0) (2025-06-30)
+
+
+### Features
+
+* **tools:** add `dk` command and manager scripts for DockerKit integration ([e1c3176](https://github.com/abordage/dockerkit/commit/e1c31760c054738822ad18b31cb3e0cf3bc35311))
+
 # [1.4.0](https://github.com/abordage/dockerkit/compare/v1.3.0...v1.4.0) (2025-06-29)
 
 
