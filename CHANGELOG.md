@@ -1,3 +1,16 @@
+# [1.6.0](https://github.com/abordage/dockerkit/compare/v1.5.0...v1.6.0) (2025-06-30)
+
+
+### Bug Fixes
+
+* **nginx:** add index directive for default index file handling ([043c083](https://github.com/abordage/dockerkit/commit/043c083af65366eb195fda6ee260ed3ef2d83ee9))
+* **tools:** streamline SSL and Nginx directory handling ([3b65108](https://github.com/abordage/dockerkit/commit/3b65108e846462f055a2e3dba034b29a199dc742))
+
+
+### Features
+
+* **workspace:** install selective tools from Debian Backports repository ([c62278f](https://github.com/abordage/dockerkit/commit/c62278fd465159cc4d2a568f15a440cce5487555))
+
 # [1.5.0](https://github.com/abordage/dockerkit/compare/v1.4.0...v1.5.0) (2025-06-30)
 
 
