@@ -6,6 +6,14 @@
 # Functions for managing project files (create from examples, cleanup, etc.)
 # =============================================================================
 
+# Prevent multiple inclusion
+if [[ "${DOCKERKIT_FILES_LOADED:-}" == "true" ]]; then
+    return 0
+fi
+
+# Mark as loaded
+readonly DOCKERKIT_FILES_LOADED="true"
+
 # Registry of files to create from examples (source:destination pairs)
 SETUP_FILES=(
     ".env.example:.env"
@@ -46,7 +54,7 @@ create_managed_files() {
         local source="${file_pair%:*}"
         local destination="${file_pair#*:}"
         if create_file_from_example "$source" "$destination"; then
-            ((created_count++))
+            created_count=$((created_count + 1))
         fi
     done
 
@@ -57,8 +65,8 @@ create_managed_files() {
     fi
 }
 
-# Ensure directory exists
-ensure_directory() {
+# Ensure project directory exists (relative to DOCKERKIT_DIR)
+ensure_project_directory() {
     local dir_path="$1"
 
     if [ ! -d "$DOCKERKIT_DIR/$dir_path" ]; then

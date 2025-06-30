@@ -39,21 +39,9 @@ source "$SCRIPT_DIR/lib/core/docker.sh"
 # shellcheck source=lib/services/cleanup.sh
 source "$SCRIPT_DIR/lib/services/cleanup.sh"
 
-# Parse command line arguments
+# Parse command line arguments using universal function
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_help
-                exit "$EXIT_SUCCESS"
-                ;;
-            *)
-                print_error "Unknown parameter: $1"
-                show_help
-                exit "$EXIT_GENERAL_ERROR"
-                ;;
-        esac
-    done
+    parse_standard_arguments "show_help" "$@"
 }
 
 # Show help
@@ -90,17 +78,6 @@ EOF
 }
 
 
-
-# Note: All cleanup functions are now in lib/services/cleanup.sh
-
-
-
-
-
-
-
-
-
 # Main reset function
 main() {
     print_header "DOCKERKIT PROJECT RESET"
@@ -117,7 +94,7 @@ main() {
     echo ""
 
     # Confirm reset operation
-    if ! confirm_action_default_yes "Do you want to continue with the reset?"; then
+    if ! confirm_action "Do you want to continue with the reset?" "yes"; then
         print_info "Reset cancelled by user"
         exit "$EXIT_SUCCESS"
     fi
@@ -139,6 +116,7 @@ main() {
     local project_name
     project_name=$(get_docker_project_name "$DOCKERKIT_DIR")
     cleanup_docker_project "$project_name"
+    echo ""
 
     # =================================================================
     # OPTIONAL CLEANUP (with confirmations)
@@ -146,9 +124,11 @@ main() {
 
     # Step 5: Clean dangling Docker images system-wide (optional, default: Yes)
     cleanup_dangling_images
+    echo ""
 
     # Step 6: Clean unused Docker images system-wide (optional, default: No)
     cleanup_unused_images
+    echo ""
 
     # Step 7: Clean Docker build cache system-wide (optional, default: No)
     cleanup_docker_cache
@@ -156,8 +136,8 @@ main() {
     # Summary
     print_header "RESET COMPLETED SUCCESSFULLY!"
     print_section "Next steps:"
-    echo -e "  ${CYAN}1.${NC} Run setup: ${GREEN}make setup${NC}"
-    echo -e "  ${CYAN}2.${NC} Start containers: ${GREEN}make start${NC}"
+    echo -e "  $(cyan '1.') Run setup: $(green 'make setup')"
+    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
     echo ""
 }
 

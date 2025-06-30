@@ -16,12 +16,12 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 SITE_STATUS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$SITE_STATUS_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$SITE_STATUS_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh
 source "$SITE_STATUS_SCRIPT_DIR/../core/config.sh"
+# shellcheck source=../core/math.sh
+source "$SITE_STATUS_SCRIPT_DIR/../core/math.sh"
 
 # Check status of all .local sites
 check_site_status() {
@@ -97,6 +97,18 @@ perform_curl_test() {
          "$url" 2>/dev/null || echo "DNS_LOOKUP:0|TCP_CONNECT:0|SSL_HANDSHAKE:0|PRETRANSFER:0|TRANSFER_START:0|TOTAL_TIME:999|HTTP_CODE:000"
 }
 
+# Validate and set default value for timing data
+validate_and_default_time() {
+    local value="$1"
+    local default="${2:-0.000}"
+
+    if [[ "$value" =~ ^[0-9.]+$ ]]; then
+        echo "$value"
+    else
+        echo "$default"
+    fi
+}
+
 # Parse curl output and display formatted result for a site
 parse_and_display_site_result() {
     local site_name="$1"
@@ -112,27 +124,25 @@ parse_and_display_site_result() {
     total_time=$(echo "$curl_output" | grep -o 'TOTAL_TIME:[0-9.]*' | cut -d: -f2 || echo "999.999")
     http_code=$(echo "$curl_output" | grep -o 'HTTP_CODE:[0-9]*' | cut -d: -f2 || echo "000")
 
-    # Ensure numeric values
-    [[ ! "$dns_time" =~ ^[0-9.]+$ ]] && dns_time="0.000"
-    [[ ! "$ssl_time" =~ ^[0-9.]+$ ]] && ssl_time="0.000"
-    [[ ! "$pretransfer_time" =~ ^[0-9.]+$ ]] && pretransfer_time="0.000"
-    [[ ! "$starttransfer_time" =~ ^[0-9.]+$ ]] && starttransfer_time="0.000"
-    [[ ! "$total_time" =~ ^[0-9.]+$ ]] && total_time="999.999"
-    [[ ! "$http_code" =~ ^[0-9]+$ ]] && http_code="000"
+    # Validate and normalize timing values using universal function
+    dns_time=$(validate_and_default_time "$dns_time")
+    ssl_time=$(validate_and_default_time "$ssl_time")
+    pretransfer_time=$(validate_and_default_time "$pretransfer_time")
+    starttransfer_time=$(validate_and_default_time "$starttransfer_time")
+    total_time=$(validate_and_default_time "$total_time" "999.999")
 
-    # Check if site is completely unavailable (connection failed)
-    if [ "$http_code" = "000" ] || [ "$total_time" = "999" ]; then
-        print_error "$site_name ${YELLOW}[UNAVAILABLE]${NC}"
-        return "$EXIT_SUCCESS"
+    # Validate HTTP code
+    if [[ ! "$http_code" =~ ^[0-9]+$ ]]; then
+        http_code="000"
     fi
 
-            # Calculate TTFB (Time To First Byte) = starttransfer - pretransfer
+    # Calculate TTFB (Time To First Byte) = starttransfer - pretransfer
     local ttfb_time
     local ttfb_raw
-    ttfb_raw=$(echo "$starttransfer_time - $pretransfer_time" | bc -l)
+    ttfb_raw=$(math_subtract "$starttransfer_time" "$pretransfer_time")
 
     # Ensure TTFB is not negative
-    if (( $(echo "$ttfb_raw < 0" | bc -l) )); then
+    if ! math_compare_gte "$ttfb_raw" "0"; then
         ttfb_raw="0"
     fi
 
@@ -153,13 +163,13 @@ parse_and_display_site_result() {
     # Display result with unified format using standard functions
     if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 400 ]; then
         # 2xx success, 3xx redirects - site is working
-        print_success "$site_name: $total_time_colored $timing_info ${GREEN}[OK]${NC}"
+        print_success "$site_name: $total_time_colored $timing_info $(green '[OK]')"
     elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 600 ]; then
         # 4xx client errors, 5xx server errors - site accessible but with issues
-        print_success "$site_name: $total_time_colored $timing_info ${YELLOW}[${http_code}]${NC}"
+        print_success "$site_name: $total_time_colored $timing_info $(yellow "[$http_code]")"
     else
         # Other codes - treat as unavailable
-        print_error "$site_name ${YELLOW}[UNAVAILABLE]${NC}"
+        print_error "$site_name $(yellow '[UNAVAILABLE]')"
     fi
 }
 
@@ -180,26 +190,26 @@ format_total_time() {
     local numeric_time
     if [[ "$total_time" == *"ms" ]]; then
         numeric_time="${total_time%ms}"
-        numeric_time=$(echo "$numeric_time / 1000" | bc -l)
+        numeric_time=$(math_operation "$numeric_time / 1000" 3)
     else
         numeric_time="${total_time%s}"
     fi
 
     # Check if total time is slow (above threshold)
     if is_time_above_threshold "$numeric_time" "$PERFORMANCE_THRESHOLD_TOTAL"; then
-        echo "${YELLOW}${total_time}${NC}"
+        yellow "$total_time"
     else
-        echo "${GREEN}${total_time}${NC}"
+        green "$total_time"
     fi
 }
 
-# Check if time is above threshold (using bc for precise floating point comparison)
+# Check if time is above threshold (using math functions for floating point comparison)
 is_time_above_threshold() {
     local time_value="$1"
     local threshold="$2"
 
-    # Use bc for reliable floating point comparison
-    (( $(echo "$time_value > $threshold" | bc -l) ))
+    # Use math functions for reliable floating point comparison
+    math_compare_gt "$time_value" "$threshold"
 }
 
 # Format time with smart units (ms for < 0.1s, s for >= 0.1s)
@@ -213,16 +223,16 @@ format_time_smart() {
     fi
 
     # Compare with 0.1 second threshold
-    if (( $(echo "$time_val >= 0.1" | bc -l) )); then
-        # Show seconds with 1 decimal place - use bc for precise formatting
+    if math_compare_gte "$time_val" "0.1"; then
+        # Show seconds with 1 decimal place - use math functions for precise formatting
         local formatted_seconds
-        formatted_seconds=$(echo "scale=1; $time_val / 1" | bc -l)
+        formatted_seconds=$(math_operation "$time_val / 1" 1)
         echo "${formatted_seconds}s"
     else
-        # Show milliseconds (rounded to whole number) - use bc for precise calculation
+        # Show milliseconds (rounded to 1 decimal place) - use math functions for precise calculation
         local ms_raw ms_rounded
-        ms_raw=$(echo "$time_val * 1000" | bc -l)
-        ms_rounded=$(echo "scale=0; ($ms_raw + 0.5) / 1" | bc -l)
+        ms_raw=$(math_multiply "$time_val" "1000")
+        ms_rounded=$(math_round "$ms_raw" 1)
         echo "${ms_rounded}ms"
     fi
 }

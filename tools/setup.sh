@@ -48,21 +48,9 @@ source "$SCRIPT_DIR/lib/services/aliases.sh"
 # shellcheck source=lib/status/tools-status.sh
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
 
-# Parse command line arguments
+# Parse command line arguments using universal function
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_help
-                exit "$EXIT_SUCCESS"
-                ;;
-            *)
-                print_error "Unknown parameter: $1"
-                show_help
-                exit "$EXIT_GENERAL_ERROR"
-                ;;
-        esac
-    done
+    parse_standard_arguments "show_help" "$@"
 }
 
 # Show help
@@ -189,9 +177,9 @@ show_setup_summary() {
     done
 
     print_section "Next steps:"
-    echo -e "  ${CYAN}1.${NC} Review ${GREEN}.env${NC} configuration"
-    echo -e "  ${CYAN}2.${NC} Start containers: ${GREEN}make start${NC}"
-    echo -e "  ${CYAN}3.${NC} View all commands: ${GREEN}make help${NC}"
+    echo -e "  $(cyan '1.') Review $(green '.env') configuration"
+    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
+    echo -e "  $(cyan '3.') View all commands: $(green 'make help')"
     echo ""
 }
 

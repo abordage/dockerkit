@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 DETECTOR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$DETECTOR_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$DETECTOR_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh

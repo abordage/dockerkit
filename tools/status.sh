@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# SYSTEM DIAGNOSTICS SCRIPT
+# DOCKERKIT STATUS SCRIPT
 # =============================================================================
-# Main script for running comprehensive system diagnostics
-# Usage: ./system-diagnostics.sh
+# Main script for running comprehensive system status checks
+# Usage: ./status.sh
 # =============================================================================
 
 set -euo pipefail

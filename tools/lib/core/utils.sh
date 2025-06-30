@@ -4,10 +4,14 @@
 # COMMON UTILITIES
 # =============================================================================
 # Common utility functions used across multiple scripts
-# Usage: source this file to access utility functions
 # =============================================================================
 
 set -euo pipefail
+
+# Prevent multiple inclusion
+if [[ "${DOCKERKIT_UTILS_LOADED:-}" == "true" ]]; then
+    return 0
+fi
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,26 +19,45 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$BASE_DIR/base.sh"
 
 # Ensure colors are loaded
-if [ -z "$RED" ]; then
+if ! command -v red >/dev/null 2>&1; then
     # shellcheck source=./colors.sh
     source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 fi
 
+# Mark as loaded
+readonly DOCKERKIT_UTILS_LOADED="true"
+
 # Detect operating system
 detect_os() {
     case "$(uname -s)" in
-        Darwin) echo "macos" ;;
-        Linux) echo "linux" ;;
+        Darwin*) echo "macos" ;;
+        Linux*)
+            if test -f /proc/version && grep -qi microsoft /proc/version 2>/dev/null; then
+                echo "wsl2"
+            elif test -n "${WSL_DISTRO_NAME:-}" || test -n "${WSLENV:-}"; then
+                echo "wsl2"
+            else
+                echo "linux"
+            fi
+            ;;
         CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
         *) echo "unknown" ;;
     esac
 }
 
-# Check if command exists
+# Get current project version from git tags
+get_project_version() {
+    local version
+    if version="$(git describe --tags --abbrev=0 2>/dev/null)"; then
+        echo "${version#v}" | tr -d '\n'
+    else
+        echo "unknown"
+    fi
+}
+
 command_exists() {
     local command_name="$1"
 
-    # Special case for docker compose
     if [ "$command_name" = "docker compose" ]; then
         docker compose version >/dev/null 2>&1
     else
@@ -140,13 +163,10 @@ ensure_directory() {
     fi
 }
 
-# Compare two version strings (semantic versioning)
-# Returns: 0 if v1 >= v2, 1 if v1 < v2
 version_compare() {
     local version1="$1"
     local version2="$2"
 
-    # Handle special cases
     if [ "$version1" = "$version2" ]; then
         return "$EXIT_SUCCESS"
     fi
@@ -159,107 +179,187 @@ version_compare() {
         return "$EXIT_SUCCESS"
     fi
 
-    # Clean versions (remove leading 'v' and non-numeric suffixes)
     version1=$(echo "$version1" | sed 's/^v//' | sed 's/[^0-9.].*//')
     version2=$(echo "$version2" | sed 's/^v//' | sed 's/[^0-9.].*//')
 
-    # Split versions into arrays using read -a
-    local v1_parts v2_parts
-    IFS='.' read -ra v1_parts <<< "$version1"
-    IFS='.' read -ra v2_parts <<< "$version2"
+    if command -v sort >/dev/null 2>&1; then
+        local sorted_versions
+        sorted_versions=$(printf '%s\n%s\n' "$version1" "$version2" | sort -V)
 
-    # Compare each part
-    local max_parts=${#v1_parts[@]}
-    if [ ${#v2_parts[@]} -gt "$max_parts" ]; then
-        max_parts=${#v2_parts[@]}
-    fi
-
-    for ((i=0; i<max_parts; i++)); do
-        local v1_part=${v1_parts[i]:-0}
-        local v2_part=${v2_parts[i]:-0}
-
-        # Convert to integers for comparison using parameter expansion
-        v1_part=${v1_part//[^0-9]/}
-        v2_part=${v2_part//[^0-9]/}
-
-        # Default to 0 if empty
-        v1_part=${v1_part:-0}
-        v2_part=${v2_part:-0}
-
-        if [ "$v1_part" -gt "$v2_part" ]; then
+        if [ "$(echo "$sorted_versions" | tail -1)" = "$version1" ]; then
             return "$EXIT_SUCCESS"
-        elif [ "$v1_part" -lt "$v2_part" ]; then
+        else
             return "$EXIT_GENERAL_ERROR"
         fi
+    else
+        # Fallback to simple string comparison for systems without sort -V
+        if [ "$version1" = "$version2" ]; then
+            return "$EXIT_SUCCESS"
+        elif [ "$(printf '%s\n%s\n' "$version1" "$version2" | sort | tail -1)" = "$version1" ]; then
+            return "$EXIT_SUCCESS"
+        else
+            return "$EXIT_GENERAL_ERROR"
+        fi
+    fi
+}
+
+# =============================================================================
+# ARGUMENT PARSING
+# =============================================================================
+
+# Universal argument parsing for standard scripts
+# Usage: parse_standard_arguments "help_function" "$@"
+parse_standard_arguments() {
+    local help_function="$1"
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                "$help_function"
+                exit "$EXIT_SUCCESS"
+                ;;
+            *)
+                print_error "Unknown parameter: $1"
+                "$help_function"
+                exit "$EXIT_GENERAL_ERROR"
+                ;;
+        esac
     done
+}
+
+# =============================================================================
+# FILE OPERATIONS
+# =============================================================================
+
+# Safe file copy with error handling
+safe_copy() {
+    local source="$1"
+    local destination="$2"
+    local backup="${3:-false}"
+
+    if [ ! -f "$source" ]; then
+        print_error "Source file not found: $source"
+        return "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Create backup if requested and destination exists
+    if [ "$backup" = "true" ] && [ -f "$destination" ]; then
+        local backup_file="${destination}.backup"
+        cp "$destination" "$backup_file" || {
+            print_error "Failed to create backup: $backup_file"
+            return "$EXIT_GENERAL_ERROR"
+        }
+        print_info "Created backup: $backup_file"
+    fi
+
+    cp "$source" "$destination" || {
+        print_error "Failed to copy $source to $destination"
+        return "$EXIT_GENERAL_ERROR"
+    }
 
     return "$EXIT_SUCCESS"
+}
+
+# Safe file removal with confirmation
+safe_remove() {
+    local file_path="$1"
+    local silent="${2:-false}"
+
+    if [ ! -e "$file_path" ]; then
+        if [ "$silent" != "true" ]; then
+            print_warning "File not found: $file_path"
+        fi
+        return "$EXIT_SUCCESS"
+    fi
+
+    rm -f "$file_path" || {
+        print_error "Failed to remove: $file_path"
+        return "$EXIT_GENERAL_ERROR"
+    }
+
+    if [ "$silent" != "true" ]; then
+        print_success "Removed: $file_path"
+    fi
+
+    return "$EXIT_SUCCESS"
+}
+
+# Check if file is writable
+is_writable() {
+    local file_path="$1"
+
+    # Check if file exists and is writable
+    if [ -f "$file_path" ] && [ -w "$file_path" ]; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    # Check if directory is writable (for new files)
+    local dir_path
+    dir_path=$(dirname "$file_path")
+    if [ -d "$dir_path" ] && [ -w "$dir_path" ]; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    return "$EXIT_GENERAL_ERROR"
 }
 
 # =============================================================================
 # USER CONFIRMATION FUNCTIONS
 # =============================================================================
 
-# Confirm action with user
+# Universal confirmation function with optional default
+# Usage: confirm_action "message" [default]
+# Defaults: "yes", "no", or omit for no default
 confirm_action() {
     local message="$1"
+    local default="${2:-}"
     local response
+    local prompt
 
-    echo -e "${YELLOW}$message${NC} (Y/N): " >&2
-    read -r response
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
+    # Build prompt based on default
+    case "$default" in
+        yes|y|Y)
+            prompt="$(yellow "$message") ($(green 'Y')/N, default: $(green 'Yes')): "
+            ;;
+        no|n|N)
+            prompt="$(yellow "$message") (Y/$(red 'N'), default: $(red 'No')): "
             ;;
         *)
+            prompt="$(yellow "$message") (Y/N): "
+            ;;
+    esac
+
+    echo -e "$prompt" >&2
+    read -r response
+
+    # Handle empty response (use default)
+    if [ -z "$response" ] && [ -n "$default" ]; then
+        response="$default"
+    fi
+
+    # Normalize response to lowercase for case-insensitive comparison
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
+
+    case "$response" in
+        y|yes)
+            return "$EXIT_SUCCESS"
+            ;;
+        n|no)
+            return "$EXIT_GENERAL_ERROR"
+            ;;
+        *)
+            # Invalid response - treat as no
             return "$EXIT_GENERAL_ERROR"
             ;;
     esac
 }
 
-# Confirm action with default Yes (Enter = Yes)
+# Legacy wrapper functions for backward compatibility
 confirm_action_default_yes() {
-    local message="$1"
-    local response
-
-    echo -e "${YELLOW}$message${NC} (${GREEN}Y${NC}/N, default: ${GREEN}Yes${NC}): " >&2
-    read -r response
-
-    # Default to Yes if empty response
-    if [ -z "$response" ]; then
-        response="Y"
-    fi
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
-            ;;
-        *)
-            return "$EXIT_GENERAL_ERROR"
-            ;;
-    esac
+    confirm_action "$1" "yes"
 }
 
-# Confirm action with default No (Enter = No)
 confirm_action_default_no() {
-    local message="$1"
-    local response
-
-    echo -e "${YELLOW}$message${NC} (Y/${RED}N${NC}, default: ${RED}No${NC}): " >&2
-    read -r response
-
-    # Default to No if empty response
-    if [ -z "$response" ]; then
-        response="N"
-    fi
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
-            ;;
-        *)
-            return "$EXIT_GENERAL_ERROR"
-            ;;
-    esac
+    confirm_action "$1" "no"
 }

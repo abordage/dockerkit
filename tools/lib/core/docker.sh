@@ -18,7 +18,7 @@ set -euo pipefail
 
 # Prevent multiple inclusion
 if [[ "${DOCKERKIT_DOCKER_LOADED:-}" == "true" ]]; then
-    return 0
+    return "$EXIT_SUCCESS"
 fi
 
 # Load base functionality
@@ -70,14 +70,21 @@ ensure_docker_available() {
 get_docker_project_name() {
     local project_dir="${1:-$DOCKERKIT_DIR}"
 
-    # Try environment variable first
     if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
         echo "$COMPOSE_PROJECT_NAME"
         return "$EXIT_SUCCESS"
     fi
 
-    # Fall back to directory basename
     basename "$project_dir"
+}
+
+# Detect if Docker Desktop or Docker Engine is available
+has_docker_desktop() {
+    if command -v docker >/dev/null 2>&1; then
+        docker info >/dev/null 2>&1
+        return "$EXIT_SUCCESS"
+    fi
+    return "$EXIT_GENERAL_ERROR"
 }
 
 # =============================================================================
@@ -107,21 +114,17 @@ _execute_docker_command() {
     shift 2
     local filter_args=("$@")
 
-    # Build command array to avoid eval issues
     local cmd_array
     read -ra cmd_array <<< "$(_get_docker_command "$resource_type")" || return "$EXIT_GENERAL_ERROR"
 
-    # Add format if provided
     if [ -n "$format" ]; then
         cmd_array+=(--format "$format")
     fi
 
-    # Add filters if any provided
     if [ ${#filter_args[@]} -gt 0 ]; then
         cmd_array+=("${filter_args[@]}")
     fi
 
-    # Execute command
     "${cmd_array[@]}" 2>/dev/null || echo ""
 }
 
@@ -161,18 +164,25 @@ remove_docker_resources() {
         return "$EXIT_SUCCESS"
     fi
 
+    # Show formatted output for each removed resource
+    echo "$resource_ids" | while IFS= read -r resource_id; do
+        if [ -n "$resource_id" ]; then
+            print_success "$resource_id"
+        fi
+    done
+
     case "$resource_type" in
         containers)
-            echo "$resource_ids" | xargs docker container rm -f 2>/dev/null
+            echo "$resource_ids" | xargs docker container rm -f >/dev/null 2>&1
             ;;
         volumes)
-            echo "$resource_ids" | xargs docker volume rm 2>/dev/null
+            echo "$resource_ids" | xargs docker volume rm >/dev/null 2>&1
             ;;
         images)
-            echo "$resource_ids" | xargs docker rmi -f 2>/dev/null
+            echo "$resource_ids" | xargs docker rmi -f >/dev/null 2>&1
             ;;
         networks)
-            echo "$resource_ids" | xargs docker network rm 2>/dev/null
+            echo "$resource_ids" | xargs docker network rm >/dev/null 2>&1
             ;;
         *)
             print_error "Unsupported resource type: $resource_type"
@@ -204,15 +214,12 @@ has_unused_images() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
-    # Use docker system prune dry-run equivalent
-    # Count non-dangling images
     local non_dangling_count
     non_dangling_count=$(docker images --filter "dangling=false" -q 2>/dev/null | wc -l | tr -d ' ')
 
-    # If we have more than a few basic images, likely has unused ones
     if [ "${non_dangling_count:-0}" -gt 3 ]; then
-        return "$EXIT_SUCCESS"  # Likely has unused images
+        return "$EXIT_SUCCESS"
     fi
 
-    return "$EXIT_GENERAL_ERROR"  # Probably no unused images
+    return "$EXIT_GENERAL_ERROR"
 }

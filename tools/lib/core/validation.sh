@@ -9,10 +9,20 @@
 
 set -euo pipefail
 
+# Prevent multiple inclusion
+if [[ "${DOCKERKIT_VALIDATION_LOADED:-}" == "true" ]]; then
+    return 0
+fi
+
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./base.sh
 source "$BASE_DIR/base.sh"
+
+# Mark as loaded
+readonly DOCKERKIT_VALIDATION_LOADED="true"
+
+# Exit codes are already defined in base.sh - no need to redefine them
 
 # =============================================================================
 # VALIDATION PATTERNS
