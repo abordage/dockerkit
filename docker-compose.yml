@@ -50,7 +50,7 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
     volumes:
-      - ${HOST_APP_PATH}:/var/www:cached
+      - ${HOST_APP_PATH}:/var/www
       - ./workspace/auth.json:/home/${APP_USER}/.composer/auth.json:ro
       - ./workspace/php.ini:/usr/local/etc/php/conf.d/99-dockerkit.ini:ro
       - ./workspace/entrypoint.d:/entrypoint.d:ro
@@ -90,7 +90,7 @@ services:
       - APP_UID
       - APP_GID
     volumes:
-      - ${HOST_APP_PATH}:/var/www:cached
+      - ${HOST_APP_PATH}:/var/www
       - ./php-fpm/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
       - ./php-fpm/php.ini:/usr/local/etc/php/conf.d/99-dockerkit.ini:ro
       - ./php-fpm/entrypoint.d:/entrypoint.d:ro
@@ -117,7 +117,7 @@ services:
       - PHP_FPM_HOST=php-fpm
       - PROJECT_NAME=${PROJECT_NAME}
     volumes:
-      - ${HOST_APP_PATH}:/var/www:cached
+      - ${HOST_APP_PATH}:/var/www
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/snippets:/etc/nginx/snippets:ro
