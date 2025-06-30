@@ -181,34 +181,53 @@ ensure_shell_config() {
     return "$EXIT_SUCCESS"
 }
 
+# Check if shell integration needs update
+needs_shell_integration_update() {
+    local config_file="$1"
+    local version="$2"
+
+    # No config file - needs setup
+    test ! -f "$config_file" && return 0
+
+    # No integration - needs setup
+    ! grep -q "$DK_MARKER_BEGIN" "$config_file" && return 0
+
+    # Wrong version - needs update
+    ! grep -q "$DK_MARKER_BEGIN v${version}" "$config_file" && return 0
+
+    # All good - no update needed
+    return 1
+}
+
 # Add shell integration to config file
 add_shell_integration() {
     local config_file="$1"
     local version="$2"
 
-    # Ensure config exists and is writable
     if ! ensure_shell_config "$config_file"; then
         return "$EXIT_PERMISSION_DENIED"
     fi
 
-    # Create backup if file has content
+    if ! needs_shell_integration_update "$config_file" "$version"; then
+        print_info "Shell integration already up to date (v${version})"
+        return "$EXIT_SUCCESS"
+    fi
+
+    # Only backup when making changes
     if test -s "$config_file"; then
         local backup_file
         backup_file="${config_file}.dk-backup-$(date +%Y%m%d-%H%M%S)"
         cp "$config_file" "$backup_file"
-        print_success "backup created: $backup_file"
+        print_info "Backup created: $backup_file"
     fi
 
-    # Remove old integration blocks
     remove_shell_integration "$config_file" "silent"
-
-    # Add new integration block
     {
         echo ""
         generate_shell_integration "$version"
     } >> "$config_file"
 
-    print_success "shell integration added to $config_file"
+    print_success "Shell integration updated in $config_file"
     return "$EXIT_SUCCESS"
 }
 
@@ -385,7 +404,7 @@ install_dk_command() {
 uninstall_dk_command() {
     if test ! -f "$DK_INSTALL_PATH"; then
         print_warning "dk command not found at $DK_INSTALL_PATH"
-        echo -e "already uninstalled or was never installed"
+        print_success "$(green 'already uninstalled or was never installed')"
         return "$EXIT_SUCCESS"
     fi
 
@@ -411,10 +430,10 @@ uninstall_dk_command() {
             config_file="$(detect_shell_config)"
             remove_shell_integration "$config_file" "verbose"
 
-            print_success "dk command completely uninstalled"
+            print_success "$(green 'dk command completely uninstalled')"
             ;;
         *)
-            echo -e "Uninstall cancelled"
+            print_warning "Uninstall cancelled"
             ;;
     esac
 

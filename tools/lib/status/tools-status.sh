@@ -152,7 +152,7 @@ show_upgrade_recommendations() {
     fi
 
     echo ""
-    echo -e "${YELLOW}◆ RECOMMENDATIONS${NC}"
+    echo -e "$(yellow '◆ RECOMMENDATIONS')"
 
     local counter=1
 
@@ -161,11 +161,11 @@ show_upgrade_recommendations() {
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
                 hostctl)
-                    echo -e "  ${CYAN}${counter}.${NC} Install hostctl ${YELLOW}(required)${NC}"
+                    echo -e "  $(cyan "${counter}.") Install hostctl $(yellow '(required)')"
                     ((counter++))
                     ;;
                 mkcert)
-                    echo -e "  ${CYAN}${counter}.${NC} Install mkcert ${YELLOW}(required)${NC}"
+                    echo -e "  $(cyan "${counter}.") Install mkcert $(yellow '(required)')"
                     ((counter++))
                     ;;
             esac
@@ -180,15 +180,15 @@ show_upgrade_recommendations() {
 
             case "$tool" in
                 bash)
-                    echo -e "  ${CYAN}${counter}.${NC} Update Bash: ${GREEN}v${current_version}${NC} → ${GREEN}v${min_version}+${NC}"
+                    echo -e "  $(cyan "${counter}.") Update Bash: $(green "v${current_version}") → $(green "v${min_version}+")"
                     ((counter++))
                     ;;
                 make)
-                    echo -e "  ${CYAN}${counter}.${NC} Update Make: ${GREEN}v${current_version}${NC} → ${GREEN}v${min_version}+${NC}"
+                    echo -e "  $(cyan "${counter}.") Update Make: $(green "v${current_version}") → $(green "v${min_version}+")"
                     ((counter++))
                     ;;
                 git)
-                    echo -e "  ${CYAN}${counter}.${NC} Update Git: ${GREEN}v${current_version}${NC} → ${GREEN}v${min_version}+${NC}"
+                    echo -e "  $(cyan "${counter}.") Update Git: $(green "v${current_version}") → $(green "v${min_version}+")"
                     ((counter++))
                     ;;
             esac
@@ -200,7 +200,7 @@ show_upgrade_recommendations() {
         for tool_info in "${UPGRADE_SUGGESTIONS[@]}"; do
             local tool current_version recommended_version
             IFS=':' read -r tool current_version recommended_version <<< "$tool_info"
-            echo -e "  ${CYAN}${counter}.${NC} Update $tool: ${GREEN}v${current_version}${NC} → ${GREEN}v${recommended_version}+${NC}"
+            echo -e "  $(cyan "${counter}.") Update $tool: $(green "v${current_version}") → $(green "v${recommended_version}+")"
             ((counter++))
         done
     fi
@@ -210,15 +210,15 @@ show_upgrade_recommendations() {
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
                 homebrew)
-                    echo -e "  ${CYAN}${counter}.${NC} Install Homebrew"
+                    echo -e "  $(cyan "${counter}.") Install Homebrew"
                     ((counter++))
                     ;;
                 git)
-                    echo -e "  ${CYAN}${counter}.${NC} Install Git ${YELLOW}(required)${NC}"
+                    echo -e "  $(cyan "${counter}.") Install Git $(yellow '(required)')"
                     ((counter++))
                     ;;
                 curl)
-                    echo -e "  ${CYAN}${counter}.${NC} Install cURL ${YELLOW}(required)${NC}"
+                    echo -e "  $(cyan "${counter}.") Install cURL $(yellow '(required)')"
                     ((counter++))
                     ;;
             esac

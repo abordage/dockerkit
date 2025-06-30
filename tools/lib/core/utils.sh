@@ -15,7 +15,7 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$BASE_DIR/base.sh"
 
 # Ensure colors are loaded
-if [ -z "$RED" ]; then
+if ! command -v red >/dev/null 2>&1; then
     # shellcheck source=./colors.sh
     source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 fi
@@ -205,7 +205,7 @@ confirm_action() {
     local message="$1"
     local response
 
-    echo -e "${YELLOW}$message${NC} (Y/N): " >&2
+    echo -e "$(yellow "$message") (Y/N): " >&2
     read -r response
 
     case "$response" in
@@ -223,7 +223,7 @@ confirm_action_default_yes() {
     local message="$1"
     local response
 
-    echo -e "${YELLOW}$message${NC} (${GREEN}Y${NC}/N, default: ${GREEN}Yes${NC}): " >&2
+    echo -e "$(yellow "$message") ($(green 'Y')/N, default: $(green 'Yes')): " >&2
     read -r response
 
     # Default to Yes if empty response
@@ -246,7 +246,7 @@ confirm_action_default_no() {
     local message="$1"
     local response
 
-    echo -e "${YELLOW}$message${NC} (Y/${RED}N${NC}, default: ${RED}No${NC}): " >&2
+    echo -e "$(yellow "$message") (Y/$(red 'N'), default: $(red 'No')): " >&2
     read -r response
 
     # Default to No if empty response

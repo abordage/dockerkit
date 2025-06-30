@@ -22,35 +22,6 @@ source "$SCRIPT_DIR/lib/core/colors.sh"
 # shellcheck source=lib/core/utils.sh
 source "$SCRIPT_DIR/lib/core/utils.sh"
 
-# Parse command line arguments
-parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_help
-                exit "$EXIT_SUCCESS"
-                ;;
-            --dockerfiles)
-                check_dockerfiles_only
-                exit "$EXIT_SUCCESS"
-                ;;
-            --scripts)
-                check_scripts_only
-                exit "$EXIT_SUCCESS"
-                ;;
-            --compose)
-                check_compose_only
-                exit "$EXIT_SUCCESS"
-                ;;
-            *)
-                print_error "Unknown parameter: $1"
-                show_help
-                exit "$EXIT_GENERAL_ERROR"
-                ;;
-        esac
-    done
-}
-
 # Show help
 show_help() {
     cat << EOF
@@ -68,14 +39,6 @@ DESCRIPTION:
 
 OPTIONS:
     -h, --help          Show this help message
-    --dockerfiles       Check only Dockerfiles
-    --scripts           Check only bash scripts
-    --compose           Check only docker-compose files
-
-EXAMPLES:
-    ./lint.sh                   # Run all checks
-    ./lint.sh --dockerfiles     # Check only Dockerfiles
-    ./lint.sh --scripts         # Check only bash scripts
 
 TOOLS USED:
     • hadolint - Dockerfile linter
@@ -228,24 +191,14 @@ check_docker_compose() {
     fi
 }
 
-# Individual check functions
-check_dockerfiles_only() {
-    print_header "DOCKERFILE QUALITY CHECK"
-    check_dockerfiles
-}
-
-check_scripts_only() {
-    print_header "BASH SCRIPT QUALITY CHECK"
-    check_bash_scripts
-}
-
-check_compose_only() {
-    print_header "DOCKER COMPOSE VALIDATION"
-    check_docker_compose
-}
-
 # Main function
 main() {
+    # Parse help argument
+    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+        show_help
+        exit "$EXIT_SUCCESS"
+    fi
+
     print_header "CODE QUALITY CHECKS"
 
     local overall_status=0
@@ -255,11 +208,11 @@ main() {
         overall_status=1
     fi
 
-    if ! check_bash_scripts; then
+    if ! check_docker_compose; then
         overall_status=1
     fi
 
-    if ! check_docker_compose; then
+    if ! check_bash_scripts; then
         overall_status=1
     fi
 
@@ -276,5 +229,4 @@ main() {
 }
 
 # Script entry point
-parse_arguments "$@"
-main
+main "$@"

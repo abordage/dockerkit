@@ -122,7 +122,7 @@ parse_and_display_site_result() {
 
     # Check if site is completely unavailable (connection failed)
     if [ "$http_code" = "000" ] || [ "$total_time" = "999" ]; then
-        print_error "$site_name ${YELLOW}[UNAVAILABLE]${NC}"
+        print_error "$site_name $(yellow '[UNAVAILABLE]')"
         return "$EXIT_SUCCESS"
     fi
 
@@ -153,13 +153,13 @@ parse_and_display_site_result() {
     # Display result with unified format using standard functions
     if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 400 ]; then
         # 2xx success, 3xx redirects - site is working
-        print_success "$site_name: $total_time_colored $timing_info ${GREEN}[OK]${NC}"
+        print_success "$site_name: $total_time_colored $timing_info $(green '[OK]')"
     elif [ "$http_code" -ge 400 ] && [ "$http_code" -lt 600 ]; then
         # 4xx client errors, 5xx server errors - site accessible but with issues
-        print_success "$site_name: $total_time_colored $timing_info ${YELLOW}[${http_code}]${NC}"
+        print_success "$site_name: $total_time_colored $timing_info $(yellow "[$http_code]")"
     else
         # Other codes - treat as unavailable
-        print_error "$site_name ${YELLOW}[UNAVAILABLE]${NC}"
+        print_error "$site_name $(yellow '[UNAVAILABLE]')"
     fi
 }
 
@@ -187,9 +187,9 @@ format_total_time() {
 
     # Check if total time is slow (above threshold)
     if is_time_above_threshold "$numeric_time" "$PERFORMANCE_THRESHOLD_TOTAL"; then
-        echo "${YELLOW}${total_time}${NC}"
+        yellow "$total_time"
     else
-        echo "${GREEN}${total_time}${NC}"
+        green "$total_time"
     fi
 }
 

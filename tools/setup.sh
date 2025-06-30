@@ -189,9 +189,9 @@ show_setup_summary() {
     done
 
     print_section "Next steps:"
-    echo -e "  ${CYAN}1.${NC} Review ${GREEN}.env${NC} configuration"
-    echo -e "  ${CYAN}2.${NC} Start containers: ${GREEN}make start${NC}"
-    echo -e "  ${CYAN}3.${NC} View all commands: ${GREEN}make help${NC}"
+    echo -e "  $(cyan '1.') Review $(green '.env') configuration"
+    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
+    echo -e "  $(cyan '3.') View all commands: $(green 'make help')"
     echo ""
 }
 

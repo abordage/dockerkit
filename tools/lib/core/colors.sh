@@ -9,17 +9,15 @@
 
 set -euo pipefail
 
-# Color constants (only define if not already set)
-if [ -z "${RED:-}" ]; then
-    readonly RED='\033[0;31m'
-    readonly GREEN='\033[0;32m'
-    readonly YELLOW='\033[1;33m'
-    readonly BLUE='\033[0;34m'
-    readonly PURPLE='\033[0;35m'
-    readonly CYAN='\033[0;36m'
-    readonly WHITE='\033[1;37m'
-    readonly NC='\033[0m' # No Color
-fi
+# Local ANSI color codes (not exported, only for this file)
+readonly _RED='\033[0;31m'
+readonly _GREEN='\033[0;32m'
+readonly _YELLOW='\033[1;33m'
+readonly _BLUE='\033[0;34m'
+readonly _PURPLE='\033[0;35m'
+readonly _CYAN='\033[0;36m'
+readonly _WHITE='\033[1;37m'
+readonly _RESET='\033[0m'
 
 # Icons (only define if not already set)
 if [ -z "${CHECK_ICON:-}" ]; then
@@ -27,6 +25,15 @@ if [ -z "${CHECK_ICON:-}" ]; then
     readonly CROSS_ICON="✗"
     readonly DOWN_ARROW_UP_ARROW="↳"
 fi
+
+# Color wrapper functions for inline text coloring
+green() { echo -e "${_GREEN}$1${_RESET}"; }
+red() { echo -e "${_RED}$1${_RESET}"; }
+yellow() { echo -e "${_YELLOW}$1${_RESET}"; }
+cyan() { echo -e "${_CYAN}$1${_RESET}"; }
+blue() { echo -e "${_BLUE}$1${_RESET}"; }
+purple() { echo -e "${_PURPLE}$1${_RESET}"; }
+white() { echo -e "${_WHITE}$1${_RESET}"; }
 
 # Output formatting functions
 print_header() {
@@ -37,39 +44,33 @@ print_header() {
     local padding_right=$((box_width - msg_len - padding_left))
 
     echo
-    echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════╗${NC}"
-    printf "${PURPLE}║${WHITE}%*s${PURPLE}║${NC}\n" $box_width " "
-    printf "${PURPLE}║${WHITE}%*s%s%*s${PURPLE}║${NC}\n" $padding_left " " "$message" $padding_right " "
-    printf "${PURPLE}║${WHITE}%*s${PURPLE}║${NC}\n" $box_width " "
-    echo -e "${PURPLE}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "$(purple '╔══════════════════════════════════════════════════════════════╗')"
+    printf "${_PURPLE}║${_WHITE}%*s${_PURPLE}║${_RESET}\n" $box_width " "
+    printf "${_PURPLE}║${_WHITE}%*s%s%*s${_PURPLE}║${_RESET}\n" $padding_left " " "$message" $padding_right " "
+    printf "${_PURPLE}║${_WHITE}%*s${_PURPLE}║${_RESET}\n" $box_width " "
+    echo -e "$(purple '╚══════════════════════════════════════════════════════════════╝')"
 }
 
 print_section() {
-    local message="$1"
-    echo -e "\n${CYAN}➤ $message${NC}"
+    echo -e "\n$(cyan "➤ $1")"
 }
 
 print_success() {
-    local message="$1"
-    echo -e "  ${GREEN}${CHECK_ICON}${NC} $message"
+    echo -e "  $(green "${CHECK_ICON}") $1"
 }
 
 print_warning() {
-    local message="$1"
-    echo -e "${YELLOW}$message${NC}"
+    echo -e "$(yellow "$1")"
 }
 
 print_error() {
-    local message="$1"
-    echo -e "  ${RED}${CROSS_ICON}${NC} $message"
+    echo -e "  $(red "${CROSS_ICON}") $1"
 }
 
 print_info() {
-    local message="$1"
-    echo -e "  ${BLUE}$message${NC}"
+    echo -e "  $(blue "$1")"
 }
 
 print_tip() {
-    local message="$1"
-    echo -e "  ${WHITE}${DOWN_ARROW_UP_ARROW}${NC} ${WHITE}$message${NC}"
+    echo -e " ${DOWN_ARROW_UP_ARROW} $1"
 }
