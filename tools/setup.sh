@@ -48,21 +48,9 @@ source "$SCRIPT_DIR/lib/services/aliases.sh"
 # shellcheck source=lib/status/tools-status.sh
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
 
-# Parse command line arguments
+# Parse command line arguments using universal function
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_help
-                exit "$EXIT_SUCCESS"
-                ;;
-            *)
-                print_error "Unknown parameter: $1"
-                show_help
-                exit "$EXIT_GENERAL_ERROR"
-                ;;
-        esac
-    done
+    parse_standard_arguments "show_help" "$@"
 }
 
 # Show help

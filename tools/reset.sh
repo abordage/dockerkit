@@ -39,21 +39,9 @@ source "$SCRIPT_DIR/lib/core/docker.sh"
 # shellcheck source=lib/services/cleanup.sh
 source "$SCRIPT_DIR/lib/services/cleanup.sh"
 
-# Parse command line arguments
+# Parse command line arguments using universal function
 parse_arguments() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help)
-                show_help
-                exit "$EXIT_SUCCESS"
-                ;;
-            *)
-                print_error "Unknown parameter: $1"
-                show_help
-                exit "$EXIT_GENERAL_ERROR"
-                ;;
-        esac
-    done
+    parse_standard_arguments "show_help" "$@"
 }
 
 # Show help
@@ -117,7 +105,7 @@ main() {
     echo ""
 
     # Confirm reset operation
-    if ! confirm_action_default_yes "Do you want to continue with the reset?"; then
+    if ! confirm_action "Do you want to continue with the reset?" "yes"; then
         print_info "Reset cancelled by user"
         exit "$EXIT_SUCCESS"
     fi

@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 LIB_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$LIB_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$LIB_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh
@@ -28,6 +26,21 @@ source "$LIB_SCRIPT_DIR/tools-status.sh"
 source "$LIB_SCRIPT_DIR/docker-status.sh"
 # shellcheck source=./site-status.sh
 source "$LIB_SCRIPT_DIR/site-status.sh"
+
+# =============================================================================
+# CONFIGURATION CHECKING FUNCTIONS
+# =============================================================================
+
+# Helper function to check if .env file is in valid state
+is_env_file_valid() {
+    local syntax_errors="$1"
+    local missing_count="$2"
+    local empty_count="$3"
+
+    [ "$syntax_errors" -eq 0 ] && \
+    [ "$missing_count" -eq 0 ] && \
+    [ "$empty_count" -eq 0 ]
+}
 
 # Get total memory in GB
 get_total_memory_gb() {
@@ -192,8 +205,8 @@ check_env_file() {
         fi
     done
 
-    # Report results
-    if [ "$syntax_errors" -eq 0 ] && [ ${#missing_vars[@]} -eq 0 ] && [ ${#empty_vars[@]} -eq 0 ]; then
+    # Check if .env file is in perfect state
+    if is_env_file_valid "$syntax_errors" "${#missing_vars[@]}" "${#empty_vars[@]}"; then
         local var_count
         var_count=$(grep -c "^[A-Z_][A-Z0-9_]*=" .env 2>/dev/null || echo "0")
         print_success ".env file valid ($var_count variables)"

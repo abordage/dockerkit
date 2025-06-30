@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 TOOLS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$TOOLS_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$TOOLS_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh
@@ -144,10 +142,17 @@ check_mkcert_tool() {
     fi
 }
 
+# Check if all tools are in good state (no issues or suggestions)
+has_no_tool_issues() {
+    [ ${#OUTDATED_TOOLS[@]} -eq 0 ] && \
+    [ ${#MISSING_TOOLS[@]} -eq 0 ] && \
+    [ ${#UPGRADE_SUGGESTIONS[@]} -eq 0 ]
+}
+
 # Show upgrade and installation recommendations
 show_upgrade_recommendations() {
     # Only show recommendations if there are issues or suggestions
-    if [ ${#OUTDATED_TOOLS[@]} -eq 0 ] && [ ${#MISSING_TOOLS[@]} -eq 0 ] && [ ${#UPGRADE_SUGGESTIONS[@]} -eq 0 ]; then
+    if has_no_tool_issues; then
         return "$EXIT_SUCCESS"
     fi
 

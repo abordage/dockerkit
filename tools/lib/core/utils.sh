@@ -197,69 +197,162 @@ version_compare() {
 }
 
 # =============================================================================
+# ARGUMENT PARSING
+# =============================================================================
+
+# Universal argument parsing for standard scripts
+# Usage: parse_standard_arguments "help_function" "$@"
+parse_standard_arguments() {
+    local help_function="$1"
+    shift
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                "$help_function"
+                exit "$EXIT_SUCCESS"
+                ;;
+            *)
+                print_error "Unknown parameter: $1"
+                "$help_function"
+                exit "$EXIT_GENERAL_ERROR"
+                ;;
+        esac
+    done
+}
+
+# =============================================================================
+# FILE OPERATIONS
+# =============================================================================
+
+# Safe file copy with error handling
+safe_copy() {
+    local source="$1"
+    local destination="$2"
+    local backup="${3:-false}"
+
+    if [ ! -f "$source" ]; then
+        print_error "Source file not found: $source"
+        return "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Create backup if requested and destination exists
+    if [ "$backup" = "true" ] && [ -f "$destination" ]; then
+        local backup_file="${destination}.backup"
+        cp "$destination" "$backup_file" || {
+            print_error "Failed to create backup: $backup_file"
+            return "$EXIT_GENERAL_ERROR"
+        }
+        print_info "Created backup: $backup_file"
+    fi
+
+    cp "$source" "$destination" || {
+        print_error "Failed to copy $source to $destination"
+        return "$EXIT_GENERAL_ERROR"
+    }
+
+    return "$EXIT_SUCCESS"
+}
+
+# Safe file removal with confirmation
+safe_remove() {
+    local file_path="$1"
+    local silent="${2:-false}"
+
+    if [ ! -e "$file_path" ]; then
+        if [ "$silent" != "true" ]; then
+            print_warning "File not found: $file_path"
+        fi
+        return "$EXIT_SUCCESS"
+    fi
+
+    rm -f "$file_path" || {
+        print_error "Failed to remove: $file_path"
+        return "$EXIT_GENERAL_ERROR"
+    }
+
+    if [ "$silent" != "true" ]; then
+        print_success "Removed: $file_path"
+    fi
+
+    return "$EXIT_SUCCESS"
+}
+
+# Check if file is writable
+is_writable() {
+    local file_path="$1"
+
+    # Check if file exists and is writable
+    if [ -f "$file_path" ] && [ -w "$file_path" ]; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    # Check if directory is writable (for new files)
+    local dir_path
+    dir_path=$(dirname "$file_path")
+    if [ -d "$dir_path" ] && [ -w "$dir_path" ]; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    return "$EXIT_GENERAL_ERROR"
+}
+
+# =============================================================================
 # USER CONFIRMATION FUNCTIONS
 # =============================================================================
 
-# Confirm action with user
+# Universal confirmation function with optional default
+# Usage: confirm_action "message" [default]
+# Defaults: "yes", "no", or omit for no default
 confirm_action() {
     local message="$1"
+    local default="${2:-}"
     local response
+    local prompt
 
-    echo -e "$(yellow "$message") (Y/N): " >&2
-    read -r response
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
+    # Build prompt based on default
+    case "$default" in
+        yes|y|Y)
+            prompt="$(yellow "$message") ($(green 'Y')/N, default: $(green 'Yes')): "
+            ;;
+        no|n|N)
+            prompt="$(yellow "$message") (Y/$(red 'N'), default: $(red 'No')): "
             ;;
         *)
+            prompt="$(yellow "$message") (Y/N): "
+            ;;
+    esac
+
+    echo -e "$prompt" >&2
+    read -r response
+
+    # Handle empty response (use default)
+    if [ -z "$response" ] && [ -n "$default" ]; then
+        response="$default"
+    fi
+
+    # Normalize response to lowercase for case-insensitive comparison
+    response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
+
+    case "$response" in
+        y|yes)
+            return "$EXIT_SUCCESS"
+            ;;
+        n|no)
+            return "$EXIT_GENERAL_ERROR"
+            ;;
+        *)
+            # Invalid response - treat as no
             return "$EXIT_GENERAL_ERROR"
             ;;
     esac
 }
 
-# Confirm action with default Yes (Enter = Yes)
+# Legacy wrapper functions for backward compatibility
 confirm_action_default_yes() {
-    local message="$1"
-    local response
-
-    echo -e "$(yellow "$message") ($(green 'Y')/N, default: $(green 'Yes')): " >&2
-    read -r response
-
-    # Default to Yes if empty response
-    if [ -z "$response" ]; then
-        response="Y"
-    fi
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
-            ;;
-        *)
-            return "$EXIT_GENERAL_ERROR"
-            ;;
-    esac
+    confirm_action "$1" "yes"
 }
 
-# Confirm action with default No (Enter = No)
 confirm_action_default_no() {
-    local message="$1"
-    local response
-
-    echo -e "$(yellow "$message") (Y/$(red 'N'), default: $(red 'No')): " >&2
-    read -r response
-
-    # Default to No if empty response
-    if [ -z "$response" ]; then
-        response="N"
-    fi
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            return "$EXIT_SUCCESS"
-            ;;
-        *)
-            return "$EXIT_GENERAL_ERROR"
-            ;;
-    esac
+    confirm_action "$1" "no"
 }

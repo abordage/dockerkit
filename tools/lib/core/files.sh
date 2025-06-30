@@ -57,8 +57,8 @@ create_managed_files() {
     fi
 }
 
-# Ensure directory exists
-ensure_directory() {
+# Ensure project directory exists (relative to DOCKERKIT_DIR)
+ensure_project_directory() {
     local dir_path="$1"
 
     if [ ! -d "$DOCKERKIT_DIR/$dir_path" ]; then

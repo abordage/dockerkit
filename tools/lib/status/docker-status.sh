@@ -16,18 +16,10 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 DOCKER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$DOCKER_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$DOCKER_SCRIPT_DIR/../core/utils.sh"
-
-# Helper function to check if Docker is available
-ensure_docker_available() {
-    if ! command_exists "docker"; then
-        return "$EXIT_MISSING_DEPENDENCY"
-    fi
-    return "$EXIT_SUCCESS"
-}
+# shellcheck source=../core/docker.sh
+source "$DOCKER_SCRIPT_DIR/../core/docker.sh"
 
 # Check and display Docker environment information
 check_docker_environment() {

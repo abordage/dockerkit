@@ -201,28 +201,28 @@ main() {
 
     print_header "CODE QUALITY CHECKS"
 
-    local overall_status=0
+    local overall_status="$EXIT_SUCCESS"
 
     # Run all checks
     if ! check_dockerfiles; then
-        overall_status=1
+        overall_status="$EXIT_GENERAL_ERROR"
     fi
 
     if ! check_docker_compose; then
-        overall_status=1
+        overall_status="$EXIT_GENERAL_ERROR"
     fi
 
     if ! check_bash_scripts; then
-        overall_status=1
+        overall_status="$EXIT_GENERAL_ERROR"
     fi
 
     # Show final status summary
     print_section "Quality Summary"
-    if [ $overall_status -eq 0 ]; then
+    if [ "$overall_status" -eq "$EXIT_SUCCESS" ]; then
         print_success "All quality checks passed"
     else
         print_error "Some quality checks failed"
-        exit "$EXIT_GENERAL_ERROR"
+        exit "$overall_status"
     fi
 
     echo ""

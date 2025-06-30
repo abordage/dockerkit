@@ -35,6 +35,11 @@ blue() { echo -e "${_BLUE}$1${_RESET}"; }
 purple() { echo -e "${_PURPLE}$1${_RESET}"; }
 white() { echo -e "${_WHITE}$1${_RESET}"; }
 
+# Basic print function for standardized output
+print() {
+    echo -e "$1"
+}
+
 # Output formatting functions
 print_header() {
     local message="$1"

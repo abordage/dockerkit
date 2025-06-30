@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 PKG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$PKG_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$PKG_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh

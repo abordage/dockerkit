@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 NGINX_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$NGINX_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$NGINX_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh
@@ -47,7 +45,7 @@ generate_nginx_configs() {
 
     # Ensure sites-available directory exists
     local sites_dir="$DOCKERKIT_DIR/$NGINX_SITES_DIR"
-    ensure_directory "$sites_dir"
+    ensure_project_directory "$sites_dir"
 
     # Process each project
     for project in "${projects[@]}"; do

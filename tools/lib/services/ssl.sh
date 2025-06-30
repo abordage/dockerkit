@@ -16,8 +16,6 @@ source "$BASE_DIR/base.sh"
 
 # Load dependencies
 SSL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/colors.sh
-source "$SSL_SCRIPT_DIR/../core/colors.sh"
 # shellcheck source=../core/utils.sh
 source "$SSL_SCRIPT_DIR/../core/utils.sh"
 # shellcheck source=../core/config.sh
@@ -36,8 +34,8 @@ initialize_ssl_environment() {
     # Create SSL directories if they don't exist
     local ssl_dir="${DOCKERKIT_DIR}/${NGINX_SSL_DIR}"
     local ssl_ca_dir="${DOCKERKIT_DIR}/${SSL_CA_DIR:-ssl-ca}"
-    ensure_directory "$ssl_dir"
-    ensure_directory "$ssl_ca_dir"
+    ensure_project_directory "$ssl_dir"
+    ensure_project_directory "$ssl_ca_dir"
 
     # Install CA if not already done
     if ! is_ca_installed; then
@@ -126,7 +124,7 @@ generate_ssl_certificates() {
     fi
 
     local ssl_dir="${DOCKERKIT_DIR}/${NGINX_SSL_DIR}"
-    ensure_directory "$ssl_dir"
+    ensure_project_directory "$ssl_dir"
 
     # Generate certificates for each site
     for site in "${sites[@]}"; do
