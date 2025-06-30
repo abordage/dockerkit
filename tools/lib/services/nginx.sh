@@ -39,8 +39,7 @@ generate_nginx_configs() {
     fi
 
     local generated_count=0
-    local sites_dir="$DOCKERKIT_DIR/$NGINX_SITES_DIR"
-    ensure_project_directory "$sites_dir"
+    ensure_project_directory "$NGINX_SITES_DIR"
 
     for project in "${projects[@]}"; do
         if process_project_config "$project"; then
