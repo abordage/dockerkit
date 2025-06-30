@@ -116,10 +116,8 @@ generate_from_template() {
     if sed -e "s|{{SITE_NAME}}|$site_name|g" \
            -e "s|{{DOCUMENT_ROOT}}|$document_root|g" \
            "$template_file" > "$config_file"; then
-        print_success "Generated config for: $site_name"
         return "$EXIT_SUCCESS"
     else
-        print_error "Failed to generate config for: $site_name"
         return "$EXIT_GENERAL_ERROR"
     fi
 }
