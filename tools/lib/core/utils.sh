@@ -45,11 +45,16 @@ detect_os() {
     esac
 }
 
-# Get current project version from git tags
+# Get current project version from dk.sh script
 get_project_version() {
-    local version
-    if version="$(git describe --tags --abbrev=0 2>/dev/null)"; then
-        echo "${version#v}" | tr -d '\n'
+    local dk_script_path="$DOCKERKIT_DIR/tools/dk/dk.sh"
+
+    if [ -f "$dk_script_path" ]; then
+        local version
+        version=$(grep "readonly DK_VERSION=" "$dk_script_path" 2>/dev/null | \
+        sed 's/.*DK_VERSION="\([^"]*\)".*/\1/' | \
+        head -n 1)
+        echo "${version#v}"
     else
         echo "unknown"
     fi

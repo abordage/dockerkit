@@ -57,6 +57,7 @@ USER root
 # Install essential system tools, database clients, and Java
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     bash-completion \
@@ -64,33 +65,44 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     ca-certificates \
     ca-certificates-java \
     cron \
-    curl \
     debianutils \
     default-jdk \
     default-mysql-client \
     dnsutils \
-    git \
     gifsicle \
     gosu \
     graphviz \
-    htop \
     iputils-ping \
     jpegoptim \
-    jq \
     nano \
     optipng \
     p7zip-full \
     pngquant \
     postgresql-client-15 \
-    rsync \
-    sqlite3 \
     sudo \
     tree \
     unzip \
-    wget \
     xz-utils \
     zip && \
     update-ca-certificates --fresh && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install latest versions from Debian Backports for better features and security
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    # Add Debian Backports repository \
+    echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list && \
+    apt-get update && \
+    # Install latest versions from backports \
+    apt-get install -y --no-install-recommends -t bookworm-backports \
+    curl \
+    git \
+    htop \
+    jq \
+    rsync \
+    sqlite3 \
+    wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure sudo for dockerkit user

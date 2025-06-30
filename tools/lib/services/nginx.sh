@@ -39,8 +39,7 @@ generate_nginx_configs() {
     fi
 
     local generated_count=0
-    local sites_dir="$DOCKERKIT_DIR/$NGINX_SITES_DIR"
-    ensure_project_directory "$sites_dir"
+    ensure_project_directory "$NGINX_SITES_DIR"
 
     for project in "${projects[@]}"; do
         if process_project_config "$project"; then
@@ -117,10 +116,8 @@ generate_from_template() {
     if sed -e "s|{{SITE_NAME}}|$site_name|g" \
            -e "s|{{DOCUMENT_ROOT}}|$document_root|g" \
            "$template_file" > "$config_file"; then
-        print_success "Generated config for: $site_name"
         return "$EXIT_SUCCESS"
     else
-        print_error "Failed to generate config for: $site_name"
         return "$EXIT_GENERAL_ERROR"
     fi
 }
