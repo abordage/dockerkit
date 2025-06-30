@@ -17,8 +17,6 @@ export DOCKERKIT_DIR
 # Load core libraries
 # shellcheck source=../lib/core/base.sh
 source "$SCRIPT_DIR/../lib/core/base.sh"
-# shellcheck source=../lib/core/colors.sh
-source "$SCRIPT_DIR/../lib/core/colors.sh"
 # shellcheck source=../lib/core/utils.sh
 source "$SCRIPT_DIR/../lib/core/utils.sh"
 
@@ -27,8 +25,8 @@ source "$SCRIPT_DIR/../lib/core/utils.sh"
 # =============================================================================
 
 readonly DK_SOURCE_SCRIPT="$SCRIPT_DIR/dk.sh"
-readonly DK_INSTALL_PATH="$HOME/.local/bin/dk"
-readonly DK_INSTALL_DIR="$HOME/.local/bin"
+readonly DK_INSTALL_PATH="$HOME/.dockerkit/bin/dk"
+readonly DK_INSTALL_DIR="$HOME/.dockerkit/bin"
 
 # Shell integration markers
 readonly DK_MARKER_BEGIN="# BEGIN DockerKit dk-manager"
@@ -38,69 +36,63 @@ readonly DK_MARKER_END="# END DockerKit dk-manager"
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Detect operating system
-detect_os() {
-    case "$(uname -s)" in
-        Darwin*) echo "macos" ;;
-        Linux*)
-            if test -f /proc/version && grep -qi microsoft /proc/version 2>/dev/null; then
-                echo "wsl2"
-            else
-                echo "linux"
-            fi
-            ;;
-        CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
-        *) echo "unknown" ;;
-    esac
-}
+# Functions detect_os() and get_current_version() moved to utils.sh for reuse
 
-# Get current git version/tag
-get_current_version() {
-    local version
-    if version="$(git describe --tags --exact-match 2>/dev/null)"; then
-        # On exact tag
-        echo "$version" | tr -d '\n'
-    elif version="$(git describe --tags 2>/dev/null)"; then
-        # Post-tag commit
-        echo "$version" | tr -d '\n'
-    else
-        # No tags, use commit hash
-        version="$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")"
-        echo "$version" | tr -d '\n'
+# Note: Automatic backup cleanup disabled to avoid macOS permission prompts
+# Users can manually remove old backup files if needed:
+# rm ~/.zshrc.dk-backup-* (keep only recent ones)
+
+# Validate system dependencies
+validate_dependencies() {
+    local missing_deps=()
+
+    # Check Docker
+    if ! command_exists "docker"; then
+        missing_deps+=("docker")
     fi
-}
 
-# Get installed dk version
-get_installed_version() {
-    if test -f "$DK_INSTALL_PATH"; then
-        grep "readonly DK_VERSION=" "$DK_INSTALL_PATH" 2>/dev/null | \
-        sed 's/.*DK_VERSION="\([^"]*\)".*/\1/' | \
-        head -n 1
-    else
-        echo "not installed"
+    # Check Git
+    if ! command_exists "git"; then
+        missing_deps+=("git")
     fi
-}
 
-# Compare semantic versions
-compare_versions() {
-    local version1="$1" version2="$2"
-
-    # Remove 'v' prefix if present
-    version1="${version1#v}"
-    version2="${version2#v}"
-
-    # Simple string comparison for now
-    # For production, implement proper semver comparison
-    if test "$version1" = "$version2"; then
-        echo "equal"
-    elif test "$version1" \< "$version2"; then
-        echo "older"
-    else
-        echo "newer"
+    # Report missing dependencies
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        print_error "Missing required dependencies: ${missing_deps[*]}"
+        print_tip "Please install missing dependencies and try again"
+        return "$EXIT_MISSING_DEPENDENCY"
     fi
+
+    return "$EXIT_SUCCESS"
 }
 
+# Check and automatically add DockerKit bin to PATH
+ensure_dockerkit_path() {
+    local config_file="$1"
+    local dockerkit_bin="$HOME/.dockerkit/bin"
 
+    # Check if already in PATH
+    if [[ ":$PATH:" == *":$dockerkit_bin:"* ]]; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    # Auto-add to PATH without asking
+    if ! ensure_shell_config "$config_file"; then
+        return "$EXIT_PERMISSION_DENIED"
+    fi
+
+    # Add PATH export to shell config
+    {
+        echo ""
+        echo "# DockerKit PATH"
+        echo "export PATH=\"$dockerkit_bin:\$PATH\""
+    } >> "$config_file"
+
+    print_success "Added $(purple "$dockerkit_bin") to PATH in $(gray "$config_file")"
+    print_warning "  Restart your terminal or run: source $(gray "$config_file")"
+
+    return "$EXIT_SUCCESS"
+}
 
 # Detect user shell configuration file
 detect_shell_config() {
@@ -131,14 +123,13 @@ detect_shell_config() {
 
 # Generate shell integration function
 generate_shell_integration() {
-    local version="$1"
     cat << EOF
-$DK_MARKER_BEGIN v${version}
+$DK_MARKER_BEGIN
 # This block was added automatically by DockerKit
 # Safe to remove if DockerKit is uninstalled
 dk() {
-    if [ -x "\$HOME/.local/bin/dk" ]; then
-        "\$HOME/.local/bin/dk" "\$@"
+    if [ -x "\$HOME/.dockerkit/bin/dk" ]; then
+        "\$HOME/.dockerkit/bin/dk" "\$@"
     else
         echo "dk command not installed."
         echo "Run 'make dk-install' in your DockerKit directory."
@@ -158,7 +149,7 @@ ensure_shell_config() {
     # Create directory if needed
     if test ! -d "$config_dir"; then
         if ! mkdir -p "$config_dir" 2>/dev/null; then
-            print_error "Cannot create directory: $config_dir"
+            print_error "Cannot create directory: $(gray "$config_dir")"
             return "$EXIT_PERMISSION_DENIED"
         fi
     fi
@@ -166,15 +157,15 @@ ensure_shell_config() {
     # Create file if not exists
     if test ! -f "$config_file"; then
         if ! touch "$config_file" 2>/dev/null; then
-            print_error "Cannot create file: $config_file"
+            print_error "Cannot create file: $(gray "$config_file")"
             return "$EXIT_PERMISSION_DENIED"
         fi
-        echo -e "Created shell configuration: $config_file"
+        printf '%b\n' "Created shell configuration: $(gray "$config_file")"
     fi
 
     # Check write permission
     if test ! -w "$config_file"; then
-        print_error "No write permission to: $config_file"
+        print_error "No write permission to: $(gray "$config_file")"
         return "$EXIT_PERMISSION_DENIED"
     fi
 
@@ -184,7 +175,6 @@ ensure_shell_config() {
 # Check if shell integration needs update
 needs_shell_integration_update() {
     local config_file="$1"
-    local version="$2"
 
     # No config file - needs setup
     test ! -f "$config_file" && return 0
@@ -192,24 +182,20 @@ needs_shell_integration_update() {
     # No integration - needs setup
     ! grep -q "$DK_MARKER_BEGIN" "$config_file" && return 0
 
-    # Wrong version - needs update
-    ! grep -q "$DK_MARKER_BEGIN v${version}" "$config_file" && return 0
-
-    # All good - no update needed
+    # Integration exists - no update needed
     return 1
 }
 
 # Add shell integration to config file
 add_shell_integration() {
     local config_file="$1"
-    local version="$2"
 
     if ! ensure_shell_config "$config_file"; then
         return "$EXIT_PERMISSION_DENIED"
     fi
 
-    if ! needs_shell_integration_update "$config_file" "$version"; then
-        print_info "Shell integration already up to date (v${version})"
+    if ! needs_shell_integration_update "$config_file"; then
+        print_success "Shell integration already up to date"
         return "$EXIT_SUCCESS"
     fi
 
@@ -218,16 +204,20 @@ add_shell_integration() {
         local backup_file
         backup_file="${config_file}.dk-backup-$(date +%Y%m%d-%H%M%S)"
         cp "$config_file" "$backup_file"
-        print_info "Backup created: $backup_file"
+                print_success "Backup created: $(gray "$backup_file")"
     fi
 
     remove_shell_integration "$config_file" "silent"
     {
         echo ""
-        generate_shell_integration "$version"
+        generate_shell_integration
     } >> "$config_file"
 
-    print_success "Shell integration updated in $config_file"
+    print_success "Shell integration updated in $(gray "$config_file")"
+
+    # Ensure DockerKit bin is in PATH
+    ensure_dockerkit_path "$config_file"
+
     return "$EXIT_SUCCESS"
 }
 
@@ -237,13 +227,13 @@ remove_shell_integration() {
     local mode="${2:-verbose}"
 
     if test ! -f "$config_file"; then
-        test "$mode" = "verbose" && echo -e "Config file not found: $config_file"
+        test "$mode" = "verbose" && printf '%b\n' "Config file not found: $(gray "$config_file")"
         return "$EXIT_SUCCESS"
     fi
 
     # Check if our integration exists
     if ! grep -q "$DK_MARKER_BEGIN" "$config_file"; then
-        test "$mode" = "verbose" && echo -e "No DockerKit integration found in $config_file"
+        test "$mode" = "verbose" && printf '%b\n' "No DockerKit integration found in $(gray "$config_file")"
         return "$EXIT_SUCCESS"
     fi
 
@@ -256,7 +246,7 @@ remove_shell_integration() {
     sed -i.tmp "/$DK_MARKER_BEGIN/,/$DK_MARKER_END/d" "$config_file"
     rm -f "${config_file}.tmp"
 
-    test "$mode" = "verbose" && print_success "removed integration from $config_file"
+    test "$mode" = "verbose" && print_success "removed integration from $(gray "$config_file")"
     return "$EXIT_SUCCESS"
 }
 
@@ -278,13 +268,13 @@ check_prerequisites() {
 
     # Check if source script exists
     if test ! -f "$DK_SOURCE_SCRIPT"; then
-        print_error "Source script not found: $DK_SOURCE_SCRIPT"
+        print_error "Source script not found: $(gray "$DK_SOURCE_SCRIPT")"
         return "$EXIT_INVALID_CONFIG"
     fi
 
     # Check if source script is readable
     if test ! -r "$DK_SOURCE_SCRIPT"; then
-        print_error "Source script not readable: $DK_SOURCE_SCRIPT"
+        print_error "Source script not readable: $(gray "$DK_SOURCE_SCRIPT")"
         return "$EXIT_PERMISSION_DENIED"
     fi
 
@@ -294,16 +284,15 @@ check_prerequisites() {
 # Setup installation directory
 setup_installation_directory() {
     if test ! -d "$DK_INSTALL_DIR"; then
-        print_info "Creating installation directory: $DK_INSTALL_DIR"
         if ! mkdir -p "$DK_INSTALL_DIR"; then
-            print_error "Failed to create directory: $DK_INSTALL_DIR"
+            print_error "Failed to create directory: $(gray "$DK_INSTALL_DIR")"
             return "$EXIT_PERMISSION_DENIED"
         fi
     fi
 
     # Check write permissions
     if test ! -w "$DK_INSTALL_DIR"; then
-        print_error "No write permission to: $DK_INSTALL_DIR"
+        print_error "No write permission to: $(gray "$DK_INSTALL_DIR")"
         return "$EXIT_PERMISSION_DENIED"
     fi
 
@@ -324,7 +313,10 @@ check_shell_integration() {
 
 # Install dk command
 install_dk_command() {
-    local current_version installed_version version_comparison
+    # Validate system dependencies
+    if ! validate_dependencies; then
+        return "$EXIT_MISSING_DEPENDENCY"
+    fi
 
     # Check prerequisites
     if ! check_prerequisites; then
@@ -336,57 +328,11 @@ install_dk_command() {
         return "$EXIT_PERMISSION_DENIED"
     fi
 
-    # Get versions
-    current_version="$(get_current_version)"
-    installed_version="$(get_installed_version)"
-
-    # Check if already installed
-    if test "$installed_version" != "not installed"; then
-        version_comparison="$(compare_versions "$installed_version" "$current_version")"
-
-        case "$version_comparison" in
-            "equal")
-                print_success "dk command already installed in $DK_INSTALL_PATH (${installed_version})"
-                # Still setup shell integration in case it's missing
-                local config_file
-                config_file="$(detect_shell_config)"
-                add_shell_integration "$config_file" "$current_version"
-                return "$EXIT_SUCCESS"
-                ;;
-            "newer")
-                print_warning "Installed version (${installed_version}) is newer than current (${current_version})"
-                printf "Downgrade to current version? (y/N): "
-                read -r response
-                case "$response" in
-                    [yY]|[yY][eE][sS]) ;;
-                    *)
-                        print_info "Installation cancelled"
-                        return "$EXIT_SUCCESS"
-                        ;;
-                esac
-                ;;
-            "older")
-                print_info "Updating from ${installed_version} to ${current_version}"
-                ;;
-        esac
-    fi
-
-        # Create temporary file with version replacement
-    local temp_file
-    temp_file="$(mktemp)"
-
-    # Cleanup temp file on exit
-    trap 'rm -f "$temp_file"' EXIT
-
-    # Replace version placeholder
-    sed "s/__DK_VERSION__/${current_version}/g" "$DK_SOURCE_SCRIPT" > "$temp_file"
-
-    # Copy to installation path
-    if cp "$temp_file" "$DK_INSTALL_PATH"; then
+    # Copy dk script to installation path
+    if cp "$DK_SOURCE_SCRIPT" "$DK_INSTALL_PATH"; then
         chmod +x "$DK_INSTALL_PATH"
         print_success "dk command installed successfully"
-        print_info "Version: $current_version"
-        print_info "Location: $DK_INSTALL_PATH"
+        print_success "Location: $(purple "$DK_INSTALL_PATH")"
     else
         print_error "Failed to install dk command"
         return "$EXIT_GENERAL_ERROR"
@@ -395,7 +341,7 @@ install_dk_command() {
     # Setup shell integration
     local config_file
     config_file="$(detect_shell_config)"
-    add_shell_integration "$config_file" "$current_version"
+    add_shell_integration "$config_file"
 
     return "$EXIT_SUCCESS"
 }
@@ -403,101 +349,22 @@ install_dk_command() {
 # Uninstall dk command
 uninstall_dk_command() {
     if test ! -f "$DK_INSTALL_PATH"; then
-        print_warning "dk command not found at $DK_INSTALL_PATH"
-        print_success "$(green 'already uninstalled or was never installed')"
+        print_success "dk command not installed"
         return "$EXIT_SUCCESS"
     fi
 
-    local installed_version
-    installed_version="$(get_installed_version)"
-
-    print_warning "This will remove dk command (${installed_version}) from system"
-    printf "Continue? (y/N): "
-    read -r response
-
-    case "$response" in
-        [yY]|[yY][eE][sS])
-            # Remove executable file
-            if rm -f "$DK_INSTALL_PATH"; then
-                print_success "removed dk command"
-            else
-                print_error "Failed to remove $DK_INSTALL_PATH"
-                return "$EXIT_PERMISSION_DENIED"
-            fi
-
-            # Remove shell integration
-            local config_file
-            config_file="$(detect_shell_config)"
-            remove_shell_integration "$config_file" "verbose"
-
-            print_success "$(green 'dk command completely uninstalled')"
-            ;;
-        *)
-            print_warning "Uninstall cancelled"
-            ;;
-    esac
-
-    return "$EXIT_SUCCESS"
-}
-
-# Show dk command status
-show_dk_status() {
-    local current_version installed_version os_type version_comparison
-
-    print_header "DK COMMAND STATUS"
-
-    # System information
-    os_type="$(detect_os)"
-    echo -e  "Operating System: $os_type"
-    echo -e "Shell: $(basename "$SHELL")"
-
-    # Version information
-    current_version="$(get_current_version)"
-    installed_version="$(get_installed_version)"
-
-    echo -e "Current DockerKit version: $current_version"
-
-    # Installation status
-    if test "$installed_version" = "not installed"; then
-        print_warning "dk command: Not installed"
-        print_tip "Install with: make dk-install"
+    # Remove executable file
+    if rm -f "$DK_INSTALL_PATH"; then
+        print_success "removed dk command"
     else
-        print_success "dk command: Installed (${installed_version})"
-        echo -e "Installation path: $DK_INSTALL_PATH"
-
-        # Version comparison
-        version_comparison="$(compare_versions "$installed_version" "$current_version")"
-        case "$version_comparison" in
-            "equal")
-                print_success "Version: Up to date"
-                ;;
-            "older")
-                print_warning "Version: Update available"
-                print_tip "Update with: make dk-install"
-                ;;
-            "newer")
-                echo -e "Version: Newer than current DockerKit"
-                ;;
-        esac
+        print_error "Failed to remove $(gray "$DK_INSTALL_PATH")"
+        return "$EXIT_PERMISSION_DENIED"
     fi
 
-    # Shell integration
-    if check_shell_integration; then
-        print_success "Shell integration: Configured"
-        local config_file
-        config_file="$(detect_shell_config)"
-        echo -e "Location: $config_file"
-    else
-        print_warning "Shell integration: Not configured"
-        print_tip "Run: make dk-install"
-    fi
-
-    # Docker availability
-    if command -v docker >/dev/null 2>&1; then
-        print_success "Docker: Available"
-    else
-        print_error "Docker: Not found in PATH"
-    fi
+    # Remove shell integration
+    local config_file
+    config_file="$(detect_shell_config)"
+    remove_shell_integration "$config_file" "verbose"
 
     return "$EXIT_SUCCESS"
 }
@@ -508,21 +375,19 @@ show_help() {
 DockerKit dk Command Manager
 
 USAGE:
-    ./manager.sh {install|uninstall|status}
+    ./manager.sh {install|uninstall}
 
 COMMANDS:
-    install     Install dk command to ~/.local/bin/
+    install     Install dk command to ~/.dockerkit/bin/
     uninstall   Remove dk command from system
-    status      Show installation status and version information
 
 EXAMPLES:
     ./manager.sh install     # Install or update dk command
-    ./manager.sh status      # Check current status
     ./manager.sh uninstall   # Remove dk command
 
 REQUIREMENTS:
     • macOS, Linux, or WSL2 (Windows not supported)
-    • Write access to ~/.local/bin/ directory
+    • Write access to ~/.dockerkit/bin/ directory
     • Docker and docker compose installed
 
 EOF
@@ -547,9 +412,6 @@ main() {
             ;;
         uninstall)
             uninstall_dk_command
-            ;;
-        status)
-            show_dk_status
             ;;
         -h|--help|help)
             show_help

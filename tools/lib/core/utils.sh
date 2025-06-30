@@ -4,10 +4,14 @@
 # COMMON UTILITIES
 # =============================================================================
 # Common utility functions used across multiple scripts
-# Usage: source this file to access utility functions
 # =============================================================================
 
 set -euo pipefail
+
+# Prevent multiple inclusion
+if [[ "${DOCKERKIT_UTILS_LOADED:-}" == "true" ]]; then
+    return 0
+fi
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,21 +24,40 @@ if ! command -v red >/dev/null 2>&1; then
     source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 fi
 
+# Mark as loaded
+readonly DOCKERKIT_UTILS_LOADED="true"
+
 # Detect operating system
 detect_os() {
     case "$(uname -s)" in
-        Darwin) echo "macos" ;;
-        Linux) echo "linux" ;;
+        Darwin*) echo "macos" ;;
+        Linux*)
+            if test -f /proc/version && grep -qi microsoft /proc/version 2>/dev/null; then
+                echo "wsl2"
+            elif test -n "${WSL_DISTRO_NAME:-}" || test -n "${WSLENV:-}"; then
+                echo "wsl2"
+            else
+                echo "linux"
+            fi
+            ;;
         CYGWIN*|MINGW*|MSYS*) echo "windows" ;;
         *) echo "unknown" ;;
     esac
 }
 
-# Check if command exists
+# Get current project version from git tags
+get_project_version() {
+    local version
+    if version="$(git describe --tags --abbrev=0 2>/dev/null)"; then
+        echo "${version#v}" | tr -d '\n'
+    else
+        echo "unknown"
+    fi
+}
+
 command_exists() {
     local command_name="$1"
 
-    # Special case for docker compose
     if [ "$command_name" = "docker compose" ]; then
         docker compose version >/dev/null 2>&1
     else
@@ -140,13 +163,10 @@ ensure_directory() {
     fi
 }
 
-# Compare two version strings (semantic versioning)
-# Returns: 0 if v1 >= v2, 1 if v1 < v2
 version_compare() {
     local version1="$1"
     local version2="$2"
 
-    # Handle special cases
     if [ "$version1" = "$version2" ]; then
         return "$EXIT_SUCCESS"
     fi
@@ -159,41 +179,28 @@ version_compare() {
         return "$EXIT_SUCCESS"
     fi
 
-    # Clean versions (remove leading 'v' and non-numeric suffixes)
     version1=$(echo "$version1" | sed 's/^v//' | sed 's/[^0-9.].*//')
     version2=$(echo "$version2" | sed 's/^v//' | sed 's/[^0-9.].*//')
 
-    # Split versions into arrays using read -a
-    local v1_parts v2_parts
-    IFS='.' read -ra v1_parts <<< "$version1"
-    IFS='.' read -ra v2_parts <<< "$version2"
+    if command -v sort >/dev/null 2>&1; then
+        local sorted_versions
+        sorted_versions=$(printf '%s\n%s\n' "$version1" "$version2" | sort -V)
 
-    # Compare each part
-    local max_parts=${#v1_parts[@]}
-    if [ ${#v2_parts[@]} -gt "$max_parts" ]; then
-        max_parts=${#v2_parts[@]}
-    fi
-
-    for ((i=0; i<max_parts; i++)); do
-        local v1_part=${v1_parts[i]:-0}
-        local v2_part=${v2_parts[i]:-0}
-
-        # Convert to integers for comparison using parameter expansion
-        v1_part=${v1_part//[^0-9]/}
-        v2_part=${v2_part//[^0-9]/}
-
-        # Default to 0 if empty
-        v1_part=${v1_part:-0}
-        v2_part=${v2_part:-0}
-
-        if [ "$v1_part" -gt "$v2_part" ]; then
+        if [ "$(echo "$sorted_versions" | tail -1)" = "$version1" ]; then
             return "$EXIT_SUCCESS"
-        elif [ "$v1_part" -lt "$v2_part" ]; then
+        else
             return "$EXIT_GENERAL_ERROR"
         fi
-    done
-
-    return "$EXIT_SUCCESS"
+    else
+        # Fallback to simple string comparison for systems without sort -V
+        if [ "$version1" = "$version2" ]; then
+            return "$EXIT_SUCCESS"
+        elif [ "$(printf '%s\n%s\n' "$version1" "$version2" | sort | tail -1)" = "$version1" ]; then
+            return "$EXIT_SUCCESS"
+        else
+            return "$EXIT_GENERAL_ERROR"
+        fi
+    fi
 }
 
 # =============================================================================

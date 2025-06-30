@@ -4,15 +4,6 @@
 # CLEANUP SERVICE MODULE
 # =============================================================================
 # Comprehensive cleanup operations for DockerKit project reset and maintenance
-#
-# Features:
-# • Project-specific Docker resource cleanup (containers, volumes, images, networks)
-# • System-wide Docker cleanup (dangling/unused images, build cache)
-# • Host data cleanup (persistent volumes)
-# • Configuration file cleanup (SSL certs, nginx configs, aliases)
-# • Generic confirmation-based cleanup framework
-#
-# Usage: source this file and call cleanup functions
 # =============================================================================
 
 set -euo pipefail
@@ -64,7 +55,6 @@ optional_cleanup_with_confirmation() {
 # DOCKER PROJECT CLEANUP
 # =============================================================================
 
-# Docker project cleanup (containers, volumes, images, networks)
 cleanup_docker_project() {
     local project_name="$1"
 
@@ -75,13 +65,9 @@ cleanup_docker_project() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
-    # Change to project directory for docker compose commands
     cd "$DOCKERKIT_DIR"
 
-    # Stop and remove containers
     cleanup_docker_containers
-
-    # Remove project-specific resources
     cleanup_docker_volumes "$project_name"
     cleanup_docker_images "$project_name"
     cleanup_docker_networks "$project_name"

@@ -17,8 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status health setup start stop restart reset \
-		build build-nc rebuild shell shell-nginx shell-root \
-		lint
+		build build-nc rebuild shell dk-install dk-uninstall lint
 
 # Colors for output
 RED := \033[0;31m
@@ -43,8 +42,8 @@ endif
 # Function to show aliases status
 define show_aliases_status
 	$(if $(filter true,$(ALIASES_AVAILABLE)), \
-		echo "$(BLUE)Using network aliases for .local projects$(NC)", \
-		echo "$(YELLOW)No aliases file found, using default configuration$(NC)" && \
+		echo "$(GREEN)Using network aliases for .local projects$(NC)", \
+		echo "$(RED)No aliases file found, using default configuration$(NC)" && \
 		echo "$(YELLOW)Tip: Run 'make setup' to generate aliases for .local projects$(NC)" \
 	)
 endef
@@ -55,12 +54,15 @@ endef
 
 help: ## Show this help message
 	@echo "$(BLUE)Available commands:$(NC)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sed 's/^.*Makefile://' | sed 's/:.*## / ## /' | awk 'BEGIN {FS = " ## "}; {printf "  \033[0;32m%-20s\033[0m %s\n", $$1, $$2}' | sort
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	sed 's/^.*Makefile://' | sed 's/:.*## / ## /' | \
+	while IFS=' ## ' read -r target desc; do printf "  \033[0;32m%-20s\033[0m %s\n" "$$target" "$$desc"; done | sort
 	@echo ""
 	@echo "$(BLUE)Examples:$(NC)"
 	@echo "  $(GREEN)make start$(NC)          # Start all services"
 	@echo "  $(GREEN)make build$(NC)          # Build all containers"
 	@echo "  $(GREEN)make shell$(NC)          # Enter workspace container"
+	@echo "  $(GREEN)make dk-install$(NC)     # Install dk command for quick access"
 	@echo "  $(GREEN)make lint$(NC)           # Run all quality checks"
 
 status: ## Show current system status
@@ -113,13 +115,17 @@ rebuild: build-nc start ## Rebuild everything and start with aliases
 # =============================================================================
 
 shell: ## Enter workspace container shell
-	@$(LOAD_ENV) && $(DOCKER_COMPOSE) exec --user $$APP_USER workspace bash
-
-shell-nginx: ## Enter nginx container shell
-	@$(LOAD_ENV) && $(DOCKER_COMPOSE) exec --user $$APP_USER nginx bash
-
-shell-root: ## Enter workspace as root
 	@$(DOCKER_COMPOSE) exec --user root workspace bash
+
+# =============================================================================
+# DK COMMAND MANAGEMENT
+# =============================================================================
+
+dk-install: ## Install dk command for quick workspace access from any .local project
+	@tools/dk/manager.sh install
+
+dk-uninstall: ## Remove dk command from system
+	@tools/dk/manager.sh uninstall
 
 # =============================================================================
 # CLEANUP & MAINTENANCE

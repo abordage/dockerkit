@@ -160,6 +160,21 @@ Your projects are now available:
 - <https://api.local>
 - <https://blog.local>
 
+### Optional: Install Quick Access Tool
+
+For even faster development workflow, install the `dk` command for instant workspace access:
+
+```bash
+make dk-install     # Install dk command system-wide
+```
+
+Now you can quickly access workspace from any `.local` project:
+
+```bash
+cd myapp.local      # Navigate to any .local project
+dk                  # Instant access to workspace container
+```
+
 ## Advanced Configuration
 
 ### Container Startup Automation
@@ -676,13 +691,33 @@ make restart       # Restart all services
 make status        # Check system status
 ```
 
-### Development
+### Quick Access Tool
+
+Install `dk` command for instant workspace access from any `.local` project:
 
 ```bash
-make shell         # Access workspace container
-make shell-root    # Access workspace as root
-make health        # Check container health
+make dk-install    # Install dk command system-wide
+make dk-uninstall  # Remove dk command from system
 ```
+
+**Usage:**
+
+```bash
+# Navigate to any .local project and run:
+cd myapp.local
+dk                 # Quick connect to workspace
+
+# Show version and help
+dk --version       # Show dk version
+dk --help          # Show help information
+```
+
+**Features:**
+
+- **Auto-discovery:** Detects available DockerKit instances automatically
+- **Smart routing:** Connects to the appropriate workspace based on current project
+- **Cross-platform:** Works on macOS, Linux, and WSL2
+- **Shell integration:** Adds to PATH and creates shell function automatically
 
 ### Maintenance
 
@@ -852,6 +887,7 @@ mc anonymous set private minio/my-bucket   # Make private
 - [x] Add CA certificate installation for HTTPS development
 - [x] Add automatic hosts file generation for local projects
 - [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
+- [x] Add a quick access tool (dk command) for instant workspace connection from any .local project
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [x] Implement automatic database creation for detected projects

@@ -84,6 +84,43 @@ check_dockerfiles() {
     fi
 }
 
+# Discover all bash scripts in the project (optimized single find)
+discover_all_scripts() {
+    local scripts=()
+
+    while IFS= read -r -d '' file; do
+        # .sh files
+        if [[ "$file" == *.sh ]]; then
+            scripts+=("$file")
+            continue
+        fi
+
+        # entrypoint.d files with bash shebang
+        if [[ "$file" == */entrypoint.d/* ]] && head -1 "$file" 2>/dev/null | grep -q "^#!/bin/bash"; then
+            scripts+=("$file")
+            continue
+        fi
+
+        # workspace shell config files
+        if [[ "$file" == */workspace/shell/* ]]; then
+            case "$(basename "$file")" in
+                .bashrc|.bash_aliases|.bash_profile|.profile)
+                    scripts+=("$file")
+                    ;;
+            esac
+            continue
+        fi
+
+        # executable files with bash shebang
+        if test -x "$file" 2>/dev/null && head -1 "$file" 2>/dev/null | grep -q "^#!/bin/bash"; then
+            scripts+=("$file")
+        fi
+    done < <(find . -type f ! -path "./.git/*" -print0 2>/dev/null)
+
+    # Output all discovered scripts
+    printf '%s\n' "${scripts[@]}"
+}
+
 # Check bash scripts with shellcheck
 check_bash_scripts() {
     print_section "Bash Script Quality"
@@ -93,32 +130,24 @@ check_bash_scripts() {
         local error_count=0
         local scripts=()
 
-        # Find .sh files
-        while IFS= read -r -d '' script; do
-            scripts+=("$script")
-        done < <(find . -name "*.sh" -type f ! -path "./.git/*" -print0)
+        # Discover all scripts using unified function - compatible with older bash
+        while IFS= read -r script; do
+            [ -n "$script" ] && scripts+=("$script")
+        done < <(discover_all_scripts)
 
-        # Find files in entrypoint.d directories (they should all be bash scripts)
-        while IFS= read -r -d '' script; do
-            if head -1 "$script" 2>/dev/null | grep -q "^#!/bin/bash"; then
-                scripts+=("$script")
-            fi
-        done < <(find . -path "*/entrypoint.d/*" -type f ! -path "./.git/*" -print0)
+        # Sort scripts alphabetically by filename
+        if [ ${#scripts[@]} -gt 0 ]; then
+            local sorted_scripts=()
+            while IFS=':' read -r _basename fullpath; do
+                sorted_scripts+=("$fullpath")
+            done < <(for script in "${scripts[@]}"; do echo "$(basename "$script"):$script"; done | sort)
 
-        # Find bash configuration files (.bashrc, .bash_aliases, etc.)
-        while IFS= read -r -d '' script; do
-            scripts+=("$script")
-        done < <(find . -path "*/workspace/shell/*" -type f \( -name ".bashrc" -o -name ".bash_aliases" -o -name ".bash_profile" -o -name ".profile" \) ! -path "./.git/*" -print0)
-
-        # Find other executable files with bash shebang (excluding .sh and entrypoint.d already covered)
-        while IFS= read -r -d '' script; do
-            if [[ "$script" != *.sh ]] && [[ "$script" != */entrypoint.d/* ]] && head -1 "$script" 2>/dev/null | grep -q "^#!/bin/bash"; then
-                scripts+=("$script")
-            fi
-        done < <(find . -type f -executable ! -path "./.git/*" -print0 2>/dev/null)
+            scripts=("${sorted_scripts[@]}")
+        fi
 
         # Check each script
-        for script in "${scripts[@]}"; do
+        if [ ${#scripts[@]} -gt 0 ]; then
+            for script in "${scripts[@]}"; do
             ((script_count++))
 
             # Run shellcheck and capture exit status
@@ -134,6 +163,7 @@ check_bash_scripts() {
                 shellcheck "$script" 2>&1 | sed 's/^/    /' || true
             fi
         done
+        fi
 
         if [ $script_count -eq 0 ]; then
             print_error "No bash scripts found"

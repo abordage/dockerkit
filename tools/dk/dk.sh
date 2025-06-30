@@ -5,7 +5,7 @@
 # =============================================================================
 # Quick connect to DockerKit workspace container from any .local project
 # Compatible: macOS, Linux, WSL2
-# Usage: dk [--help|--version|--uninstall]
+# Usage: dk [--help|--version]
 # =============================================================================
 
 set -euo pipefail
@@ -14,8 +14,7 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
-readonly DK_VERSION="__DK_VERSION__"  # Replaced during installation
-readonly INSTALL_PATH="$HOME/.local/bin/dk"
+readonly DK_VERSION="1.4.0"
 
 # =============================================================================
 # STANDARD EXIT CODES
@@ -27,21 +26,38 @@ readonly EXIT_INVALID_CONFIG=3
 readonly EXIT_PERMISSION_DENIED=4
 
 # =============================================================================
+# COLOR CONSTANTS
+# =============================================================================
+
+readonly _RED='\033[0;31m'
+readonly _GREEN='\033[0;32m'
+readonly _YELLOW='\033[1;33m'
+readonly _RESET='\033[0m'
+
+# =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Print colored messages
-print_error() { echo -e "\033[0;31m✗\033[0m $1" >&2; }
-print_success() { echo -e "\033[0;32m✓\033[0m $1"; }
-print_warning() { echo -e "\033[1;33m⚠\033[0m $1"; }
-print_info() { echo -e "\033[0;34mℹ\033[0m $1"; }
+# Print colored messages (POSIX compatible)
+print_error() { printf '%b\n' "${_RED}$1${_RESET}" >&2; }
+print_success() { printf '%b\n' "${_GREEN} $1${_RESET}"; }
+print_warning() { printf '%b\n' "${_YELLOW}$1${_RESET}"; }
+print_info() { printf '%s\n' "$1"; }
 
-# Detect operating system
+# Color wrapper functions for inline text coloring
+green() { printf '%b' "${_GREEN}$1${_RESET}"; }
+red() { printf '%b' "${_RED}$1${_RESET}"; }
+yellow() { printf '%b' "${_YELLOW}$1${_RESET}"; }
+
+# Detect operating system (improved WSL2 detection)
 detect_os() {
     case "$(uname -s)" in
         Darwin*) echo "macos" ;;
         Linux*)
+            # Check multiple WSL indicators for better detection
             if test -f /proc/version && grep -qi microsoft /proc/version 2>/dev/null; then
+                echo "wsl2"
+            elif test -n "${WSL_DISTRO_NAME:-}" || test -n "${WSLENV:-}"; then
                 echo "wsl2"
             else
                 echo "linux"
@@ -80,8 +96,8 @@ safe_dirname() {
 
 # Show help message
 show_help() {
-    cat << 'EOF'
-DockerKit Quick Connect
+    cat << EOF
+DockerKit Quick Connect v${DK_VERSION}
 
 USAGE:
     dk [OPTIONS]
@@ -93,16 +109,20 @@ DESCRIPTION:
 OPTIONS:
     --help          Show this help message
     --version       Show version information
-    --uninstall     Remove dk command from system
 
 EXAMPLES:
     dk                      # Connect to workspace or show available options
-    dk --version            # Show version and installation info
+    dk --version            # Show version number
 
 REQUIREMENTS:
     • Must be run from a .local project directory
     • At least one DockerKit instance must be available
     • Docker and docker compose must be installed
+
+INSTALLATION:
+    Install:            make dk-install (from DockerKit directory)
+    Uninstall:          make dk-uninstall (from DockerKit directory)
+    Compatible:         macOS, Linux, WSL2
 
 MORE INFO:
     Documentation:      https://github.com/abordage/dockerkit
@@ -113,46 +133,10 @@ EOF
 
 # Show version information
 show_version() {
-    local install_location
-    install_location="$(command -v dk 2>/dev/null || echo "not found")"
-
-    cat << EOF
-DockerKit Quick Connect ${DK_VERSION}
-Compatible: macOS, Linux, WSL2
-Installation: ${install_location}
-Project: $(detect_current_project 2>/dev/null || echo "not in .local project")
-
-Repository: https://github.com/abordage/dockerkit
-EOF
+    echo "${DK_VERSION}"
 }
 
-# Handle self-uninstallation
-handle_uninstall() {
-    if test ! -f "${INSTALL_PATH}"; then
-        print_error "dk command not found at ${INSTALL_PATH}"
-        return "${EXIT_INVALID_CONFIG}"
-    fi
 
-    print_warning "This will remove dk command from ${INSTALL_PATH}"
-    printf "Continue? (y/N): "
-    read -r response
-
-    case "${response}" in
-        [yY]|[yY][eE][sS])
-            if rm -f "${INSTALL_PATH}"; then
-                print_success "dk command uninstalled"
-                return "${EXIT_SUCCESS}"
-            else
-                print_error "Failed to remove ${INSTALL_PATH}"
-                return "${EXIT_PERMISSION_DENIED}"
-            fi
-            ;;
-        *)
-            print_info "Uninstall cancelled"
-            return "${EXIT_SUCCESS}"
-            ;;
-    esac
-}
 
 # Detect current project name from directory
 detect_current_project() {
@@ -161,7 +145,7 @@ detect_current_project() {
     project_name="$(safe_basename "${current_dir}")"
 
     if ! validate_project_name "${project_name}"; then
-        print_error "Current directory is not a .local project: ${project_name}"
+        print_warning "Current directory is not a .local project: ${project_name}"
         print_info "Navigate to a project directory ending with .local"
         return "${EXIT_INVALID_CONFIG}"
     fi
@@ -169,7 +153,7 @@ detect_current_project() {
     printf '%s\n' "${project_name}"
 }
 
-# Discover available DockerKit instances
+# Discover available DockerKit instances (improved cross-platform compatibility)
 discover_dockerkits() {
     local projects_dir
     projects_dir="$(safe_dirname "$(pwd)")"
@@ -178,7 +162,16 @@ discover_dockerkits() {
         return "${EXIT_INVALID_CONFIG}"
     fi
 
-    find "${projects_dir}" -maxdepth 1 -type d 2>/dev/null | while IFS= read -r dir; do
+    # Use more portable approach: try -maxdepth first, fallback to ls
+    if find "${projects_dir}" -maxdepth 1 -type d >/dev/null 2>&1; then
+        # GNU find or compatible
+        find "${projects_dir}" -maxdepth 1 -type d 2>/dev/null
+    else
+        # Fallback for older systems
+        for dir in "${projects_dir}"/*; do
+            test -d "$dir" && printf '%s\n' "$dir"
+        done 2>/dev/null
+    fi | while IFS= read -r dir; do
         test -f "${dir}/docker-compose.yml" || continue
         if grep -q "workspace:" "${dir}/docker-compose.yml" 2>/dev/null; then
             safe_basename "${dir}"
@@ -188,10 +181,8 @@ discover_dockerkits() {
 
 # Check which DockerKit instances are running
 check_running_dockerkits() {
-    local projects_dir dockerkits_found running_dockerkits
+    local projects_dir dockerkits_found
     projects_dir="$(safe_dirname "$(pwd)")"
-    dockerkits_found=""
-    running_dockerkits=""
 
     dockerkits_found="$(discover_dockerkits)"
     test -n "${dockerkits_found}" || return "${EXIT_INVALID_CONFIG}"
@@ -212,7 +203,7 @@ validate_multiple_running() {
     if test "${running_count}" -gt 1; then
         print_warning "Multiple DockerKit instances are running!"
         print_warning "This may cause port conflicts. Please stop unused instances."
-        print_info "Example: cd ../dockerkit-XX && make stop"
+
         return "${EXIT_GENERAL_ERROR}"
     fi
 
@@ -230,15 +221,7 @@ show_available_options() {
         return "${EXIT_INVALID_CONFIG}"
     fi
 
-    print_info "No DockerKit instances running."
-    print_info "Available DockerKit installations:"
-
-    echo "${dockerkits_found}" | while IFS= read -r dockerkit; do
-        echo "  • ${dockerkit}"
-    done
-
-    echo ""
-    print_info "Start one with: cd ../<dockerkit-name> && make start"
+    print_warning "No DockerKit instances running."
 
     return "${EXIT_SUCCESS}"
 }
@@ -257,7 +240,7 @@ connect_to_workspace() {
         return "${EXIT_INVALID_CONFIG}"
     fi
 
-    print_info "Connecting to ${running_dockerkit} workspace container..."
+    print_info "Connecting to ${running_dockerkit} workspace container"
     print_info "Project: ${project_name}"
     print_info "Workdir: ${workdir}"
 
@@ -281,10 +264,6 @@ parse_arguments() {
             --version|-v)
                 show_version
                 exit "${EXIT_SUCCESS}"
-                ;;
-            --uninstall)
-                handle_uninstall
-                exit $?
                 ;;
             -*)
                 print_error "Unknown option: $1"
@@ -336,7 +315,7 @@ main() {
 
     # Validate multiple running (but continue with first found)
     if ! validate_multiple_running "${running_count}"; then
-        print_info "Connecting to first found instance..."
+        print_info "Connecting to first found instance"
     fi
 
     # Get first running instance

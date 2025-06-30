@@ -26,6 +26,45 @@ OUTDATED_TOOLS=()
 MISSING_TOOLS=()
 UPGRADE_SUGGESTIONS=()
 
+# dk command constants
+readonly DK_INSTALL_PATH="$HOME/.dockerkit/bin/dk"
+
+# =============================================================================
+# DK COMMAND FUNCTIONS
+# =============================================================================
+
+# Function get_dk_current_version() moved to utils.sh as get_project_version() for reuse
+
+# Get installed dk version
+get_dk_installed_version() {
+    if test -f "$DK_INSTALL_PATH"; then
+        local version
+        version=$(grep "readonly DK_VERSION=" "$DK_INSTALL_PATH" 2>/dev/null | \
+        sed 's/.*DK_VERSION="\([^"]*\)".*/\1/' | \
+        head -n 1)
+        echo "${version#v}"
+    else
+        echo "not_installed"
+    fi
+}
+
+# Compare dk versions (simplified)
+compare_dk_versions() {
+    local version1="$1" version2="$2"
+
+    # Remove 'v' prefix if present
+    version1="${version1#v}"
+    version2="${version2#v}"
+
+    if test "$version1" = "$version2"; then
+        echo "equal"
+    elif test "$version1" \< "$version2"; then
+        echo "older"
+    else
+        echo "newer"
+    fi
+}
+
 # Check and display system tools information
 check_system_tools() {
     print_section "System Tools"
@@ -142,6 +181,28 @@ check_mkcert_tool() {
     fi
 }
 
+check_dk_tool() {
+    local current_version installed_version version_comparison
+
+    current_version="$(get_project_version)"
+    installed_version="$(get_dk_installed_version)"
+
+    if [ "$installed_version" = "not_installed" ]; then
+        print_error "dk: Not installed"
+        MISSING_TOOLS+=("dk")
+    else
+        print_success "dk: v$installed_version"
+
+        # Check if version is outdated
+        version_comparison="$(compare_dk_versions "$installed_version" "$current_version")"
+        case "$version_comparison" in
+            "older")
+                OUTDATED_TOOLS+=("dk:$installed_version:$current_version")
+                ;;
+        esac
+    fi
+}
+
 # Check if all tools are in good state (no issues or suggestions)
 has_no_tool_issues() {
     [ ${#OUTDATED_TOOLS[@]} -eq 0 ] && \
@@ -161,17 +222,21 @@ show_upgrade_recommendations() {
 
     local counter=1
 
-    # Show missing critical tools first (mkcert, hostctl)
+    # Show missing critical tools first (mkcert, hostctl, dk)
     if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
                 hostctl)
                     echo -e "  $(cyan "${counter}.") Install hostctl $(yellow '(required)')"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
                 mkcert)
                     echo -e "  $(cyan "${counter}.") Install mkcert $(yellow '(required)')"
-                    ((counter++))
+                    counter=$((counter + 1))
+                    ;;
+                dk)
+                    echo -e "  $(cyan "${counter}.") Install dk command: $(green 'make dk-install')"
+                    counter=$((counter + 1))
                     ;;
             esac
         done
@@ -186,15 +251,19 @@ show_upgrade_recommendations() {
             case "$tool" in
                 bash)
                     echo -e "  $(cyan "${counter}.") Update Bash: $(green "v${current_version}") → $(green "v${min_version}+")"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
                 make)
                     echo -e "  $(cyan "${counter}.") Update Make: $(green "v${current_version}") → $(green "v${min_version}+")"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
                 git)
                     echo -e "  $(cyan "${counter}.") Update Git: $(green "v${current_version}") → $(green "v${min_version}+")"
-                    ((counter++))
+                    counter=$((counter + 1))
+                    ;;
+                dk)
+                    echo -e "  $(cyan "${counter}.") Update dk command: $(green "v${current_version}") → $(green "v${min_version}") $(yellow 'make dk-install')"
+                    counter=$((counter + 1))
                     ;;
             esac
         done
@@ -206,7 +275,7 @@ show_upgrade_recommendations() {
             local tool current_version recommended_version
             IFS=':' read -r tool current_version recommended_version <<< "$tool_info"
             echo -e "  $(cyan "${counter}.") Update $tool: $(green "v${current_version}") → $(green "v${recommended_version}+")"
-            ((counter++))
+            counter=$((counter + 1))
         done
     fi
 
@@ -216,15 +285,15 @@ show_upgrade_recommendations() {
             case "$tool" in
                 homebrew)
                     echo -e "  $(cyan "${counter}.") Install Homebrew"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
                 git)
                     echo -e "  $(cyan "${counter}.") Install Git $(yellow '(required)')"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
                 curl)
                     echo -e "  $(cyan "${counter}.") Install cURL $(yellow '(required)')"
-                    ((counter++))
+                    counter=$((counter + 1))
                     ;;
             esac
         done
@@ -237,6 +306,7 @@ check_development_tools() {
 
     check_hostctl_tool
     check_mkcert_tool
+    check_dk_tool
 }
 
 # Check if critical tools are available and exit with error if missing

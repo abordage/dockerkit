@@ -27,11 +27,8 @@ check_system_dependencies() {
     os_type=$(detect_os)
 
     case "$os_type" in
-        macos)
-            check_macos_dependencies
-            ;;
-        linux)
-            check_linux_dependencies
+        macos|linux)
+            check_required_tools
             ;;
         *)
             print_warning "Unsupported operating system: $os_type"
@@ -40,50 +37,19 @@ check_system_dependencies() {
     esac
 }
 
-# Check macOS dependencies
-check_macos_dependencies() {
-    local missing_deps=()
+# Universal function to check required development tools
+check_required_tools() {
+    local required_tools=("hostctl" "mkcert")
+    local missing_tools=()
     local all_ok=true
 
-    # Check hostctl
-    if ! command_exists "hostctl"; then
-        print_error "hostctl: Not installed"
-        missing_deps+=("hostctl")
-        all_ok=false
-    fi
-
-    # Check mkcert
-    if ! command_exists "mkcert"; then
-        print_error "mkcert: Not installed"
-        missing_deps+=("mkcert")
-        all_ok=false
-    fi
-
-    if [ "$all_ok" = false ]; then
-        return "$EXIT_GENERAL_ERROR"
-    fi
-
-    return "$EXIT_SUCCESS"
-}
-
-# Check Linux dependencies
-check_linux_dependencies() {
-    local missing_deps=()
-    local all_ok=true
-
-    # Check hostctl
-    if ! command_exists "hostctl"; then
-        print_error "hostctl: Not installed"
-        missing_deps+=("hostctl")
-        all_ok=false
-    fi
-
-    # Check mkcert
-    if ! command_exists "mkcert"; then
-        print_error "mkcert: Not installed"
-        missing_deps+=("mkcert")
-        all_ok=false
-    fi
+    for tool in "${required_tools[@]}"; do
+        if ! command_exists "$tool"; then
+            print_error "$tool: Not installed"
+            missing_tools+=("$tool")
+            all_ok=false
+        fi
+    done
 
     if [ "$all_ok" = false ]; then
         return "$EXIT_GENERAL_ERROR"

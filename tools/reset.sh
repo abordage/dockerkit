@@ -78,17 +78,6 @@ EOF
 }
 
 
-
-# Note: All cleanup functions are now in lib/services/cleanup.sh
-
-
-
-
-
-
-
-
-
 # Main reset function
 main() {
     print_header "DOCKERKIT PROJECT RESET"
@@ -127,6 +116,7 @@ main() {
     local project_name
     project_name=$(get_docker_project_name "$DOCKERKIT_DIR")
     cleanup_docker_project "$project_name"
+    echo ""
 
     # =================================================================
     # OPTIONAL CLEANUP (with confirmations)
@@ -134,9 +124,11 @@ main() {
 
     # Step 5: Clean dangling Docker images system-wide (optional, default: Yes)
     cleanup_dangling_images
+    echo ""
 
     # Step 6: Clean unused Docker images system-wide (optional, default: No)
     cleanup_unused_images
+    echo ""
 
     # Step 7: Clean Docker build cache system-wide (optional, default: No)
     cleanup_docker_cache

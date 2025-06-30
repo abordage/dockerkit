@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+# Prevent multiple inclusion
+if [[ "${DOCKERKIT_COLORS_LOADED:-}" == "true" ]]; then
+    return 0
+fi
+
 # Local ANSI color codes (not exported, only for this file)
 readonly _RED='\033[0;31m'
 readonly _GREEN='\033[0;32m'
@@ -17,6 +22,7 @@ readonly _BLUE='\033[0;34m'
 readonly _PURPLE='\033[0;35m'
 readonly _CYAN='\033[0;36m'
 readonly _WHITE='\033[1;37m'
+readonly _GRAY='\033[2;37m'
 readonly _RESET='\033[0m'
 
 # Icons (only define if not already set)
@@ -26,18 +32,22 @@ if [ -z "${CHECK_ICON:-}" ]; then
     readonly DOWN_ARROW_UP_ARROW="↳"
 fi
 
+# Mark as loaded
+readonly DOCKERKIT_COLORS_LOADED="true"
+
 # Color wrapper functions for inline text coloring
-green() { echo -e "${_GREEN}$1${_RESET}"; }
-red() { echo -e "${_RED}$1${_RESET}"; }
-yellow() { echo -e "${_YELLOW}$1${_RESET}"; }
-cyan() { echo -e "${_CYAN}$1${_RESET}"; }
-blue() { echo -e "${_BLUE}$1${_RESET}"; }
-purple() { echo -e "${_PURPLE}$1${_RESET}"; }
-white() { echo -e "${_WHITE}$1${_RESET}"; }
+green() { printf '%b' "${_GREEN}$1${_RESET}"; }
+red() { printf '%b' "${_RED}$1${_RESET}"; }
+yellow() { printf '%b' "${_YELLOW}$1${_RESET}"; }
+cyan() { printf '%b' "${_CYAN}$1${_RESET}"; }
+blue() { printf '%b' "${_BLUE}$1${_RESET}"; }
+purple() { printf '%b' "${_PURPLE}$1${_RESET}"; }
+white() { printf '%b' "${_WHITE}$1${_RESET}"; }
+gray() { printf '%b' "${_GRAY}$1${_RESET}"; }
 
 # Basic print function for standardized output
 print() {
-    echo -e "$1"
+    printf '%b\n' "$1"
 }
 
 # Output formatting functions
@@ -49,33 +59,33 @@ print_header() {
     local padding_right=$((box_width - msg_len - padding_left))
 
     echo
-    echo -e "$(purple '╔══════════════════════════════════════════════════════════════╗')"
+    printf '%b\n' "$(purple '╔══════════════════════════════════════════════════════════════╗')"
     printf "${_PURPLE}║${_WHITE}%*s${_PURPLE}║${_RESET}\n" $box_width " "
     printf "${_PURPLE}║${_WHITE}%*s%s%*s${_PURPLE}║${_RESET}\n" $padding_left " " "$message" $padding_right " "
     printf "${_PURPLE}║${_WHITE}%*s${_PURPLE}║${_RESET}\n" $box_width " "
-    echo -e "$(purple '╚══════════════════════════════════════════════════════════════╝')"
+    printf '%b\n' "$(purple '╚══════════════════════════════════════════════════════════════╝')"
 }
 
 print_section() {
-    echo -e "\n$(cyan "➤ $1")"
+    printf '\n%b\n' "$(cyan "➤ $1")"
 }
 
 print_success() {
-    echo -e "  $(green "${CHECK_ICON}") $1"
+    printf '  %b %s\n' "$(green "${CHECK_ICON}")" "$1"
 }
 
 print_warning() {
-    echo -e "$(yellow "$1")"
+    printf '%b\n' "$(yellow "$1")"
 }
 
 print_error() {
-    echo -e "  $(red "${CROSS_ICON}") $1"
+    printf '  %b %s\n' "$(red "${CROSS_ICON}")" "$1"
 }
 
 print_info() {
-    echo -e "  $(blue "$1")"
+    printf '  %b\n' "$(blue "$1")"
 }
 
 print_tip() {
-    echo -e " ${DOWN_ARROW_UP_ARROW} $1"
+    printf ' %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
 }
