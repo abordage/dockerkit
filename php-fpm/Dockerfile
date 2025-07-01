@@ -97,7 +97,8 @@ ARG DEPENDENCY_PHP_EXTENSIONS
 ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
 # Install PHP extensions
-RUN install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
+RUN --mount=type=cache,target=/tmp/ipe-cache \
+    install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
 
 USER ${APP_UID}:${APP_GID}
 
