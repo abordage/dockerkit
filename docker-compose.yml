@@ -233,14 +233,14 @@ services:
       - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
       - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
       - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
-    entrypoint: ["/rabbitmq-scripts/entrypoint.sh"]
+    entrypoint: ["/scripts/entrypoint.sh"]
     environment:
       - RABBITMQ_DEFAULT_USER
       - RABBITMQ_DEFAULT_PASS
       - TZ
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      - ./rabbitmq/entrypoint.sh:/rabbitmq-scripts/entrypoint.sh:ro
+      - ./rabbitmq/entrypoint.sh:/scripts/entrypoint.sh:ro
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: ${HEALTH_CHECK_INTERVAL}
