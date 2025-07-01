@@ -41,10 +41,6 @@ services:
       # MinIO Client configuration
       - MINIO_ROOT_USER
       - MINIO_ROOT_PASSWORD
-      - MINIO_BUCKETS_PUBLIC
-      - MINIO_BUCKETS_UPLOAD
-      - MINIO_BUCKETS_DOWNLOAD
-      - MINIO_BUCKETS_PRIVATE
       # Locale configuration for proper UTF-8 support
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8

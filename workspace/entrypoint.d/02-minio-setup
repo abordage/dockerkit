@@ -23,8 +23,292 @@ readonly MINIO_PORT="9000"
 readonly MINIO_ALIAS="local"
 readonly MINIO_URL="http://$MINIO_HOST:$MINIO_PORT"
 
-# Default buckets to create (can be extended)
-readonly DEFAULT_BUCKETS=("uploads" "tmp" "backups")
+# Path and file constants (from database setup pattern)
+readonly PROJECTS_DIR="/var/www"
+readonly ENV_FILES=(".env" ".env.testing")
+
+# AWS/MinIO environment keys (AWS format)
+readonly AWS_KEY_BUCKET="AWS_BUCKET"
+readonly AWS_KEY_ACCESS_KEY="AWS_ACCESS_KEY_ID"
+readonly AWS_KEY_SECRET_KEY="AWS_SECRET_ACCESS_KEY"
+
+# MinIO native environment keys (MinIO format)
+readonly MINIO_KEY_BUCKET="MINIO_BUCKET"
+readonly MINIO_KEY_ACCESS_KEY="MINIO_ACCESS_KEY"
+readonly MINIO_KEY_SECRET_KEY="MINIO_SECRET_KEY"
+
+# MinIO policies
+readonly POLICY_PUBLIC="public"
+readonly POLICY_PRIVATE="private"
+
+# Project types (matching database setup)
+readonly PROJECT_TYPE_LARAVEL="laravel"
+readonly PROJECT_TYPE_SYMFONY="symfony"
+readonly PROJECT_TYPE_UNKNOWN="unknown"
+
+# Global arrays for discovered data
+declare -a discovered_projects=()
+declare -a discovered_minio_configs=()
+
+# Global arrays for deduplication tracking
+declare -a processed_users=()
+declare -a processed_buckets=()
+declare -a processed_bucket_policies=()
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+# Extract value from environment file (from database setup)
+extract_env_value() {
+    local env_file="$1"
+    local key="$2"
+
+    grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs
+}
+
+# Format MinIO context for logging
+format_minio_context() {
+    local project_name="$1"
+    local bucket_name="$2"
+    local user_name="$3"
+    local env_file="$4"
+
+    echo "[$project_name] bucket: $bucket_name, user: $user_name, env: $env_file"
+}
+
+# Mask sensitive credentials for logging
+mask_credentials() {
+    local value="$1"
+    local length=${#value}
+
+    if [[ $length -le 4 ]]; then
+        echo "***"
+    else
+        echo "${value:0:2}***${value: -2}"
+    fi
+}
+
+# Detect project type based on files and structure (from database setup)
+detect_project_type() {
+    local project_path="$1"
+
+    if [[ ! -d "$project_path" ]]; then
+        echo "$PROJECT_TYPE_UNKNOWN"
+        return 0
+    fi
+
+    # Laravel detection - artisan file is the key indicator
+    if [[ -f "$project_path/artisan" && -f "$project_path/composer.json" ]]; then
+        # Double-check it's Laravel by looking for Laravel-specific files
+        if grep -q "laravel/framework" "$project_path/composer.json" 2>/dev/null; then
+            echo "$PROJECT_TYPE_LARAVEL"
+            return 0
+        fi
+    fi
+
+    # Symfony detection - multiple indicators
+    if [[ -f "$project_path/bin/console" && -f "$project_path/composer.json" ]]; then
+        if grep -q "symfony/framework-bundle\|symfony/console" "$project_path/composer.json" 2>/dev/null; then
+            echo "$PROJECT_TYPE_SYMFONY"
+            return 0
+        fi
+    fi
+
+    # Alternative Symfony detection
+    if [[ -f "$project_path/symfony.lock" ]]; then
+        echo "$PROJECT_TYPE_SYMFONY"
+        return 0
+    fi
+
+    # If neither Laravel nor Symfony, return unknown
+    echo "$PROJECT_TYPE_UNKNOWN"
+    return 0
+}
+
+# ============================================================================
+# DEDUPLICATION FUNCTIONS
+# ============================================================================
+
+# Check if user was already processed in current run
+is_user_processed() {
+    local user_name="$1"
+
+    for processed_user in "${processed_users[@]}"; do
+        if [[ "$processed_user" == "$user_name" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Mark user as processed
+mark_user_processed() {
+    local user_name="$1"
+    processed_users+=("$user_name")
+}
+
+# Check if bucket was already processed in current run
+is_bucket_processed() {
+    local bucket_name="$1"
+
+    for processed_bucket in "${processed_buckets[@]}"; do
+        if [[ "$processed_bucket" == "$bucket_name" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Mark bucket as processed
+mark_bucket_processed() {
+    local bucket_name="$1"
+    processed_buckets+=("$bucket_name")
+}
+
+# Check if bucket policy was already processed in current run
+is_bucket_policy_processed() {
+    local bucket_name="$1"
+
+    for processed_policy in "${processed_bucket_policies[@]}"; do
+        if [[ "$processed_policy" == "$bucket_name" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Mark bucket policy as processed
+mark_bucket_policy_processed() {
+    local bucket_name="$1"
+    processed_bucket_policies+=("$bucket_name")
+}
+
+# ============================================================================
+# PROJECT SCANNING AND DETECTION
+# ============================================================================
+
+# Scan for .local projects in projects directory (from database setup)
+scan_local_projects() {
+    local projects_dir="$PROJECTS_DIR"
+    discovered_projects=()
+
+    if [[ ! -d "$projects_dir" ]]; then
+        log_warn "Projects directory not found: $projects_dir"
+        return 0
+    fi
+
+    # Look for directories with .local suffix
+    for dir in "$projects_dir"/*.local; do
+        if [[ -d "$dir" ]]; then
+            local project_name
+            project_name=$(basename "$dir")
+            discovered_projects+=("$project_name")
+        fi
+    done
+
+    if [[ ${#discovered_projects[@]} -eq 0 ]]; then
+        log_info "No .local projects found in $projects_dir"
+        return 0
+    fi
+
+    log_info "Found ${#discovered_projects[@]} .local projects"
+    return 0
+}
+
+# ============================================================================
+# ENVIRONMENT FILE PARSING
+# ============================================================================
+
+# Parse environment files for AWS/MinIO configuration
+parse_env_files() {
+    local project_path="$1"
+
+    # Clear previous configs for this project
+    local temp_configs=()
+
+    for env_file in "${ENV_FILES[@]}"; do
+        local env_path="$project_path/$env_file"
+        if [[ -f "$env_path" ]]; then
+            parse_single_env_file "$env_path" "$env_file" temp_configs
+        fi
+    done
+
+    # Add found configs to global array
+    for config in "${temp_configs[@]}"; do
+        discovered_minio_configs+=("$config")
+    done
+}
+
+# Parse single environment file for AWS/MinIO settings
+parse_single_env_file() {
+    local env_path="$1"
+    local env_name="$2"
+    local -n configs_ref="$3"  # Reference to array
+
+    # Extract configuration using helper function - try AWS format first
+    local bucket_name access_key secret_key config_type
+
+    # Try AWS format first
+    bucket_name=$(extract_env_value "$env_path" "$AWS_KEY_BUCKET")
+    access_key=$(extract_env_value "$env_path" "$AWS_KEY_ACCESS_KEY")
+    secret_key=$(extract_env_value "$env_path" "$AWS_KEY_SECRET_KEY")
+    config_type="AWS"
+
+    # If AWS format not found, try MinIO format
+    if [[ -z "$bucket_name" || -z "$access_key" || -z "$secret_key" ]]; then
+        bucket_name=$(extract_env_value "$env_path" "$MINIO_KEY_BUCKET")
+        access_key=$(extract_env_value "$env_path" "$MINIO_KEY_ACCESS_KEY")
+        secret_key=$(extract_env_value "$env_path" "$MINIO_KEY_SECRET_KEY")
+        config_type="MinIO"
+    fi
+
+    # Validate extracted values
+    if [[ -n "$bucket_name" && -n "$access_key" && -n "$secret_key" ]]; then
+        local project_name
+        project_name=$(basename "$(dirname "$env_path")")
+
+        # Store format: "project_name:bucket_name:access_key:secret_key:env_file"
+        configs_ref+=("$project_name:$bucket_name:$access_key:$secret_key:$env_name")
+
+        local masked_secret context
+        masked_secret=$(mask_credentials "$secret_key")
+        context=$(format_minio_context "$project_name" "$bucket_name" "$access_key" "$env_name")
+        log_info "Found $config_type config: $context (secret: $masked_secret)"
+    fi
+}
+
+# Validate AWS/MinIO configuration values
+validate_aws_config() {
+    local bucket="$1"
+    local access_key="$2"
+    local secret_key="$3"
+
+    # Basic validation rules
+    if [[ -z "$bucket" ]] || [[ -z "$access_key" ]] || [[ -z "$secret_key" ]]; then
+        return 1
+    fi
+
+    # Bucket name validation (basic S3 rules)
+    if [[ ! "$bucket" =~ ^[a-z0-9][a-z0-9.-]*[a-z0-9]$ ]]; then
+        return 1
+    fi
+
+    # Access key validation (basic format check)
+    if [[ ${#access_key} -lt 3 ]]; then
+        return 1
+    fi
+
+    # Secret key validation (basic length check)
+    if [[ ${#secret_key} -lt 8 ]]; then
+        return 1
+    fi
+
+    return 0
+}
 
 # ============================================================================
 # PREREQUISITES CHECK
@@ -122,50 +406,255 @@ configure_minio_client() {
 }
 
 # ============================================================================
+# MINIO USER MANAGEMENT
+# ============================================================================
+
+# Check if MinIO user exists
+minio_user_exists() {
+    local user_name="$1"
+
+    if mc admin user list "$MINIO_ALIAS" 2>/dev/null | grep -q "^$user_name "; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Create MinIO user with credentials
+create_minio_user() {
+    local user_name="$1"
+    local secret_key="$2"
+
+    if mc admin user add "$MINIO_ALIAS" "$user_name" "$secret_key" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Generate user policy for bucket access
+generate_user_policy() {
+    local bucket_name="$1"
+    local policy_name="${bucket_name}-policy"
+
+    # Create policy JSON for full bucket access
+    local policy_content="{
+    \"Version\": \"2012-10-17\",
+    \"Statement\": [
+        {
+            \"Effect\": \"Allow\",
+            \"Action\": [\"s3:*\"],
+            \"Resource\": [
+                \"arn:aws:s3:::${bucket_name}\",
+                \"arn:aws:s3:::${bucket_name}/*\"
+            ]
+        }
+    ]
+}"
+
+    echo "$policy_content"
+}
+
+# Create and attach policy to user
+attach_user_policy() {
+    local user_name="$1"
+    local bucket_name="$2"
+    local policy_name="${user_name}-${bucket_name}-policy"
+
+    # Generate policy content
+    local policy_content
+    policy_content=$(generate_user_policy "$bucket_name")
+
+    # Create temporary policy file
+    local temp_policy="/tmp/${policy_name}.json"
+    echo "$policy_content" > "$temp_policy"
+
+    # Add policy to MinIO
+    if mc admin policy create "$MINIO_ALIAS" "$policy_name" "$temp_policy" >/dev/null 2>&1; then
+        # Attach policy to user
+        if mc admin policy attach "$MINIO_ALIAS" "$policy_name" --user "$user_name" >/dev/null 2>&1; then
+            rm -f "$temp_policy"
+            return 0
+        fi
+    fi
+
+    rm -f "$temp_policy"
+    return 1
+}
+
+# ============================================================================
 # BUCKET MANAGEMENT
 # ============================================================================
 
-create_default_buckets() {
-    log_info "Checking/creating default buckets..."
+# Check if bucket exists
+minio_bucket_exists() {
+    local bucket_name="$1"
 
-    local created_count=0
-    local existing_count=0
+    if mc ls "$MINIO_ALIAS/$bucket_name" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
 
-    for bucket in "${DEFAULT_BUCKETS[@]}"; do
-        if mc ls "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
-            log_info "Bucket '$bucket' already exists"
-            ((existing_count++))
-        else
-            log_info "Creating bucket '$bucket'..."
-            if mc mb "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
-                log_ok "Bucket '$bucket' created"
-                ((created_count++))
+# Create MinIO bucket
+create_minio_bucket() {
+    local bucket_name="$1"
 
-                # Set public-read policy for uploads bucket
-                if [[ "$bucket" == "uploads" ]]; then
-                    log_info "Setting public-read policy for '$bucket' bucket..."
-                    if mc anonymous set public "$MINIO_ALIAS/$bucket" >/dev/null 2>&1; then
-                        log_ok "Public-read policy set for '$bucket' bucket"
-                    else
-                        log_warn "Failed to set public-read policy for '$bucket' bucket"
-                    fi
-                fi
-            else
-                log_error "Failed to create bucket '$bucket'"
+    if mc mb "$MINIO_ALIAS/$bucket_name" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Set bucket policy (public or private)
+set_bucket_policy() {
+    local bucket_name="$1"
+    local policy_type="$2"  # $POLICY_PUBLIC or $POLICY_PRIVATE
+
+    case "$policy_type" in
+        "$POLICY_PUBLIC")
+            if mc anonymous set public "$MINIO_ALIAS/$bucket_name" >/dev/null 2>&1; then
+                return 0
             fi
+            ;;
+        "$POLICY_PRIVATE")
+            if mc anonymous set none "$MINIO_ALIAS/$bucket_name" >/dev/null 2>&1; then
+                return 0
+            fi
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    return 1
+}
+
+# ============================================================================
+# PROJECT PROCESSING
+# ============================================================================
+
+# Process single project for MinIO setup
+process_project() {
+    local project_name="$1"
+    local project_path="$PROJECTS_DIR/$project_name"
+
+    if [[ ! -d "$project_path" ]]; then
+        log_warn "Project directory not found: $project_path"
+        return 0
+    fi
+
+    # Detect project type
+    local project_type
+    project_type=$(detect_project_type "$project_path")
+    log_info "Processing $project_name (type: $project_type)"
+
+    # Skip projects that are not Laravel or Symfony
+    if [[ "$project_type" != "$PROJECT_TYPE_LARAVEL" && "$project_type" != "$PROJECT_TYPE_SYMFONY" ]]; then
+        log_info "Skipping project: $project_name (type: $project_type)"
+        return 0
+    fi
+
+    # Parse environment files for AWS/MinIO configuration
+    parse_env_files "$project_path"
+
+    # Process each MinIO configuration found for this project
+    local processed_configs=0
+    for config in "${discovered_minio_configs[@]}"; do
+        IFS=':' read -r config_project bucket_name access_key secret_key env_file <<< "$config"
+
+        # Only process configs for current project
+        if [[ "$config_project" == "$project_name" ]]; then
+            process_minio_config "$project_name" "$bucket_name" "$access_key" "$secret_key" "$env_file"
+            ((processed_configs++))
         fi
     done
 
-    if [[ $created_count -gt 0 ]]; then
-        log_ok "$created_count bucket(s) created"
-    fi
-
-    if [[ $existing_count -gt 0 ]]; then
-        log_info "$existing_count bucket(s) already existed"
+    if [[ $processed_configs -eq 0 ]]; then
+        log_info "No AWS/MinIO configuration found for $project_name"
     fi
 
     return 0
 }
+
+# Process single MinIO configuration
+process_minio_config() {
+    local project_name="$1"
+    local bucket_name="$2"
+    local access_key="$3"
+    local secret_key="$4"
+    local env_file="$5"
+
+    local context
+    context=$(format_minio_context "$project_name" "$bucket_name" "$access_key" "$env_file")
+
+    # Validate configuration
+    if ! validate_aws_config "$bucket_name" "$access_key" "$secret_key"; then
+        log_warn "Invalid AWS/MinIO configuration: $context"
+        return 0
+    fi
+
+    # Step 1: Create MinIO user (check deduplication first)
+    if is_user_processed "$access_key"; then
+        log_skip "User '$access_key' already processed in current run: $context"
+    elif minio_user_exists "$access_key"; then
+        log_skip "User '$access_key' already exists: $context"
+        mark_user_processed "$access_key"
+    else
+        log_info "Creating MinIO user '$access_key': $context"
+        if create_minio_user "$access_key" "$secret_key"; then
+            log_ok "User '$access_key' created: $context"
+            mark_user_processed "$access_key"
+        else
+            log_error "Failed to create user '$access_key': $context"
+            return 1
+        fi
+    fi
+
+    # Step 2: Create bucket (check deduplication first)
+    if is_bucket_processed "$bucket_name"; then
+        log_skip "Bucket '$bucket_name' already processed in current run: $context"
+    elif minio_bucket_exists "$bucket_name"; then
+        log_skip "Bucket '$bucket_name' already exists: $context"
+        mark_bucket_processed "$bucket_name"
+    else
+        log_info "Creating bucket '$bucket_name': $context"
+        if create_minio_bucket "$bucket_name"; then
+            log_ok "Bucket '$bucket_name' created: $context"
+            mark_bucket_processed "$bucket_name"
+        else
+            log_error "Failed to create bucket '$bucket_name': $context"
+            return 1
+        fi
+    fi
+
+    # Step 3: Set bucket policy (check deduplication first)
+    if is_bucket_policy_processed "$bucket_name"; then
+        log_skip "Bucket policy for '$bucket_name' already processed in current run: $context"
+    else
+        log_info "Setting public policy for bucket '$bucket_name': $context"
+        if set_bucket_policy "$bucket_name" "$POLICY_PUBLIC"; then
+            log_ok "Public policy set for bucket '$bucket_name': $context"
+            mark_bucket_policy_processed "$bucket_name"
+        else
+            log_warn "Failed to set public policy for bucket '$bucket_name': $context"
+        fi
+    fi
+
+    # Step 4: Attach user policy for bucket access
+    log_info "Attaching bucket policy to user '$access_key': $context"
+    if attach_user_policy "$access_key" "$bucket_name"; then
+        log_ok "Bucket policy attached to user '$access_key': $context"
+    else
+        log_warn "Failed to attach bucket policy to user '$access_key': $context"
+    fi
+
+    return 0
+}
+
+
 
 # ============================================================================
 # MAIN EXECUTION
@@ -195,12 +684,22 @@ main() {
         return 1
     fi
 
-    # Create default buckets
-    if ! create_default_buckets; then
-        log_warn "Default bucket creation failed"
+    # Scan and process .local projects for AWS/MinIO configurations
+    log_info "Starting MinIO automation for .local projects..."
+
+    # Step 1: Scan for .local projects
+    if ! scan_local_projects; then
+        log_info "MinIO project automation completed (no projects found)"
+        echo ""
+        return 0
     fi
 
-    log_info "MinIO client setup completed"
+    # Step 2: Process each discovered project
+    for project in "${discovered_projects[@]}"; do
+        process_project "$project" || true
+    done
+
+    log_info "MinIO client and project automation completed"
     echo ""
     return 0
 }
