@@ -8,9 +8,9 @@
 **What you get:**
 
 - **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
-- **Full site automation** — nginx configs, SSL certificates, auto-create databases, /etc/hosts management
+- **Project-based automation** — automatic scanning and configuration based on your `.env` files
 - **HTTPS between microservices** — containers communicate securely out of the box
-- **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer pre-installed
+- **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer and other
 - **Streamlined workflow** — `make setup`, `make start`, `make status` covers everything
 
  **It simply works.** No kidding.
@@ -129,16 +129,6 @@ MYSQL_ROOT_PASSWORD=dockerkit
 POSTGRES_PASSWORD=dockerkit
 ```
 
-**MinIO Bucket Configuration:**
-
-```bash
-# Automatic bucket creation with access policies
-MINIO_BUCKETS_PUBLIC=documents,shared       # Public read/write access
-MINIO_BUCKETS_UPLOAD=uploads,forms          # Upload-only access
-MINIO_BUCKETS_DOWNLOAD=media,assets         # Download-only access
-MINIO_BUCKETS_PRIVATE=backups,logs          # Private access only
-```
-
 ### 5. Start Services
 
 ```bash
@@ -188,16 +178,18 @@ The workspace container automatically executes these initialization scripts:
 ```text
 workspace/entrypoint.d/
 ├── 01-ca-certificates   # Install SSL CA certificates for HTTPS
-├── 02-minio-setup       # Configure MinIO Client and create buckets
-└── 03-database-setup    # Automatic database creation for .local projects
+├── 02-minio-setup       # MinIO automation: scan projects, create users/buckets  
+├── 03-database-setup    # Database automation: scan projects, create DBs/users
+└── 04-redis-setup       # Redis connection validation
 ```
 
 #### Key features
 
+- **Nginx configuration:** Automatic server block generation with project type detection
 - **SSL certificates:** Local HTTPS certificates for development sites
-- **MinIO buckets:** Automatic bucket creation with configurable policies
+- **Database automation:** Automatic database and user creation based on project `.env` files
+- **MinIO automation:** Automatic user/bucket creation based on AWS/MinIO configurations
 - **Bash environment:** Complete development shell with Laravel/Symfony autocomplete
-- **Database automation:** Automatic database creation based on .env files
 - **Development aliases:** `art` (artisan), `fresh`, `migrate`, `pint`, `pest`
 - **Auto-completion:** Laravel Artisan and Composer commands
 - **Composer auth:** Automatic setup from `workspace/auth.json`
@@ -226,40 +218,47 @@ echo "Running custom workspace setup..."
 
 ### Database Automation
 
-DockerKit automatically creates databases for your `.local` projects by scanning environment files.
+DockerKit automatically creates databases and users by scanning your `.local` projects.
+
+#### How it Works
+
+1. **Project Scanning**: Detects all `*.local` directories in `/var/www/`
+2. **Environment Parsing**: Reads `.env` and `.env.testing` files  
+3. **Database Creation**: Creates databases based on configuration
+4. **User Management**: Creates dedicated users with proper permissions
+5. **Connection Testing**: Validates database connectivity
 
 #### Supported Databases
 
 - **MySQL/MariaDB** (`DB_CONNECTION=mysql`)
 - **PostgreSQL** (`DB_CONNECTION=pgsql`)
 
-#### How it works
-
-1. **Project Detection:** Scans `/var/www/*.local` directories
-2. **Environment Parsing:** Reads `.env` and `.env.testing` files
-3. **Database Creation:** Creates databases based on `DB_CONNECTION` and `DB_DATABASE`
-4. **Project Types:** Supports Laravel, Symfony, WordPress, and simple PHP projects
-
-#### Configuration Example
+#### Configuration Examples
 
 ```bash
-# .env file in your project
+# Basic configuration
 DB_CONNECTION=mysql
 DB_DATABASE=myapp_local
 
-# .env.testing file
-DB_CONNECTION=pgsql  
+# With custom user credentials
+DB_CONNECTION=pgsql
 DB_DATABASE=myapp_testing
+DB_USERNAME=custom_user    # Optional: creates dedicated user
+DB_PASSWORD=custom_pass    # Optional: uses custom password
 ```
 
-#### Manual Database Creation
+#### Performance Features
+
+- **Parallel Processing**: Handles multiple projects efficiently  
+- **Smart Caching**: Remembers processed items during single run
+- **Error Handling**: Graceful handling of connection failures
+
+#### Manual Database Management
 
 ```bash
-# MySQL
-mysql -h mysql -u dockerkit -p -e "CREATE DATABASE myapp_local;"
-
-# PostgreSQL
-PGPASSWORD=dockerkit createdb -h postgres -U dockerkit myapp_local
+# Connect using auto-created credentials
+mysql -h mysql -u myapp_local_user -p myapp_local
+psql -h postgres -U myapp_testing_user -d myapp_testing
 ```
 
 ### Nginx Configuration
@@ -358,57 +357,41 @@ Create crontab files in `workspace/crontab/`:
 
 ### MinIO Object Storage Configuration
 
-DockerKit provides automated MinIO bucket management with configurable access policies.
+DockerKit provides intelligent MinIO automation based on project configurations.
 
-#### Environment Configuration
+#### Automatic Project Processing
 
-Configure bucket creation in your `.env` file:
+The system automatically:
 
-```bash
-# Bucket Categories with Access Policies
-MINIO_BUCKETS_PUBLIC=documents,shared       # Public read/write access
-MINIO_BUCKETS_UPLOAD=uploads,forms          # Upload-only access
-MINIO_BUCKETS_DOWNLOAD=media,assets         # Download-only access  
-MINIO_BUCKETS_PRIVATE=backups,logs          # Private access only
-```
+1. **Scans** all `.local` projects for AWS/MinIO configurations
+2. **Extracts** bucket and credential information from environment files
+3. **Creates** MinIO users with project-specific credentials  
+4. **Creates** required buckets with appropriate policies
+5. **Configures** user access policies for bucket management
 
-#### Bucket Access Policies
+#### Supported Environment Formats
 
-| Policy Type  | Read Access | Write Access | Use Case            |
-|--------------|-------------|--------------|---------------------|
-| **public**   | ✅ Anonymous | ✅ Anonymous  | Public file sharing |
-| **upload**   | ❌ Auth only | ✅ Anonymous  | File upload forms   |
-| **download** | ✅ Anonymous | ❌ Auth only  | Public downloads    |
-| **private**  | ❌ Auth only | ❌ Auth only  | Secure storage      |
-
-#### Automatic Setup Process
-
-During container startup, DockerKit automatically:
-
-1. **Validates** MinIO service availability
-2. **Creates** configured buckets if they don't exist
-3. **Applies** access policies based on bucket categories
-4. **Enables** versioning if configured
-5. **Logs** setup status for debugging
-
-#### Manual Bucket Management
-
-Access workspace container for manual operations:
+##### AWS Format (S3 Compatible)
 
 ```bash
-# Enter workspace container
-make shell
-
-# List existing buckets
-mc ls minio
-
-# Create bucket with specific policy
-mc mb minio/new-bucket
-mc anonymous set download minio/new-bucket
-
-# Check bucket policy
-mc anonymous get minio/new-bucket
+AWS_BUCKET=my-project-bucket
+AWS_ACCESS_KEY_ID=project-access-key
+AWS_SECRET_ACCESS_KEY=project-secret-key
 ```
+
+##### MinIO Native Format
+
+```bash
+MINIO_BUCKET=my-project-bucket  
+MINIO_ACCESS_KEY=project-access-key
+MINIO_SECRET_KEY=project-secret-key
+```
+
+#### Automation Features
+
+- **Multi-environment**: Processes both `.env` and `.env.testing`
+- **Project isolation**: Each project gets dedicated credentials
+- **Smart policies**: Automatic public/private bucket configuration
 
 ## Web Interfaces
 
@@ -417,6 +400,7 @@ mc anonymous get minio/new-bucket
 | **Mailpit**       | <http://localhost:8125>  | -                     | Email testing     |
 | **MinIO Console** | <http://localhost:9001>  | dockerkit / dockerkit | File storage      |
 | **RabbitMQ**      | <http://localhost:15672> | dockerkit / dockerkit | Message queues    |
+| **Elasticvue**    | <http://localhost:9210>  | -                     | Elasticsearch UI  |
 | **Portainer**     | <http://localhost:9010>  | Setup on first visit  | Docker management |
 
 ## Development Tools
@@ -550,7 +534,7 @@ mc version enable minio/backups
 mc stat minio/documents
 ```
 
-**Automatic Bucket Creation:** DockerKit automatically creates and configures buckets based on environment variables during container startup.
+**Automatic Project Integration:** DockerKit automatically creates users/buckets based on project `.env` configurations during container startup.
 
 ### Terminal Navigation Tools
 
@@ -658,6 +642,8 @@ curl http://api.local/users
 | 9001  | MinIO Console       | <http://localhost:9001>  | Object storage management   |
 | 9002  | MinIO API           | <http://localhost:9002>  | S3-compatible API           |
 | 9010  | Portainer           | <http://localhost:9010>  | Docker management interface |
+| 9200  | Elasticsearch API   | <http://localhost:9200>  | Search engine API           |
+| 9210  | Elasticvue          | <http://localhost:9210>  | Elasticsearch web interface |
 | 15672 | RabbitMQ Management | <http://localhost:15672> | Message queue management    |
 
 ```text
@@ -778,6 +764,33 @@ Test MinIO API endpoint:
 curl http://localhost:9002/minio/health/live
 ```
 
+#### Elasticsearch not accessible
+
+Verify Elasticsearch service and check logs:
+
+```bash
+docker compose ps elasticsearch    # Check container status
+curl http://localhost:9200/_cluster/health    # Test API access
+```
+
+#### Elasticvue connection issues
+
+Check Elasticvue web interface:
+
+```bash
+curl http://localhost:9210    # Test web interface
+docker compose logs elasticvue    # Check connection logs
+```
+
+#### RabbitMQ Management not accessible
+
+Verify RabbitMQ service and management interface:
+
+```bash
+docker compose ps rabbitmq    # Check container status
+curl http://localhost:15672    # Test management interface
+```
+
 ### Slow local site response on macOS (5+ seconds)
 
 macOS has IPv6 DNS resolution timeouts for `.local` domains. DockerKit automatically fixes this by adding **dual-stack entries**:
@@ -818,18 +831,18 @@ Debugging:
 
 ### DockerKit vs Laradock
 
-| Feature                     | DockerKit                                                    | Laradock                        |
-|-----------------------------|--------------------------------------------------------------|---------------------------------|
-| **Site Discovery**          | ✅ Automatic scanning for `.local` suffixed folders           | ❌ Manual configuration          |
-| **SSL Certificates**        | ✅ Automatic SSL generation with mkcert                       | ❌ Manual SSL setup              |
-| **Nginx Configuration**     | ✅ Auto-generated configs with project type detection         | ❌ Manual nginx configuration    |
-| **Hosts Management**        | ✅ Automatic `.local` domains addition with hostctl           | ❌ Manual hosts file editing     |
-| **MinIO Bucket Management** | ✅ Automatic bucket creation with configurable policies       | ❌ Manual bucket setup           |
-| **Database Creation**       | ✅ Automatic database creation for local sites                | ❌ Manual database setup         |
-| **Container Optimization**  | ✅ Multi-stage builds, smaller images, faster builds, caching | ⚠️ Traditional Docker approach  |
-| **Project Maturity**        | ⚠️ Modern but newer project                                  | ✅ Battle-tested, proven by time |
-| **Available Services**      | ⚠️ Focused essential toolkit                                 | ✅ Extensive service library     |
-| **Community Support**       | ⚠️ Growing community                                         | ✅ Large established community   |
+| Feature                    | DockerKit                                                      | Laradock                        |
+|----------------------------|----------------------------------------------------------------|---------------------------------|
+| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders             | ❌ Manual configuration          |
+| **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                         | ❌ Manual SSL setup              |
+| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection           | ❌ Manual nginx configuration    |
+| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl             | ❌ Manual hosts file editing     |
+| **MinIO User Management**  | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
+| **Database User Creation** | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
+| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching   | ⚠️ Traditional Docker approach  |
+| **Project Maturity**       | ⚠️ Modern but newer project                                    | ✅ Battle-tested, proven by time |
+| **Available Services**     | ⚠️ Focused essential toolkit                                   | ✅ Extensive service library     |
+| **Community Support**      | ⚠️ Growing community                                           | ✅ Large established community   |
 
 #### 🎯 Choose DockerKit if you want
 
@@ -840,7 +853,7 @@ Debugging:
 #### 🎯 Choose Laradock if you need
 
 - **Extensive service ecosystem** out of the box
-- **Proven stability** for production-like environments
+- **Proven stability** and mature codebase
 - **Large community** support and resources
 
 ## FAQ
@@ -857,30 +870,12 @@ Yes, through WSL2. Install Docker Desktop with WSL2 backend.
 
 Yes! Edit `docker-compose.yml` to add any Docker service you need.
 
-### How do I manage MinIO buckets?
-
-Buckets are automatically created during container startup based on your `.env` configuration. For manual management:
-
-```bash
-make shell              # Enter workspace container
-mc ls minio             # List buckets
-mc mb minio/new-bucket  # Create bucket
-```
-
-### Can I change bucket policies after creation?
-
-Yes! Use MinIO Client commands:
-
-```bash
-mc anonymous set public minio/my-bucket    # Make public
-mc anonymous set private minio/my-bucket   # Make private
-```
-
 ## Roadmap
 
 - [x] Add MinIO Client integration with automatic bucket management
 - [x] Implement configurable bucket access policies (public, upload, download, private)
 - [x] Add bucket versioning support for MinIO storage
+- [x] Implement project-based MinIO automation (automatic user/bucket creation from .env files)
 - [x] Add Composer configuration for private repositories (GitLab, GitHub, etc)
 - [x] Add flexible service management with environment variables (ENABLE_* flags)
 - [x] Implement container startup automation system
@@ -890,7 +885,7 @@ mc anonymous set private minio/my-bucket   # Make private
 - [x] Add a quick access tool (dk command) for instant workspace connection from any .local project
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
-- [x] Implement automatic database creation for detected projects
+- [x] Implement automatic database and user creation for detected projects
 - [ ] Add support for Python project type detection (requirements.txt, pyproject.toml)
 - [ ] Add support for Node.js project type detection (package.json, next.config.js)
 - [ ] Add MongoDB database support with automatic collection setup

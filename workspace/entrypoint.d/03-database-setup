@@ -3,8 +3,8 @@
 # ============================================================================
 # DATABASE SETUP SCRIPT
 # ============================================================================
-# Automatically creates databases for detected .local projects
-# Supports Laravel, Symfony, WordPress and other PHP projects
+# Automatically creates databases and users for detected .local projects
+# Supports Laravel and Symfony projects with .env configuration
 # ============================================================================
 set -euo pipefail
 
@@ -18,11 +18,47 @@ log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
 SCRIPT_NAME=$(basename "$0")
 readonly SCRIPT_NAME
 
+# Database configuration constants
+readonly MIN_PASSWORD_LENGTH=3
+readonly DEFAULT_DB_USERNAME="dockerkit"
+readonly DEFAULT_DB_PASSWORD="dockerkit"
+readonly MYSQL_ROOT_PASSWORD="root"
+readonly MYSQL_HOST="mysql"
+readonly POSTGRES_HOST="postgres"
+
+# Path and file constants
+readonly PROJECTS_DIR="/var/www"
+readonly ENV_FILES=(".env" ".env.testing")
+
+# Environment keys
+readonly ENV_KEY_DB_CONNECTION="DB_CONNECTION"
+readonly ENV_KEY_DB_DATABASE="DB_DATABASE"
+readonly ENV_KEY_DB_USERNAME="DB_USERNAME"
+readonly ENV_KEY_DB_PASSWORD="DB_PASSWORD"
+
+# SQL constants
+readonly SQL_TEST_QUERY="SELECT 1;"
+readonly SQL_POSTGRES_CHECK_USER="SELECT COUNT(*) FROM pg_roles WHERE rolname='%s';"
+readonly SQL_POSTGRES_CREATE_USER="CREATE USER \"%s\" WITH PASSWORD '%s'; ALTER USER \"%s\" CREATEDB CREATEROLE SUPERUSER;"
+readonly SQL_MYSQL_CHECK_USER="SELECT COUNT(*) FROM mysql.user WHERE User='%s';"
+readonly SQL_MYSQL_CREATE_DATABASE="CREATE DATABASE IF NOT EXISTS \`%s\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+readonly SQL_MYSQL_USE_DATABASE="USE \`%s\`; SELECT 1;"
+readonly SQL_MYSQL_CREATE_USER="CREATE USER '%s'@'%' IDENTIFIED BY '%s'; GRANT ALL PRIVILEGES ON *.* TO '%s'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+
 # Service mapping (extensible for future database types)
 declare -A SERVICE_MAPPING=(
     ["mysql"]="mysql"
     ["pgsql"]="postgres"
 )
+
+# Error messages
+readonly ERROR_INVALID_CREDENTIALS="Invalid username or password format"
+readonly ERROR_UNSUPPORTED_DB_TYPE="Unsupported database type"
+
+# Project types
+readonly PROJECT_TYPE_LARAVEL="laravel"
+readonly PROJECT_TYPE_SYMFONY="symfony"
+readonly PROJECT_TYPE_UNKNOWN="unknown"
 
 declare -A CLIENT_COMMANDS=(
     ["mysql"]="mysql"
@@ -34,34 +70,146 @@ declare -a discovered_projects=()
 declare -a discovered_databases=()
 
 # ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+# Mask password for logging (show only first and last 2 chars)
+mask_password() {
+    local password="$1"
+    local length=${#password}
+
+    if [[ $length -le 4 ]]; then
+        echo "***"
+    else
+        echo "${password:0:2}***${password: -2}"
+    fi
+}
+
+# Validate username format
+validate_username() {
+    local username="$1"
+
+    # Check if username is not empty and contains only allowed characters
+    if [[ -z "$username" ]]; then
+        return 1
+    fi
+
+    # Allow alphanumeric, underscore, dash (typical for database usernames)
+    if [[ ! "$username" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Validate password (basic validation for development)
+validate_password() {
+    local password="$1"
+
+    # Allow empty passwords in development environment
+    if [[ -z "$password" ]]; then
+        return 0
+    fi
+
+    # Check minimum length
+    if [[ ${#password} -lt $MIN_PASSWORD_LENGTH ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# Escape single quotes in SQL values
+escape_sql_value() {
+    local value="$1"
+    # Escape single quotes by doubling them
+    echo "${value//\'/\'\'}"
+}
+
+# Get MySQL credentials
+get_mysql_credentials() {
+    local mysql_user="${MYSQL_USER:-$DEFAULT_DB_USERNAME}"
+    local mysql_password="${MYSQL_PASSWORD:-$DEFAULT_DB_PASSWORD}"
+
+    echo "$mysql_user" "$mysql_password"
+}
+
+# Get PostgreSQL credentials
+get_postgres_credentials() {
+    local postgres_user="${POSTGRES_USER:-$DEFAULT_DB_USERNAME}"
+    local postgres_password="${POSTGRES_PASSWORD:-$DEFAULT_DB_PASSWORD}"
+    local postgres_db="${POSTGRES_DB:-default}"
+
+    echo "$postgres_user" "$postgres_password" "$postgres_db"
+}
+
+# Get MySQL root credentials
+get_mysql_root_credentials() {
+    echo "root" "$MYSQL_ROOT_PASSWORD"
+}
+
+# Format database context for logging
+format_db_context() {
+    local db_type="$1"
+    local db_name="$2"
+    local db_user="$3"
+    local env_file="$4"
+
+    echo "[$db_type/$db_name] user: $db_user, env: $env_file"
+}
+
+# Format SQL query with parameters
+format_sql() {
+    local sql_template="$1"
+    shift
+
+    local result="$sql_template"
+    for arg in "$@"; do
+        if [[ "$result" == *"%s"* ]]; then
+            result="${result/\%s/$arg}"
+        fi
+    done
+
+    echo "$result"
+}
+
+# Extract value from environment file
+extract_env_value() {
+    local env_file="$1"
+    local key="$2"
+
+    grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs
+}
+
+# ============================================================================
 # PROJECT SCANNING AND DETECTION
 # ============================================================================
 
-# Scan for .local projects in /var/www directory
+# Scan for .local projects in projects directory
 scan_local_projects() {
-    local projects_dir="/var/www"
+    local projects_dir="$PROJECTS_DIR"
     discovered_projects=()
 
-    if [ ! -d "$projects_dir" ]; then
+    if [[ ! -d "$projects_dir" ]]; then
         log_warn "Projects directory not found: $projects_dir"
         return 0
     fi
 
     # Look for directories with .local suffix
     for dir in "$projects_dir"/*.local; do
-        if [ -d "$dir" ]; then
+        if [[ -d "$dir" ]]; then
             local project_name
             project_name=$(basename "$dir")
             discovered_projects+=("$project_name")
         fi
     done
 
-    if [ ${#discovered_projects[@]} -eq 0 ]; then
+    if [[ ${#discovered_projects[@]} -eq 0 ]]; then
         log_info "No .local projects found in $projects_dir"
         return 0
     fi
 
-    log_info "Found ${#discovered_projects[@]} .local projects: ${discovered_projects[*]}"
+    log_info "Found ${#discovered_projects[@]} .local projects"
     return 0
 }
 
@@ -69,62 +217,36 @@ scan_local_projects() {
 detect_project_type() {
     local project_path="$1"
 
-    if [ ! -d "$project_path" ]; then
-        echo "unknown"
+    if [[ ! -d "$project_path" ]]; then
+        echo "$PROJECT_TYPE_UNKNOWN"
         return 0
     fi
 
     # Laravel detection - artisan file is the key indicator
-    if [ -f "$project_path/artisan" ] && [ -f "$project_path/composer.json" ]; then
+    if [[ -f "$project_path/artisan" && -f "$project_path/composer.json" ]]; then
         # Double-check it's Laravel by looking for Laravel-specific files
         if grep -q "laravel/framework" "$project_path/composer.json" 2>/dev/null; then
-            echo "laravel"
+            echo "$PROJECT_TYPE_LARAVEL"
             return 0
         fi
     fi
 
     # Symfony detection - multiple indicators
-    if [ -f "$project_path/bin/console" ] && [ -f "$project_path/composer.json" ]; then
+    if [[ -f "$project_path/bin/console" && -f "$project_path/composer.json" ]]; then
         if grep -q "symfony/framework-bundle\|symfony/console" "$project_path/composer.json" 2>/dev/null; then
-            echo "symfony"
+            echo "$PROJECT_TYPE_SYMFONY"
             return 0
         fi
     fi
 
     # Alternative Symfony detection
-    if [ -f "$project_path/symfony.lock" ]; then
-        echo "symfony"
+    if [[ -f "$project_path/symfony.lock" ]]; then
+        echo "$PROJECT_TYPE_SYMFONY"
         return 0
     fi
 
-    # WordPress detection - multiple indicators
-    if [ -f "$project_path/wp-config.php" ] || [ -f "$project_path/wp-config-sample.php" ]; then
-        echo "wordpress"
-        return 0
-    fi
-
-    if [ -f "$project_path/wp-content/index.php" ] || [ -f "$project_path/wp-includes/version.php" ]; then
-        echo "wordpress"
-        return 0
-    fi
-
-    # Static HTML detection - has index.html but no PHP
-    if [ -f "$project_path/index.html" ] && [ ! -f "$project_path/index.php" ]; then
-        # Check if it's really static (no server-side processing)
-        if [ ! -f "$project_path/composer.json" ] && [ ! -f "$project_path/package.json" ]; then
-            echo "static"
-            return 0
-        fi
-    fi
-
-    # Simple PHP detection - has PHP files but no framework
-    if find "$project_path" -name "*.php" -type f 2>/dev/null | head -1 | grep -q "\.php$"; then
-        echo "simple"
-        return 0
-    fi
-
-    # Default fallback
-    echo "simple"
+    # If neither Laravel nor Symfony, return unknown
+    echo "$PROJECT_TYPE_UNKNOWN"
     return 0
 }
 
@@ -135,14 +257,13 @@ detect_project_type() {
 # Parse environment files for database configuration
 parse_env_files() {
     local project_path="$1"
-    local env_files=(".env" ".env.testing")
 
     # Clear global array
     discovered_databases=()
 
-    for env_file in "${env_files[@]}"; do
+    for env_file in "${ENV_FILES[@]}"; do
         local env_path="$project_path/$env_file"
-        if [ -f "$env_path" ]; then
+        if [[ -f "$env_path" ]]; then
             parse_single_env_file "$env_path" "$env_file"
         fi
     done
@@ -153,22 +274,40 @@ parse_single_env_file() {
     local env_path="$1"
     local env_name="$2"
 
-    # Extract database configuration
-    local db_connection
-    local db_database
+    # Extract database configuration using helper function
+    local db_connection db_database db_username db_password
 
-    # Read DB_CONNECTION with various possible formats (handle CRLF line endings)
-    db_connection=$(grep "^DB_CONNECTION=" "$env_path" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs)
-    db_database=$(grep "^DB_DATABASE=" "$env_path" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs)
+    db_connection=$(extract_env_value "$env_path" "$ENV_KEY_DB_CONNECTION")
+    db_database=$(extract_env_value "$env_path" "$ENV_KEY_DB_DATABASE")
+    db_username=$(extract_env_value "$env_path" "$ENV_KEY_DB_USERNAME")
+    db_password=$(extract_env_value "$env_path" "$ENV_KEY_DB_PASSWORD")
+
+    # Use defaults if username/password not specified
+    if [[ -z "$db_username" ]]; then
+        db_username="$DEFAULT_DB_USERNAME"
+    fi
+
+    if [[ -z "$db_password" ]]; then
+        db_password="$DEFAULT_DB_PASSWORD"
+    fi
 
     # Validate extracted values
     if [[ -n "$db_connection" && -n "$db_database" ]]; then
         # Check if this database type is supported
         if [[ "${SERVICE_MAPPING[$db_connection]:-}" ]]; then
-            discovered_databases+=("$db_connection:$db_database:$env_name")
-            log_info "Found database config: $db_connection/$db_database in $env_name"
+            # Validate username and password
+            if validate_username "$db_username" && validate_password "$db_password"; then
+                # Store format: "db_type:db_name:username:password:env_file"
+                discovered_databases+=("$db_connection:$db_database:$db_username:$db_password:$env_name")
+                local masked_password context
+                masked_password=$(mask_password "$db_password")
+                context=$(format_db_context "$db_connection" "$db_database" "$db_username" "$env_name")
+                log_info "Found database config: $context (password: $masked_password)"
+            else
+                log_warn "$ERROR_INVALID_CREDENTIALS in $env_name"
+            fi
         else
-            log_warn "Unsupported database type '$db_connection' in $env_name"
+            log_warn "$ERROR_UNSUPPORTED_DB_TYPE '$db_connection' in $env_name"
         fi
     fi
 }
@@ -177,6 +316,33 @@ parse_single_env_file() {
 # SERVICE AND CLIENT VALIDATION
 # ============================================================================
 
+# Validate database prerequisites (common validation logic)
+validate_db_prerequisites() {
+    local db_type="$1"
+    local env_file="$2"
+
+    # Check if database type is supported
+    if [[ ! "${SERVICE_MAPPING[$db_type]:-}" ]]; then
+        log_warn "$ERROR_UNSUPPORTED_DB_TYPE '$db_type' in $env_file"
+        return 1
+    fi
+
+    local service_name="${SERVICE_MAPPING[$db_type]}"
+
+    # Check client availability
+    if ! check_client_availability "$db_type"; then
+        return 1
+    fi
+
+    # Check service status
+    if ! check_service_status "$service_name"; then
+        log_skip "Database operation skipped ($service_name service not running, $env_file)"
+        return 1
+    fi
+
+    return 0
+}
+
 # Check if database service is running and accessible
 check_service_status() {
     local service_name="$1"
@@ -184,10 +350,10 @@ check_service_status() {
     case "$service_name" in
         "mysql")
             # Use credentials from docker-compose environment or defaults
-            local mysql_user="${MYSQL_USER:-dockerkit}"
-            local mysql_password="${MYSQL_PASSWORD:-dockerkit}"
+            local mysql_user mysql_password
+            read -r mysql_user mysql_password <<< "$(get_mysql_credentials)"
 
-            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "SELECT 1;" >/dev/null 2>&1; then
+            if mysql -h "$MYSQL_HOST" -u "$mysql_user" -p"$mysql_password" -e "$SQL_TEST_QUERY" >/dev/null 2>&1; then
                 return 0
             else
                 return 1
@@ -195,11 +361,10 @@ check_service_status() {
             ;;
         "postgres")
             # Use credentials from docker-compose environment or defaults
-            local postgres_user="${POSTGRES_USER:-dockerkit}"
-            local postgres_password="${POSTGRES_PASSWORD:-dockerkit}"
-            local postgres_db="${POSTGRES_DB:-default}"
+            local postgres_user postgres_password postgres_db
+            read -r postgres_user postgres_password postgres_db <<< "$(get_postgres_credentials)"
 
-            if PGPASSWORD="$postgres_password" psql -h postgres -U "$postgres_user" -d "$postgres_db" -c "SELECT 1;" >/dev/null 2>&1; then
+            if PGPASSWORD="$postgres_password" psql -h "$POSTGRES_HOST" -U "$postgres_user" -d "$postgres_db" -c "$SQL_TEST_QUERY" >/dev/null 2>&1; then
                 return 0
             else
                 return 1
@@ -230,6 +395,112 @@ check_client_availability() {
     return 0
 }
 
+# Check if database user exists
+check_user_exists() {
+    local db_type="$1"
+    local username="$2"
+
+    case "$db_type" in
+        "mysql")
+            # Use root credentials for administrative operations
+            local mysql_user mysql_password
+            read -r mysql_user mysql_password <<< "$(get_mysql_root_credentials)"
+
+            local user_count
+            local sql_query
+            sql_query=$(format_sql "$SQL_MYSQL_CHECK_USER" "$(escape_sql_value "$username")")
+            user_count=$(mysql -h "$MYSQL_HOST" -u "$mysql_user" -p"$mysql_password" -se "$sql_query" 2>/dev/null)
+
+            [[ "$user_count" -gt 0 ]]
+            ;;
+        "pgsql")
+            local postgres_user postgres_password postgres_db
+            read -r postgres_user postgres_password postgres_db <<< "$(get_postgres_credentials)"
+
+            # Check if user/role exists
+            local user_count
+            local sql_query
+            sql_query=$(format_sql "$SQL_POSTGRES_CHECK_USER" "$(escape_sql_value "$username")")
+            user_count=$(PGPASSWORD="$postgres_password" psql -h "$POSTGRES_HOST" -U "$postgres_user" -d "$postgres_db" -tAc "$sql_query" 2>/dev/null)
+
+            [[ "$user_count" -gt 0 ]]
+            ;;
+        *)
+            log_error "$ERROR_UNSUPPORTED_DB_TYPE for user check: $db_type"
+            return 1
+            ;;
+    esac
+}
+
+# Create database user with maximum privileges
+create_database_user() {
+    local db_type="$1"
+    local username="$2"
+    local password="$3"
+
+    local escaped_username
+    local escaped_password
+    escaped_username=$(escape_sql_value "$username")
+    escaped_password=$(escape_sql_value "$password")
+
+    case "$db_type" in
+        "mysql")
+            # Use root credentials for administrative operations
+            local mysql_user mysql_password
+            read -r mysql_user mysql_password <<< "$(get_mysql_root_credentials)"
+
+            local sql_query
+            sql_query=$(format_sql "$SQL_MYSQL_CREATE_USER" "$escaped_username" "$escaped_password" "$escaped_username")
+
+            if mysql -h "$MYSQL_HOST" -u "$mysql_user" -p"$mysql_password" -e "$sql_query" >/dev/null 2>&1; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        "pgsql")
+            local postgres_user postgres_password postgres_db
+            read -r postgres_user postgres_password postgres_db <<< "$(get_postgres_credentials)"
+
+            # Create user with superuser privileges
+            local sql_query
+            sql_query=$(format_sql "$SQL_POSTGRES_CREATE_USER" "$escaped_username" "$escaped_password" "$escaped_username")
+
+            if PGPASSWORD="$postgres_password" psql -h "$POSTGRES_HOST" -U "$postgres_user" -d "$postgres_db" -c "$sql_query" >/dev/null 2>&1; then
+                return 0
+            else
+                return 1
+            fi
+            ;;
+        *)
+            log_error "$ERROR_UNSUPPORTED_DB_TYPE for user creation: $db_type"
+            return 1
+            ;;
+    esac
+}
+
+# Test user connection to database
+test_user_connection() {
+    local db_type="$1"
+    local username="$2"
+    local password="$3"
+    local database="$4"
+
+    case "$db_type" in
+        "mysql")
+            local sql_query
+            sql_query=$(format_sql "$SQL_MYSQL_USE_DATABASE" "$database")
+            mysql -h "$MYSQL_HOST" -u "$username" -p"$password" -e "$sql_query" >/dev/null 2>&1
+            ;;
+        "pgsql")
+            PGPASSWORD="$password" psql -h "$POSTGRES_HOST" -U "$username" -d "$database" -c "$SQL_TEST_QUERY" >/dev/null 2>&1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # ============================================================================
 # DATABASE CREATION
 # ============================================================================
@@ -242,17 +513,21 @@ create_database() {
 
     case "$db_type" in
         "mysql")
-            local mysql_user="${MYSQL_USER:-dockerkit}"
-            local mysql_password="${MYSQL_PASSWORD:-dockerkit}"
+            # Use root credentials for administrative operations
+            local mysql_user mysql_password
+            read -r mysql_user mysql_password <<< "$(get_mysql_root_credentials)"
 
             # Check if database already exists by trying to use it
-            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "USE \`$db_name\`; SELECT 1;" >/dev/null 2>&1; then
+            local check_sql create_sql
+            check_sql=$(format_sql "$SQL_MYSQL_USE_DATABASE" "$db_name")
+            if mysql -h "$MYSQL_HOST" -u "$mysql_user" -p"$mysql_password" -e "$check_sql" >/dev/null 2>&1; then
                 log_skip "Database '$db_name' already exists (MySQL, $env_file)"
                 return 0
             fi
 
             # Create database
-            if mysql -h mysql -u "$mysql_user" -p"$mysql_password" -e "CREATE DATABASE IF NOT EXISTS \`$db_name\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >/dev/null 2>&1; then
+            create_sql=$(format_sql "$SQL_MYSQL_CREATE_DATABASE" "$db_name")
+            if mysql -h "$MYSQL_HOST" -u "$mysql_user" -p"$mysql_password" -e "$create_sql" >/dev/null 2>&1; then
                 log_ok "Database '$db_name' created (MySQL, $env_file)"
                 return 0
             else
@@ -261,17 +536,17 @@ create_database() {
             fi
             ;;
         "pgsql")
-            local postgres_user="${POSTGRES_USER:-dockerkit}"
-            local postgres_password="${POSTGRES_PASSWORD:-dockerkit}"
+            local postgres_user postgres_password postgres_db
+            read -r postgres_user postgres_password postgres_db <<< "$(get_postgres_credentials)"
 
             # Check if database already exists by trying to connect to it
-            if PGPASSWORD="$postgres_password" psql -h postgres -U "$postgres_user" -d "$db_name" -c "SELECT 1;" >/dev/null 2>&1; then
+            if PGPASSWORD="$postgres_password" psql -h "$POSTGRES_HOST" -U "$postgres_user" -d "$db_name" -c "$SQL_TEST_QUERY" >/dev/null 2>&1; then
                 log_skip "Database '$db_name' already exists (PostgreSQL, $env_file)"
                 return 0
             fi
 
             # Create database
-            if PGPASSWORD="$postgres_password" createdb -h postgres -U "$postgres_user" "$db_name" >/dev/null 2>&1; then
+            if PGPASSWORD="$postgres_password" createdb -h "$POSTGRES_HOST" -U "$postgres_user" "$db_name" >/dev/null 2>&1; then
                 log_ok "Database '$db_name' created (PostgreSQL, $env_file)"
                 return 0
             else
@@ -280,7 +555,7 @@ create_database() {
             fi
             ;;
         *)
-            log_warn "Unsupported database type: $db_type"
+            log_warn "$ERROR_UNSUPPORTED_DB_TYPE: $db_type"
             return 1
             ;;
     esac
@@ -290,41 +565,68 @@ create_database() {
 # PROJECT PROCESSING
 # ============================================================================
 
+# Process user creation for a database configuration
+process_user_creation() {
+    local db_type="$1"
+    local username="$2"
+    local password="$3"
+    local env_file="$4"
+
+    # Validate prerequisites
+    if ! validate_db_prerequisites "$db_type" "$env_file"; then
+        return 0
+    fi
+
+    local masked_password
+    masked_password=$(mask_password "$password")
+
+    # Check if user already exists
+    if check_user_exists "$db_type" "$username"; then
+        log_skip "User '$username' already exists ($db_type, $env_file)"
+        return 0
+    fi
+
+    # Create user
+    log_info "Creating user '$username' with password '$masked_password' ($db_type, $env_file)"
+    if create_database_user "$db_type" "$username" "$password"; then
+        log_ok "User '$username' created with maximum privileges ($db_type, $env_file)"
+        return 0
+    else
+        log_error "Failed to create user '$username' ($db_type, $env_file)"
+        return 1
+    fi
+}
+
 # Process database creation for a single database configuration
 process_database_creation() {
     local db_type="$1"
     local db_name="$2"
-    local env_file="$3"
+    local username="$3"
+    local password="$4"
+    local env_file="$5"
 
-    # Check if database type is supported
-    if [[ ! "${SERVICE_MAPPING[$db_type]:-}" ]]; then
-        log_warn "Unsupported database type '$db_type' in $env_file"
-        return 0
-    fi
-
-    local service_name="${SERVICE_MAPPING[$db_type]}"
-
-    # Check client availability
-    if ! check_client_availability "$db_type"; then
-        return 0
-    fi
-
-    # Check service status
-    if ! check_service_status "$service_name"; then
-        log_skip "Database creation for '$db_name' ($service_name service not running, $env_file)"
+    # Validate prerequisites
+    if ! validate_db_prerequisites "$db_type" "$env_file"; then
         return 0
     fi
 
     # Create database
     create_database "$db_type" "$db_name" "$env_file" || true
+
+    # Test user access to the created database
+    if test_user_connection "$db_type" "$username" "$password" "$db_name"; then
+        log_ok "User '$username' has access to database '$db_name' ($db_type, $env_file)"
+    else
+        log_warn "User '$username' cannot access database '$db_name' ($db_type, $env_file)"
+    fi
 }
 
-# Process single project for database creation
+# Process single project for database and user creation
 process_project() {
     local project_name="$1"
-    local project_path="/var/www/$project_name"
+    local project_path="$PROJECTS_DIR/$project_name"
 
-    if [ ! -d "$project_path" ]; then
+    if [[ ! -d "$project_path" ]]; then
         log_warn "Project directory not found: $project_path"
         return 0
     fi
@@ -334,9 +636,9 @@ process_project() {
     project_type=$(detect_project_type "$project_path")
     log_info "Processing $project_name (type: $project_type)"
 
-    # Skip non-PHP projects that typically don't use databases
-    if [[ "$project_type" == "static" ]]; then
-        log_info "Skipping static project: $project_name"
+    # Skip projects that are not Laravel or Symfony
+    if [[ "$project_type" != "laravel" && "$project_type" != "symfony" ]]; then
+        log_info "Skipping project: $project_name (type: $project_type)"
         return 0
     fi
 
@@ -350,8 +652,13 @@ process_project() {
 
     # Process each database configuration
     for db_config in "${discovered_databases[@]}"; do
-        IFS=':' read -r db_type db_name env_file <<< "$db_config"
-        process_database_creation "$db_type" "$db_name" "$env_file"
+        IFS=':' read -r db_type db_name db_username db_password env_file <<< "$db_config"
+
+        # Step 1: Create user first
+        process_user_creation "$db_type" "$db_username" "$db_password" "$env_file" || true
+
+        # Step 2: Create database
+        process_database_creation "$db_type" "$db_name" "$db_username" "$db_password" "$env_file"
     done
 
     return 0
@@ -361,9 +668,9 @@ process_project() {
 # MAIN EXECUTION
 # ============================================================================
 
-# Main function - entry point for database automation
+# Main function - entry point for database and user automation
 main() {
-    log_info "Starting database automation for .local projects..."
+    log_info "Starting database and user automation for .local projects..."
 
     # Step 1: Scan for .local projects
     if ! scan_local_projects; then
@@ -377,7 +684,7 @@ main() {
         process_project "$project" || true
     done
 
-    log_info "Database automation completed"
+    log_info "Database and user automation completed"
     echo ""
 }
 

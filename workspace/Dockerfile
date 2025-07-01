@@ -100,6 +100,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     git \
     htop \
     jq \
+    redis-tools \
     rsync \
     sqlite3 \
     wget && \
@@ -136,7 +137,8 @@ USER root
 # Import ARG values needed in this stage
 ARG DEPENDENCY_PHP_EXTENSIONS
 
-RUN install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
+RUN --mount=type=cache,target=/tmp/ipe-cache \
+    install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}
 
 USER ${APP_UID}:${APP_GID}
 
@@ -228,7 +230,8 @@ FROM minio-tools AS modern-terminal-tools
 USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-RUN set -eux; \
+RUN --mount=type=cache,target=/tmp/downloads \
+    set -eux; \
     echo "Installing modern terminal tools..."; \
     \
     # Verify git is available (should be inherited from dependencies stage) \
@@ -236,9 +239,9 @@ RUN set -eux; \
     \
     # Install Nerd Fonts Symbols Only for optimal terminal experience (2MB vs 123MB) \
     echo "Installing Nerd Fonts Symbols Only..."; \
-    curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz -o /tmp/symbols.tar.xz && \
-    tar -xf /tmp/symbols.tar.xz -C /usr/share/fonts && \
-    rm /tmp/symbols.tar.xz && \
+    curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz -o /tmp/downloads/symbols.tar.xz && \
+    tar -xf /tmp/downloads/symbols.tar.xz -C /usr/share/fonts && \
+    rm /tmp/downloads/symbols.tar.xz && \
     fc-cache -fv && \
     \
     # Install fzf (fuzzy finder) \
