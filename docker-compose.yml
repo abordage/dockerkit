@@ -16,6 +16,11 @@ services:
         # Node.js
         - NODE_VERSION
     restart: on-failure:3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     ports:
       - "${BROWSERSYNC_HOST_PORT}:3000"
       - "${BROWSERSYNC_UI_HOST_PORT}:3001"
@@ -150,11 +155,11 @@ services:
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -h localhost -U $${POSTGRES_USER} -d $${POSTGRES_DB} && psql -h localhost -U $${POSTGRES_USER} -d $${POSTGRES_DB} -c 'SELECT 1;' >/dev/null 2>&1" ]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
-      start_period: 40s
+      start_period: 30s
     networks:
       - backend
 
@@ -175,11 +180,11 @@ services:
       - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     healthcheck:
-      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD" ]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost --silent && mysql -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD -e 'SELECT 1;' >/dev/null 2>&1" ]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
-      start_period: 40s
+      start_period: 30s
     networks:
       - backend
 
