@@ -61,7 +61,8 @@ scan_local_projects() {
         return 0
     fi
 
-    log_info "Found ${#discovered_projects[@]} .local projects: ${discovered_projects[*]}"
+#    log_info "Found ${#discovered_projects[@]} .local projects: ${discovered_projects[*]}"
+    log_info "Found ${#discovered_projects[@]} .local projects"
     return 0
 }
 

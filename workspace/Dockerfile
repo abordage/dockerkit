@@ -282,9 +282,7 @@ ENV NPM_CONFIG_PREFIX="/home/${APP_USER}/.npm-global"
 ENV PATH="${COMPOSER_HOME}/vendor/bin:${NPM_CONFIG_PREFIX}/bin:${PATH}"
 
 # Install and configure user-specific tools
-RUN --mount=type=cache,target=${COMPOSER_HOME}/cache,uid=${APP_UID},gid=${APP_GID} \
-    --mount=type=cache,target=/home/${APP_USER}/.npm,uid=${APP_UID},gid=${APP_GID} \
-    set -eux; \
+RUN set -eux; \
     # Configure composer \
     composer self-update; \
     composer --version; \
