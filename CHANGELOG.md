@@ -1,3 +1,19 @@
+# [1.7.0](https://github.com/abordage/dockerkit/compare/v1.6.0...v1.7.0) (2025-07-01)
+
+
+### Bug Fixes
+
+* **workspace:** improve artisan completion logic in .bashrc ([1bc2e60](https://github.com/abordage/dockerkit/commit/1bc2e60eb100fc989ce5df1a6a93b2f08f342de6))
+
+
+### Features
+
+* **rabbitmq:** enhance entrypoint script with modular functions and logging ([73f53e9](https://github.com/abordage/dockerkit/commit/73f53e93f96f7c24c2df229233c5d8ca45dcf81c))
+* **workspace:** add caching for PHP extensions and downloads ([2b61f87](https://github.com/abordage/dockerkit/commit/2b61f87f2bfc3f70d299e961194f26824c462e9f))
+* **workspace:** add Redis ACL setup script ([e855fb8](https://github.com/abordage/dockerkit/commit/e855fb875800a5806dba6201224a58175c29a358))
+* **workspace:** enhance database setup script with user automation and service health checks ([752d1ae](https://github.com/abordage/dockerkit/commit/752d1ae67c500a2c8dfda56e72cc296787998ed1))
+* **workspace:** enhance MinIO setup script with project automation and modular utilities ([84d9367](https://github.com/abordage/dockerkit/commit/84d936716b6030c58f8a345f55138c0fedff9df0))
+
 # [1.6.0](https://github.com/abordage/dockerkit/compare/v1.5.0...v1.6.0) (2025-06-30)
 
 
