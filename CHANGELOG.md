@@ -1,3 +1,11 @@
+# [1.8.0](https://github.com/abordage/dockerkit/compare/v1.7.0...v1.8.0) (2025-07-02)
+
+
+### Features
+
+* **workspace:** add RabbitMQ automation script ([d6c8c52](https://github.com/abordage/dockerkit/commit/d6c8c52b3281d577354e2d5cb2025df32a6e3672))
+* **workspace:** add Redis ACL automation script ([873d180](https://github.com/abordage/dockerkit/commit/873d1807c2289ecb3dde62c85110401982ce81f5))
+
 # [1.7.0](https://github.com/abordage/dockerkit/compare/v1.6.0...v1.7.0) (2025-07-01)
 
 
