@@ -7,25 +7,15 @@
 # ============================================================================
 set -euo pipefail
 
-# Color output functions
-log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
-log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
-log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
-log_info() { echo "[$SCRIPT_NAME] $*"; }
-log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
-
-SCRIPT_NAME=$(basename "$0")
-readonly SCRIPT_NAME
+# Source common functions
+# shellcheck source=workspace/entrypoint.d/00-base
+source /entrypoint.d/00-base
 
 # MinIO configuration constants
 readonly MINIO_HOST="minio"
 readonly MINIO_PORT="9000"
 readonly MINIO_ALIAS="local"
 readonly MINIO_URL="http://$MINIO_HOST:$MINIO_PORT"
-
-# Path and file constants (from database setup pattern)
-readonly PROJECTS_DIR="/var/www"
-readonly ENV_FILES=(".env" ".env.testing")
 
 # AWS/MinIO environment keys (AWS format)
 readonly AWS_KEY_BUCKET="AWS_BUCKET"
@@ -41,31 +31,12 @@ readonly MINIO_KEY_SECRET_KEY="MINIO_SECRET_KEY"
 readonly POLICY_PUBLIC="public"
 readonly POLICY_PRIVATE="private"
 
-# Project types (matching database setup)
-readonly PROJECT_TYPE_LARAVEL="laravel"
-readonly PROJECT_TYPE_SYMFONY="symfony"
-readonly PROJECT_TYPE_UNKNOWN="unknown"
-
 # Global arrays for discovered data
-declare -a discovered_projects=()
 declare -a discovered_minio_configs=()
-
-# Global arrays for deduplication tracking
-declare -a processed_users=()
-declare -a processed_buckets=()
-declare -a processed_bucket_policies=()
 
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
-
-# Extract value from environment file (from database setup)
-extract_env_value() {
-    local env_file="$1"
-    local key="$2"
-
-    grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs
-}
 
 # Format MinIO context for logging
 format_minio_context() {
@@ -75,148 +46,6 @@ format_minio_context() {
     local env_file="$4"
 
     echo "[$project_name] bucket: $bucket_name, user: $user_name, env: $env_file"
-}
-
-# Mask sensitive credentials for logging
-mask_credentials() {
-    local value="$1"
-    local length=${#value}
-
-    if [[ $length -le 4 ]]; then
-        echo "***"
-    else
-        echo "${value:0:2}***${value: -2}"
-    fi
-}
-
-# Detect project type based on files and structure (from database setup)
-detect_project_type() {
-    local project_path="$1"
-
-    if [[ ! -d "$project_path" ]]; then
-        echo "$PROJECT_TYPE_UNKNOWN"
-        return 0
-    fi
-
-    # Laravel detection - artisan file is the key indicator
-    if [[ -f "$project_path/artisan" && -f "$project_path/composer.json" ]]; then
-        # Double-check it's Laravel by looking for Laravel-specific files
-        if grep -q "laravel/framework" "$project_path/composer.json" 2>/dev/null; then
-            echo "$PROJECT_TYPE_LARAVEL"
-            return 0
-        fi
-    fi
-
-    # Symfony detection - multiple indicators
-    if [[ -f "$project_path/bin/console" && -f "$project_path/composer.json" ]]; then
-        if grep -q "symfony/framework-bundle\|symfony/console" "$project_path/composer.json" 2>/dev/null; then
-            echo "$PROJECT_TYPE_SYMFONY"
-            return 0
-        fi
-    fi
-
-    # Alternative Symfony detection
-    if [[ -f "$project_path/symfony.lock" ]]; then
-        echo "$PROJECT_TYPE_SYMFONY"
-        return 0
-    fi
-
-    # If neither Laravel nor Symfony, return unknown
-    echo "$PROJECT_TYPE_UNKNOWN"
-    return 0
-}
-
-# ============================================================================
-# DEDUPLICATION FUNCTIONS
-# ============================================================================
-
-# Check if user was already processed in current run
-is_user_processed() {
-    local user_name="$1"
-
-    for processed_user in "${processed_users[@]}"; do
-        if [[ "$processed_user" == "$user_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark user as processed
-mark_user_processed() {
-    local user_name="$1"
-    processed_users+=("$user_name")
-}
-
-# Check if bucket was already processed in current run
-is_bucket_processed() {
-    local bucket_name="$1"
-
-    for processed_bucket in "${processed_buckets[@]}"; do
-        if [[ "$processed_bucket" == "$bucket_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark bucket as processed
-mark_bucket_processed() {
-    local bucket_name="$1"
-    processed_buckets+=("$bucket_name")
-}
-
-# Check if bucket policy was already processed in current run
-is_bucket_policy_processed() {
-    local bucket_name="$1"
-
-    for processed_policy in "${processed_bucket_policies[@]}"; do
-        if [[ "$processed_policy" == "$bucket_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark bucket policy as processed
-mark_bucket_policy_processed() {
-    local bucket_name="$1"
-    processed_bucket_policies+=("$bucket_name")
-}
-
-# ============================================================================
-# PROJECT SCANNING AND DETECTION
-# ============================================================================
-
-# Scan for .local projects in projects directory (from database setup)
-scan_local_projects() {
-    local projects_dir="$PROJECTS_DIR"
-    discovered_projects=()
-
-    if [[ ! -d "$projects_dir" ]]; then
-        log_warn "Projects directory not found: $projects_dir"
-        return 0
-    fi
-
-    # Look for directories with .local suffix
-    for dir in "$projects_dir"/*.local; do
-        if [[ -d "$dir" ]]; then
-            local project_name
-            project_name=$(basename "$dir")
-            discovered_projects+=("$project_name")
-        fi
-    done
-
-    if [[ ${#discovered_projects[@]} -eq 0 ]]; then
-        log_info "No .local projects found in $projects_dir"
-        return 0
-    fi
-
-    log_info "Found ${#discovered_projects[@]} .local projects"
-    return 0
 }
 
 # ============================================================================
@@ -249,33 +78,32 @@ parse_single_env_file() {
     local env_name="$2"
     local -n configs_ref="$3"  # Reference to array
 
-    # Extract configuration using helper function - try AWS format first
-    local bucket_name access_key secret_key config_type
+    # Extract configuration directly from file - try AWS format first
+    local bucket_name access_key secret_key config_type project_name
+    project_name=$(basename "$(dirname "$env_path")")
 
     # Try AWS format first
-    bucket_name=$(extract_env_value "$env_path" "$AWS_KEY_BUCKET")
-    access_key=$(extract_env_value "$env_path" "$AWS_KEY_ACCESS_KEY")
-    secret_key=$(extract_env_value "$env_path" "$AWS_KEY_SECRET_KEY")
+    bucket_name=$(parse_env_value "$env_path" "$AWS_KEY_BUCKET")
+    access_key=$(parse_env_value "$env_path" "$AWS_KEY_ACCESS_KEY")
+    secret_key=$(parse_env_value "$env_path" "$AWS_KEY_SECRET_KEY")
     config_type="AWS"
 
     # If AWS format not found, try MinIO format
     if [[ -z "$bucket_name" || -z "$access_key" || -z "$secret_key" ]]; then
-        bucket_name=$(extract_env_value "$env_path" "$MINIO_KEY_BUCKET")
-        access_key=$(extract_env_value "$env_path" "$MINIO_KEY_ACCESS_KEY")
-        secret_key=$(extract_env_value "$env_path" "$MINIO_KEY_SECRET_KEY")
+        bucket_name=$(parse_env_value "$env_path" "$MINIO_KEY_BUCKET")
+        access_key=$(parse_env_value "$env_path" "$MINIO_KEY_ACCESS_KEY")
+        secret_key=$(parse_env_value "$env_path" "$MINIO_KEY_SECRET_KEY")
         config_type="MinIO"
     fi
 
     # Validate extracted values
     if [[ -n "$bucket_name" && -n "$access_key" && -n "$secret_key" ]]; then
-        local project_name
-        project_name=$(basename "$(dirname "$env_path")")
 
         # Store format: "project_name:bucket_name:access_key:secret_key:env_file"
         configs_ref+=("$project_name:$bucket_name:$access_key:$secret_key:$env_name")
 
         local masked_secret context
-        masked_secret=$(mask_credentials "$secret_key")
+        masked_secret=$(mask_password "$secret_key")
         context=$(format_minio_context "$project_name" "$bucket_name" "$access_key" "$env_name")
         log_info "Found $config_type config: $context (secret: $masked_secret)"
     fi
@@ -315,30 +143,7 @@ validate_aws_config() {
 # ============================================================================
 
 check_prerequisites() {
-    log_info "Checking prerequisites for MinIO client setup..."
-
-    # Check if MinIO client is installed
-    if ! command -v mc >/dev/null 2>&1; then
-        log_skip "MinIO client (mc) not installed"
-        return 1
-    fi
-
-    local mc_version
-    mc_version=$(mc --version 2>/dev/null | head -1 | grep -o 'RELEASE[^ ]*' || echo "unknown")
-    log_ok "MinIO client (mc) available: version $mc_version"
-
-    # Check credentials
-    if [[ -z "${MINIO_ROOT_USER:-}" ]] || [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
-        log_warn "MINIO credentials not set, skipping setup"
-        log_info "Required environment variables:"
-        log_info "  - MINIO_ROOT_USER"
-        log_info "  - MINIO_ROOT_PASSWORD"
-        return 1
-    fi
-    log_ok "MinIO credentials configured"
-
-    log_ok "Prerequisites check completed"
-    return 0
+    run_standard_prerequisites "MinIO client" "MinIO client" "mc" "RELEASE[^ ]*" "MINIO_ROOT_USER" "MINIO_ROOT_PASSWORD"
 }
 
 # ============================================================================
@@ -346,29 +151,7 @@ check_prerequisites() {
 # ============================================================================
 
 test_minio_connection() {
-    log_info "Testing connection to MinIO server ($MINIO_URL)..."
-
-    # Try to connect with timeout
-    local max_attempts=5
-    local attempt=1
-
-    while [[ $attempt -le $max_attempts ]]; do
-        if curl -s --connect-timeout 3 "$MINIO_URL/minio/health/live" >/dev/null 2>&1; then
-            log_ok "MinIO server is accessible"
-            return 0
-        fi
-
-        if [[ $attempt -lt $max_attempts ]]; then
-            log_info "Attempt $attempt/$max_attempts failed, retrying in 2 seconds..."
-            sleep 2
-        fi
-
-        ((attempt++))
-    done
-
-    log_warn "MinIO server is not accessible at $MINIO_URL"
-    log_warn "MinIO client configuration will be skipped"
-    return 1
+    test_service_connection "MinIO server" "$MINIO_HOST" "curl -s --connect-timeout 3 '$MINIO_URL/minio/health/live'" "$MINIO_URL"
 }
 
 # ============================================================================
@@ -536,26 +319,10 @@ set_bucket_policy() {
 # PROJECT PROCESSING
 # ============================================================================
 
-# Process single project for MinIO setup
-process_project() {
+# Callback function for MinIO-specific project processing
+process_minio_project() {
     local project_name="$1"
-    local project_path="$PROJECTS_DIR/$project_name"
-
-    if [[ ! -d "$project_path" ]]; then
-        log_warn "Project directory not found: $project_path"
-        return 0
-    fi
-
-    # Detect project type
-    local project_type
-    project_type=$(detect_project_type "$project_path")
-    log_info "Processing $project_name (type: $project_type)"
-
-    # Skip projects that are not Laravel or Symfony
-    if [[ "$project_type" != "$PROJECT_TYPE_LARAVEL" && "$project_type" != "$PROJECT_TYPE_SYMFONY" ]]; then
-        log_info "Skipping project: $project_name (type: $project_type)"
-        return 0
-    fi
+    local project_path="$2"
 
     # Parse environment files for AWS/MinIO configuration
     parse_env_files "$project_path"
@@ -597,16 +364,17 @@ process_minio_config() {
     fi
 
     # Step 1: Create MinIO user (check deduplication first)
-    if is_user_processed "$access_key"; then
+    local user_key="minio_user:$access_key"
+    if is_item_processed "$user_key"; then
         log_skip "User '$access_key' already processed in current run: $context"
     elif minio_user_exists "$access_key"; then
         log_skip "User '$access_key' already exists: $context"
-        mark_user_processed "$access_key"
+        mark_item_processed "$user_key"
     else
         log_info "Creating MinIO user '$access_key': $context"
         if create_minio_user "$access_key" "$secret_key"; then
             log_ok "User '$access_key' created: $context"
-            mark_user_processed "$access_key"
+            mark_item_processed "$user_key"
         else
             log_error "Failed to create user '$access_key': $context"
             return 1
@@ -614,16 +382,17 @@ process_minio_config() {
     fi
 
     # Step 2: Create bucket (check deduplication first)
-    if is_bucket_processed "$bucket_name"; then
+    local bucket_key="minio_bucket:$bucket_name"
+    if is_item_processed "$bucket_key"; then
         log_skip "Bucket '$bucket_name' already processed in current run: $context"
     elif minio_bucket_exists "$bucket_name"; then
         log_skip "Bucket '$bucket_name' already exists: $context"
-        mark_bucket_processed "$bucket_name"
+        mark_item_processed "$bucket_key"
     else
         log_info "Creating bucket '$bucket_name': $context"
         if create_minio_bucket "$bucket_name"; then
             log_ok "Bucket '$bucket_name' created: $context"
-            mark_bucket_processed "$bucket_name"
+            mark_item_processed "$bucket_key"
         else
             log_error "Failed to create bucket '$bucket_name': $context"
             return 1
@@ -631,13 +400,14 @@ process_minio_config() {
     fi
 
     # Step 3: Set bucket policy (check deduplication first)
-    if is_bucket_policy_processed "$bucket_name"; then
+    local bucket_policy_key="minio_bucket_policy:$bucket_name"
+    if is_item_processed "$bucket_policy_key"; then
         log_skip "Bucket policy for '$bucket_name' already processed in current run: $context"
     else
         log_info "Setting public policy for bucket '$bucket_name': $context"
         if set_bucket_policy "$bucket_name" "$POLICY_PUBLIC"; then
             log_ok "Public policy set for bucket '$bucket_name': $context"
-            mark_bucket_policy_processed "$bucket_name"
+            mark_item_processed "$bucket_policy_key"
         else
             log_warn "Failed to set public policy for bucket '$bucket_name': $context"
         fi
@@ -653,8 +423,6 @@ process_minio_config() {
 
     return 0
 }
-
-
 
 # ============================================================================
 # MAIN EXECUTION
@@ -684,23 +452,8 @@ main() {
         return 1
     fi
 
-    # Scan and process .local projects for AWS/MinIO configurations
-    log_info "Starting MinIO automation for .local projects..."
-
-    # Step 1: Scan for .local projects
-    if ! scan_local_projects; then
-        log_info "MinIO project automation completed (no projects found)"
-        echo ""
-        return 0
-    fi
-
-    # Step 2: Process each discovered project
-    for project in "${discovered_projects[@]}"; do
-        process_project "$project" || true
-    done
-
-    log_info "MinIO client and project automation completed"
-    echo ""
+    # Process .local projects for AWS/MinIO configurations
+    run_project_automation "MinIO" "process_minio_project"
     return 0
 }
 

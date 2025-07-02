@@ -7,17 +7,12 @@
 # ============================================================================
 set -euo pipefail
 
-# Color output functions
-log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
-log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
-log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
-log_info() { echo "[$SCRIPT_NAME] $*"; }
-log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
+# Source common functions
+# shellcheck source=workspace/entrypoint.d/00-base
+source /entrypoint.d/00-base
 
 readonly CA_CERT_SOURCE="/ssl-ca/rootCA.crt"
 readonly CA_CERT_TARGET="/usr/local/share/ca-certificates/mkcert-rootCA.crt"
-SCRIPT_NAME=$(basename "$0")
-readonly SCRIPT_NAME
 
 # ============================================================================
 # PREREQUISITES CHECK
@@ -33,7 +28,7 @@ check_prerequisites() {
     fi
 
     # Check if update-ca-certificates is available
-    if ! command -v update-ca-certificates >/dev/null 2>&1; then
+    if ! command_exists update-ca-certificates; then
         log_error "update-ca-certificates command not available"
         return 1
     fi

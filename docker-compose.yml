@@ -51,6 +51,9 @@ services:
       - MYSQL_USER
       - MYSQL_PASSWORD
       - REDIS_PASSWORD
+      # RabbitMQ Management API credentials
+      - RABBITMQ_DEFAULT_USER
+      - RABBITMQ_DEFAULT_PASS
     volumes:
       - ${HOST_APP_PATH}:/var/www
       - ./workspace/auth.json:/home/${APP_USER}/.composer/auth.json:ro
@@ -228,20 +231,17 @@ services:
   rabbitmq:
     image: rabbitmq:${RABBITMQ_VERSION}-management
     restart: on-failure:3
-    hostname: dockerkit-rabbitmq
     ports:
       - "${RABBITMQ_NODE_HOST_PORT}:5672"
       - "${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT}:15672"
       - "${RABBITMQ_MANAGEMENT_HTTPS_HOST_PORT}:15671"
       - "${RABBITMQ_WEB_STOMP_HOST_PORT}:15674"
-    entrypoint: ["/scripts/entrypoint.sh"]
     environment:
       - RABBITMQ_DEFAULT_USER
       - RABBITMQ_DEFAULT_PASS
       - TZ
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      - ./rabbitmq/entrypoint.sh:/scripts/entrypoint.sh:ro
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: ${HEALTH_CHECK_INTERVAL}

@@ -19,19 +19,13 @@
 
 1. [Quick Start](#quick-start)
 2. [Advanced Configuration](#advanced-configuration)
-   - [Container Startup Automation](#container-startup-automation)
-   - [Nginx Configuration](#nginx-configuration)
-   - [Composer Configuration](#composer-configuration)
-   - [Scheduled Tasks](#scheduled-tasks)
-3. [Web Interfaces](#web-interfaces)
-4. [Development Tools](#development-tools)
-5. [Architecture Overview](#architecture-overview)
-6. [Common Commands](#common-commands)
-7. [Troubleshooting](#troubleshooting)
-8. [Comparison](#comparison)
-9. [FAQ](#faq)
-10. [Roadmap](#roadmap)
-11. [Contributing](#contributing)
+3. [Project Automation](#project-automation)
+4. [Web Interfaces](#web-interfaces)
+5. [Development Tools](#development-tools)
+6. [Comparison](#comparison)
+7. [FAQ](#faq)
+8. [Roadmap](#roadmap)
+9. [Contributing](#contributing)
 
 ## Quick Start
 
@@ -99,34 +93,12 @@ This will automatically:
 
 Review and customize your `.env` file for your specific needs:
 
-#### Key Configuration Options
-
-**Service Selection:**
-
 ```bash
 # Choose which services to start (comma-separated)
 ENABLE_SERVICES="nginx php-fpm workspace postgres mysql redis rabbitmq elasticsearch elasticvue minio mailpit"
-```
 
-**PHP Extensions:**
-
-```bash
 # Customize PHP extensions for your projects
 DEPENDENCY_PHP_EXTENSIONS="amqp ast bcmath bz2 decimal exif gd gmp imagick intl opcache pcntl pcov pdo_mysql pdo_pgsql redis soap sockets sodium xdebug xlswriter yaml zip"
-```
-
-**Database Configuration:**
-
-```bash
-# Default database credentials
-DB_USERNAME=dockerkit
-DB_PASSWORD=dockerkit
-
-# MySQL settings
-MYSQL_ROOT_PASSWORD=dockerkit
-
-# PostgreSQL settings  
-POSTGRES_PASSWORD=dockerkit
 ```
 
 ### 5. Start Services
@@ -141,14 +113,6 @@ This command:
 - Starts all enabled services in detached mode
 - Uses `docker-compose.aliases.yml` for `.local` domain routing
 - Shows startup status for each container
-
-### Access Your Projects
-
-Your projects are now available:
-
-- <https://myapp.local>
-- <https://api.local>
-- <https://blog.local>
 
 ### Optional: Install Quick Access Tool
 
@@ -167,129 +131,9 @@ dk                  # Instant access to workspace container
 
 ## Advanced Configuration
 
-### Container Startup Automation
-
-DockerKit uses automated startup scripts to configure development environment on container launch.
-
-#### Workspace Container Startup
-
-The workspace container automatically executes these initialization scripts:
-
-```text
-workspace/entrypoint.d/
-├── 01-ca-certificates   # Install SSL CA certificates for HTTPS
-├── 02-minio-setup       # MinIO automation: scan projects, create users/buckets  
-├── 03-database-setup    # Database automation: scan projects, create DBs/users
-└── 04-redis-setup       # Redis connection validation
-```
-
-#### Key features
-
-- **Nginx configuration:** Automatic server block generation with project type detection
-- **SSL certificates:** Local HTTPS certificates for development sites
-- **Database automation:** Automatic database and user creation based on project `.env` files
-- **MinIO automation:** Automatic user/bucket creation based on AWS/MinIO configurations
-- **Bash environment:** Complete development shell with Laravel/Symfony autocomplete
-- **Development aliases:** `art` (artisan), `fresh`, `migrate`, `pint`, `pest`
-- **Auto-completion:** Laravel Artisan and Composer commands
-- **Composer auth:** Automatic setup from `workspace/auth.json`
-
-#### PHP-FPM Container Startup
-
-The PHP-FPM container runs these initialization scripts:
-
-```text
-php-fpm/entrypoint.d/
-└── 01-ca-certificates   # Install SSL CA certificates for PHP requests
-```
-
-#### Custom Startup Scripts
-
-Add custom scripts to `workspace/entrypoint.d/` or `php-fpm/entrypoint.d/`:
-
-```bash
-# workspace/entrypoint.d/99-custom-setup
-#!/bin/bash
-echo "Running custom workspace setup..."
-# Your custom initialization code
-```
-
-**Note:** Scripts execute in alphabetical order. Use numeric prefixes (00-, 01-, etc.) to control execution sequence.
-
-### Database Automation
-
-DockerKit automatically creates databases and users by scanning your `.local` projects.
-
-#### How it Works
-
-1. **Project Scanning**: Detects all `*.local` directories in `/var/www/`
-2. **Environment Parsing**: Reads `.env` and `.env.testing` files  
-3. **Database Creation**: Creates databases based on configuration
-4. **User Management**: Creates dedicated users with proper permissions
-5. **Connection Testing**: Validates database connectivity
-
-#### Supported Databases
-
-- **MySQL/MariaDB** (`DB_CONNECTION=mysql`)
-- **PostgreSQL** (`DB_CONNECTION=pgsql`)
-
-#### Configuration Examples
-
-```bash
-# Basic configuration
-DB_CONNECTION=mysql
-DB_DATABASE=myapp_local
-
-# With custom user credentials
-DB_CONNECTION=pgsql
-DB_DATABASE=myapp_testing
-DB_USERNAME=custom_user    # Optional: creates dedicated user
-DB_PASSWORD=custom_pass    # Optional: uses custom password
-```
-
-#### Performance Features
-
-- **Parallel Processing**: Handles multiple projects efficiently  
-- **Smart Caching**: Remembers processed items during single run
-- **Error Handling**: Graceful handling of connection failures
-
-#### Manual Database Management
-
-```bash
-# Connect using auto-created credentials
-mysql -h mysql -u myapp_local_user -p myapp_local
-psql -h postgres -U myapp_testing_user -d myapp_testing
-```
-
-### Nginx Configuration
-
-DockerKit provides flexible nginx customization through configuration snippets:
-
-```text
-nginx/snippets/
-├── security.conf          # Security headers and restrictions
-├── ssl-params.conf        # SSL/TLS configuration  
-├── php-fpm.conf           # PHP-FPM backend settings
-└── modern-fpm.conf        # Optimized PHP-FPM config
-```
-
-#### Adding Custom Rules
-
-Create `.conf` files in `nginx/conf.d/` for custom server blocks.
-
 ### Composer Configuration
 
-For private repositories, create `auth.json` file:
-
-```bash
-# Copy the example template
-cp workspace/auth.json.example workspace/auth.json
-
-# Edit with your credentials
-nano workspace/auth.json
-```
-
-#### auth.json structure
+For private repositories, edit `workspace/auth.json` file:
 
 ```json
 {
@@ -314,19 +158,9 @@ nano workspace/auth.json
 }
 ```
 
-**Security:** File is git-ignored and has restricted permissions (600) inside containers.
-
-### Scheduled Tasks
-
-Automated task execution using cron in the workspace container.
-
-#### Configuration
+### Scheduled Tasks (cron)
 
 Cron is enabled by default and reads jobs from `workspace/crontab/` directory:
-
-```bash
-CRONTAB_DIR=/etc/crontab.d  # Crontab directory (mapped from workspace/crontab)
-```
 
 #### Add Scheduled Tasks
 
@@ -355,43 +189,142 @@ Create crontab files in `workspace/crontab/`:
 
 **Apply changes:** `make restart`
 
-### MinIO Object Storage Configuration
+## Project Automation
 
-DockerKit provides intelligent MinIO automation based on project configurations.
+DockerKit eliminates manual configuration through comprehensive automation that works seamlessly across your entire development environment. Every `.local` project gets automatically configured based on intelligent project detection and environment file analysis.
 
-#### Automatic Project Processing
+### Automated Features
 
-The system automatically:
+#### 1. **Project Discovery**
 
-1. **Scans** all `.local` projects for AWS/MinIO configurations
-2. **Extracts** bucket and credential information from environment files
-3. **Creates** MinIO users with project-specific credentials  
-4. **Creates** required buckets with appropriate policies
-5. **Configures** user access policies for bucket management
+- **Automatic scanning** for `.local` projects in parent directory
+- **Real-time detection** during setup and container startup
+- **Project type identification** based on framework-specific files and structure
+- **Support for multiple frameworks**: Laravel, Symfony, WordPress, Static HTML, Simple PHP
 
-#### Supported Environment Formats
+#### 2. **Project Type Detection**
 
-##### AWS Format (S3 Compatible)
+- **Laravel**: Detected via `artisan` file and `laravel/framework` in composer.json
+- **Symfony**: Identified by `bin/console`, `symfony.lock`, or Symfony packages in composer.json
+- **WordPress**: Recognized through `wp-config.php`, `wp-content/`, or `wp-includes/` structure
+- **Static HTML**: Projects with `index.html` but no server-side processing
+- **Simple PHP**: Fallback for any project containing PHP files
 
-```bash
-AWS_BUCKET=my-project-bucket
-AWS_ACCESS_KEY_ID=project-access-key
-AWS_SECRET_ACCESS_KEY=project-secret-key
-```
+#### 3. **Database Management**
 
-##### MinIO Native Format
+- **Automatic database creation** for PostgreSQL and MySQL based on project `.env` files
+- **User management** with appropriate permissions per project
+- **Environment-specific configurations** (`.env`, `.env.testing`)
+- **Legacy user support** for existing project compatibility
 
-```bash
-MINIO_BUCKET=my-project-bucket  
-MINIO_ACCESS_KEY=project-access-key
-MINIO_SECRET_KEY=project-secret-key
-```
+#### 4. **Object Storage (MinIO)**
 
-#### Automation Features
+- **Automatic bucket creation** based on `AWS_BUCKET` or `MINIO_BUCKET` in project `.env`
+- **User management** using `AWS_ACCESS_KEY_ID`/`MINIO_ACCESS_KEY` credentials
+- **Policy configuration** with public/private bucket support
+- **Multiple project isolation** with dedicated access controls
 
-- **Multi-environment**: Processes both `.env` and `.env.testing`
-- **Project isolation**: Each project gets dedicated credentials
-- **Smart policies**: Automatic public/private bucket configuration
+#### 5. **Redis Cache Configuration**
+
+- **Multi-password ACL support** for Redis default user configuration
+- **Project-based scanning** for `REDIS_PASSWORD` in `.env` files
+- **Deduplication logic** to avoid duplicate password configurations
+
+#### 6. **RabbitMQ Queue Management**
+
+- **User and virtual host creation** via Management API
+- **Comprehensive permission setup** (configure, write, read)
+- **Environment variable scanning** for `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
+
+#### 7. **Web Server Configuration**
+
+- **Nginx configuration generation** from project-specific templates
+- **Framework-optimized configs** with modern/legacy PHP-FPM routing
+- **Security headers and rules** tailored per project type
+- **Performance optimizations** built into generated configurations
+
+#### 8. **SSL Certificate Management**
+
+- **Automatic SSL certificate generation** using mkcert for all `.local` domains
+- **Certificate validation and renewal** as needed
+- **HTTPS-enabled nginx configs** when certificates are available
+- **Container CA installation** for internal HTTPS communication
+
+#### 9. **Host File Management**
+
+- **Automatic `.local` domain addition** to system hosts file using hostctl
+- **Clean management** with profile-based organization
+- **Cross-platform support** for macOS, Linux, and WSL2
+
+#### 10. **Network Configuration**
+
+- **Docker Compose aliases generation** for microservice communication
+- **Internal DNS resolution** for `.local` domains within Docker network
+- **Service discovery** enabling containers to communicate via project domains
+- **Network isolation** with secure inter-container communication
+
+#### 11. **Development Environment Setup**
+
+- **Configuration file creation** from examples (`.env`, auth.json, php.ini)
+- **Directory structure preparation** for logs, certificates, configurations
+- **Permission management** ensuring proper file access across containers
+
+### Automation Scripts
+
+DockerKit's automation is powered by initialization scripts that run during container startup, ensuring your development environment is always properly configured.
+
+#### Workspace Container (`workspace/entrypoint.d/`)
+
+**`01-ca-certificates`**
+
+- Installs mkcert CA certificates for HTTPS development
+- Enables secure communication between containers
+- Updates system certificate store automatically
+
+**`02-redis-setup`**
+
+- Configures Redis ACLs with multiple password support
+- Scans Laravel/Symfony projects for `REDIS_PASSWORD` in `.env` files
+- Ensures secure access while maintaining development flexibility
+
+**`03-rabbitmq-setup`**
+
+- Creates RabbitMQ users, virtual hosts, and permissions
+- Scans all project types for RabbitMQ configuration
+- Uses Management API for comprehensive setup
+- Supports `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` variables
+
+**`04-minio-setup`**
+
+- Scans all `.local` projects for MinIO/AWS configuration
+- Creates users and buckets based on project `.env` files
+- Sets up appropriate bucket policies (public/private)
+- Handles credential management and access control
+
+**`05-database-setup`**
+
+- Analyzes project `.env` files for database configuration
+- Creates PostgreSQL/MySQL databases and users automatically
+- Applies proper permissions and access controls
+- Supports multiple environment files per project
+
+#### PHP-FPM Container (`php-fpm/entrypoint.d/`)
+
+**`01-ca-certificates`**
+
+- Installs CA certificates for secure HTTPS requests from PHP applications
+- Enables verification of SSL certificates in development environment
+
+### Automation Workflow
+
+1. **Project Scan**: DockerKit automatically discovers all `.local` projects in the parent directory
+2. **Type Detection**: Each project is analyzed to determine its framework/type
+3. **Environment Analysis**: Project `.env` files are parsed for service configurations
+4. **Resource Creation**: Databases, storage buckets, users, and certificates are created
+5. **Configuration Generation**: Nginx configs, network aliases, and host entries are generated
+6. **Service Integration**: All services are configured to work together seamlessly
+
+This comprehensive automation means you can simply create a new `.local` project folder, add your code, run `make setup`, and everything else is handled automatically.
 
 ## Web Interfaces
 
@@ -557,114 +490,6 @@ fzf is a fast, interactive command-line fuzzy finder that enhances file navigati
 | `Ctrl+T` | File finder    | Find files/directories in current path     |
 | `Ctrl+R` | History search | Search command history with fuzzy matching |
 
-## Architecture Overview
-
-### Network Topology
-
-DockerKit implements intelligent **multi-network architecture** with automatic service discovery:
-
-```text
-┌───────────────────────────────────────────────────────────────────────┐
-│                             Host Machine                              │
-│                                                                       │
-│          Browser ──► https://myapp.local:443 ──► /etc/hosts           │
-│                                                                       │
-│         ┌─────────────────┐   :443/:80   ┌─────────────────┐          │
-│         │   web network   │◄────────────►│ backend network │          │
-│         │                 │              │                 │          │
-│         │  ┌───────────┐  │   :443/:80   │  ┌───────────┐  │          │
-│         │  │           │◄─┼──────────────┼──│ workspace │  │          │
-│         │  │           │  │              │  └───────────┘  │          │
-│         │  │   nginx   │  │   :443/:80   │  ┌───────────┐  │          │
-│         │  │           │◄─┼──────────────┼──│           │  │          │
-│         │  │           │  │     :9000    │  │  php-fpm  │  │          │
-│         │  │           │──┼──────────────┼─►│           │  │          │
-│         │  └───────────┘  │              │  └───────────┘  │          │
-│         │                 │              │                 │          │
-│         │  aliases:       │              │  aliases:       │          │
-│         │  • myapp.local  │              │  • myapp.local  │          │
-│         │  • api.local    │              │  • api.local    │          │
-│         │  • blog.local   │              │  • blog.local   │          │
-│         └─────────────────┘              └─────────────────┘          │
-│                                                                       │
-│         Container-to-container communication:                         │
-│         HTTP:  curl http://api.local/users                            │
-│         HTTPS: curl https://myapp.local/api (with SSL certs)          │
-│         nginx → php-fpm:9000 (FastCGI protocol)                       │
-│                                                                       │
-└───────────────────────────────────────────────────────────────────────┘
-```
-
-### Network Segmentation
-
-DockerKit uses a **three-tier network architecture** for optimal security and performance:
-
-```text
-┌─────────────────┐       ┌──────────────────┐       ┌─────────────────┐
-│   WEB NETWORK   │       │ BACKEND NETWORK  │       │ MANAGEMENT NET  │
-├─────────────────┤       ├──────────────────┤       ├─────────────────┤
-│ • nginx         │───────│ • nginx          │       │ • portainer     │
-│ • workspace     │───────│ • workspace      │       │                 │
-│ • php-fpm       │───────│ • php-fpm        │       │                 │
-│ • elasticsearch │       │ • postgres       │       │                 │
-│ • elasticvue    │       │ • mysql          │       │                 │
-│ • minio         │       │ • mongo          │       │                 │
-│ • mailpit       │       │ • redis          │       │                 │
-│                 │       │ • rabbitmq       │       │                 │
-└─────────────────┘       └──────────────────┘       └─────────────────┘
-```
-
-**Bridge Services:** nginx, workspace, and php-fpm belong to both web and backend networks, enabling seamless communication between tiers.
-
-### Network Aliases
-
-Every `.local` project gets automatic network aliases across all containers:
-
-```bash
-# From any container, these work automatically:
-curl http://myapp.local/api
-curl https://blog.local/posts
-curl http://api.local/users
-```
-
-### External Ports (accessible from host)
-
-| Port  | Service             | URL                      | Description                 |
-|-------|---------------------|--------------------------|-----------------------------|
-| 80    | Nginx HTTP          | <http://localhost>       | Web server (HTTP)           |
-| 443   | Nginx HTTPS         | <https://localhost>      | Web server (HTTPS)          |
-| 3000  | BrowserSync         | <http://localhost:3000>  | Live reload server          |
-| 3001  | BrowserSync UI      | <http://localhost:3001>  | BrowserSync control panel   |
-| 5173  | Vite                | <http://localhost:5173>  | Frontend dev server         |
-| 5432  | PostgreSQL          | localhost:5432           | Database connection         |
-| 6379  | Redis               | localhost:6379           | Cache/session storage       |
-| 8125  | Mailpit             | <http://localhost:8125>  | Email testing interface     |
-| 9001  | MinIO Console       | <http://localhost:9001>  | Object storage management   |
-| 9002  | MinIO API           | <http://localhost:9002>  | S3-compatible API           |
-| 9010  | Portainer           | <http://localhost:9010>  | Docker management interface |
-| 9200  | Elasticsearch API   | <http://localhost:9200>  | Search engine API           |
-| 9210  | Elasticvue          | <http://localhost:9210>  | Elasticsearch web interface |
-| 15672 | RabbitMQ Management | <http://localhost:15672> | Message queue management    |
-
-```text
-Host Machine Ports:
-├── 9001 → MinIO Console
-├── 9002 → MinIO API  
-└── 9010 → Portainer
-
-Docker Internal Networks:
-├── php-fpm:9000 ← Nginx (FastCGI)
-├── minio:9000 (S3 API)
-└── portainer:9000 (Web UI)
-```
-
-**Note:** Multiple containers can use the same internal port (9000) because they're mapped to different external ports.
-
-#### Generated files
-
-- `docker-compose.aliases.yml` - Network alias definitions
-- Updated when running `make setup`
-
 ## Common Commands
 
 ### Essential Commands
@@ -712,133 +537,18 @@ make build         # Rebuild containers
 make reset         # Clean project resources
 ```
 
-## Troubleshooting
-
-### Services won't start
-
-```bash
-make status  # Comprehensive system diagnostics
-make health  # Check container health status
-```
-
-### Sites not accessible
-
-- Verify `/etc/hosts` entries: `hostctl list`
-- Test nginx config: `make shell-nginx` → `nginx -t`
-
-View container logs:
-
-```bash
-docker compose logs nginx     # Nginx logs
-docker compose logs php-fpm   # PHP-FPM logs
-docker compose logs workspace # Workspace logs
-```
-
-#### MinIO Buckets not created automatically
-
-Check workspace container logs:
-
-```bash
-docker compose logs workspace | grep -i minio
-```
-
-Common solutions:
-
-- Verify MinIO service is running: `docker compose ps minio`
-- Check bucket names are valid (lowercase, no spaces)
-
-#### MinIO Console not accessible
-
-Verify service status and port mapping:
-
-```bash
-docker compose ps minio           # Check container status
-curl http://localhost:9001        # Test console access
-```
-
-#### S3 API connection issues
-
-Test MinIO API endpoint:
-
-```bash
-curl http://localhost:9002/minio/health/live
-```
-
-#### Elasticsearch not accessible
-
-Verify Elasticsearch service and check logs:
-
-```bash
-docker compose ps elasticsearch    # Check container status
-curl http://localhost:9200/_cluster/health    # Test API access
-```
-
-#### Elasticvue connection issues
-
-Check Elasticvue web interface:
-
-```bash
-curl http://localhost:9210    # Test web interface
-docker compose logs elasticvue    # Check connection logs
-```
-
-#### RabbitMQ Management not accessible
-
-Verify RabbitMQ service and management interface:
-
-```bash
-docker compose ps rabbitmq    # Check container status
-curl http://localhost:15672    # Test management interface
-```
-
-### Slow local site response on macOS (5+ seconds)
-
-macOS has IPv6 DNS resolution timeouts for `.local` domains. DockerKit automatically fixes this by adding **dual-stack entries**:
-
-```text
-# Automatic fix during `make setup`:
-127.0.0.1  myapp.local    # IPv4 entry  
-::1        myapp.local    # IPv6 entry (prevents timeout)
-```
-
-**Manual fix** (if adding hosts entries manually):
-
-```bash
-# Add both IPv4 and IPv6 entries
-echo "127.0.0.1 myapp.local" | sudo tee -a /etc/hosts
-echo "::1 myapp.local" | sudo tee -a /etc/hosts
-```
-
-Performance impact:
-
-- **Before fix:** ~5.002 seconds per request
-- **After fix:** ~0.015 seconds
-
-### Performance issues
-
-System resources:
-
-- Increase Docker resources (RAM/CPU in Docker Desktop)
-- Check resource usage: `docker stats`
-
-Debugging:
-
-- Review service logs: `tail -f logs/*/error.log`
-- Check disk space: `df -h`
-- Monitor container performance: `docker compose top`
-
 ## Comparison
 
 ### DockerKit vs Laradock
 
 | Feature                    | DockerKit                                                      | Laradock                        |
 |----------------------------|----------------------------------------------------------------|---------------------------------|
-| **Site Discovery**         | ✅ Automatic scanning for `.local` suffixed folders             | ❌ Manual configuration          |
+| **Project Discovery**      | ✅ Automatic scanning for `.local` suffixed folders             | ❌ Manual configuration          |
 | **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                         | ❌ Manual SSL setup              |
 | **Nginx Configuration**    | ✅ Auto-generated configs with project type detection           | ❌ Manual nginx configuration    |
 | **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl             | ❌ Manual hosts file editing     |
-| **MinIO User Management**  | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
-| **Database User Creation** | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
+| **MinIO Management**       | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
+| **Database Creation**      | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
 | **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching   | ⚠️ Traditional Docker approach  |
 | **Project Maturity**       | ⚠️ Modern but newer project                                    | ✅ Battle-tested, proven by time |
 | **Available Services**     | ⚠️ Focused essential toolkit                                   | ✅ Extensive service library     |
@@ -873,8 +583,6 @@ Yes! Edit `docker-compose.yml` to add any Docker service you need.
 ## Roadmap
 
 - [x] Add MinIO Client integration with automatic bucket management
-- [x] Implement configurable bucket access policies (public, upload, download, private)
-- [x] Add bucket versioning support for MinIO storage
 - [x] Implement project-based MinIO automation (automatic user/bucket creation from .env files)
 - [x] Add Composer configuration for private repositories (GitLab, GitHub, etc)
 - [x] Add flexible service management with environment variables (ENABLE_* flags)

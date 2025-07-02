@@ -8,15 +8,9 @@
 # ============================================================================
 set -euo pipefail
 
-# Color output functions
-log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
-log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
-log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
-log_info() { echo "[$SCRIPT_NAME] $*"; }
-log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
-
-SCRIPT_NAME=$(basename "$0")
-readonly SCRIPT_NAME
+# Source common functions
+# shellcheck source=workspace/entrypoint.d/00-base
+source /entrypoint.d/00-base
 
 # Database configuration constants
 readonly MIN_PASSWORD_LENGTH=3
@@ -25,10 +19,6 @@ readonly DEFAULT_DB_PASSWORD="dockerkit"
 readonly MYSQL_ROOT_PASSWORD="root"
 readonly MYSQL_HOST="mysql"
 readonly POSTGRES_HOST="postgres"
-
-# Path and file constants
-readonly PROJECTS_DIR="/var/www"
-readonly ENV_FILES=(".env" ".env.testing")
 
 # Environment keys
 readonly ENV_KEY_DB_CONNECTION="DB_CONNECTION"
@@ -55,35 +45,17 @@ declare -A SERVICE_MAPPING=(
 readonly ERROR_INVALID_CREDENTIALS="Invalid username or password format"
 readonly ERROR_UNSUPPORTED_DB_TYPE="Unsupported database type"
 
-# Project types
-readonly PROJECT_TYPE_LARAVEL="laravel"
-readonly PROJECT_TYPE_SYMFONY="symfony"
-readonly PROJECT_TYPE_UNKNOWN="unknown"
-
 declare -A CLIENT_COMMANDS=(
     ["mysql"]="mysql"
     ["pgsql"]="psql"
 )
 
 # Global arrays for discovered data
-declare -a discovered_projects=()
 declare -a discovered_databases=()
 
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
-
-# Mask password for logging (show only first and last 2 chars)
-mask_password() {
-    local password="$1"
-    local length=${#password}
-
-    if [[ $length -le 4 ]]; then
-        echo "***"
-    else
-        echo "${password:0:2}***${password: -2}"
-    fi
-}
 
 # Validate username format
 validate_username() {
@@ -173,83 +145,6 @@ format_sql() {
     echo "$result"
 }
 
-# Extract value from environment file
-extract_env_value() {
-    local env_file="$1"
-    local key="$2"
-
-    grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" | tr -d '\r' | xargs
-}
-
-# ============================================================================
-# PROJECT SCANNING AND DETECTION
-# ============================================================================
-
-# Scan for .local projects in projects directory
-scan_local_projects() {
-    local projects_dir="$PROJECTS_DIR"
-    discovered_projects=()
-
-    if [[ ! -d "$projects_dir" ]]; then
-        log_warn "Projects directory not found: $projects_dir"
-        return 0
-    fi
-
-    # Look for directories with .local suffix
-    for dir in "$projects_dir"/*.local; do
-        if [[ -d "$dir" ]]; then
-            local project_name
-            project_name=$(basename "$dir")
-            discovered_projects+=("$project_name")
-        fi
-    done
-
-    if [[ ${#discovered_projects[@]} -eq 0 ]]; then
-        log_info "No .local projects found in $projects_dir"
-        return 0
-    fi
-
-    log_info "Found ${#discovered_projects[@]} .local projects"
-    return 0
-}
-
-# Detect project type based on files and structure
-detect_project_type() {
-    local project_path="$1"
-
-    if [[ ! -d "$project_path" ]]; then
-        echo "$PROJECT_TYPE_UNKNOWN"
-        return 0
-    fi
-
-    # Laravel detection - artisan file is the key indicator
-    if [[ -f "$project_path/artisan" && -f "$project_path/composer.json" ]]; then
-        # Double-check it's Laravel by looking for Laravel-specific files
-        if grep -q "laravel/framework" "$project_path/composer.json" 2>/dev/null; then
-            echo "$PROJECT_TYPE_LARAVEL"
-            return 0
-        fi
-    fi
-
-    # Symfony detection - multiple indicators
-    if [[ -f "$project_path/bin/console" && -f "$project_path/composer.json" ]]; then
-        if grep -q "symfony/framework-bundle\|symfony/console" "$project_path/composer.json" 2>/dev/null; then
-            echo "$PROJECT_TYPE_SYMFONY"
-            return 0
-        fi
-    fi
-
-    # Alternative Symfony detection
-    if [[ -f "$project_path/symfony.lock" ]]; then
-        echo "$PROJECT_TYPE_SYMFONY"
-        return 0
-    fi
-
-    # If neither Laravel nor Symfony, return unknown
-    echo "$PROJECT_TYPE_UNKNOWN"
-    return 0
-}
-
 # ============================================================================
 # ENVIRONMENT FILE PARSING
 # ============================================================================
@@ -274,13 +169,14 @@ parse_single_env_file() {
     local env_path="$1"
     local env_name="$2"
 
-    # Extract database configuration using helper function
+    # Extract database configuration directly from file
     local db_connection db_database db_username db_password
 
-    db_connection=$(extract_env_value "$env_path" "$ENV_KEY_DB_CONNECTION")
-    db_database=$(extract_env_value "$env_path" "$ENV_KEY_DB_DATABASE")
-    db_username=$(extract_env_value "$env_path" "$ENV_KEY_DB_USERNAME")
-    db_password=$(extract_env_value "$env_path" "$ENV_KEY_DB_PASSWORD")
+    # Parse values directly from the specific env file
+    db_connection=$(parse_env_value "$env_path" "$ENV_KEY_DB_CONNECTION")
+    db_database=$(parse_env_value "$env_path" "$ENV_KEY_DB_DATABASE")
+    db_username=$(parse_env_value "$env_path" "$ENV_KEY_DB_USERNAME")
+    db_password=$(parse_env_value "$env_path" "$ENV_KEY_DB_PASSWORD")
 
     # Use defaults if username/password not specified
     if [[ -z "$db_username" ]]; then
@@ -387,7 +283,7 @@ check_client_availability() {
         return 1
     fi
 
-    if ! command -v "$client_cmd" >/dev/null 2>&1; then
+    if ! command_exists "$client_cmd"; then
         log_error "Client '$client_cmd' not available for $db_type"
         return 1
     fi
@@ -621,26 +517,10 @@ process_database_creation() {
     fi
 }
 
-# Process single project for database and user creation
-process_project() {
+# Callback function for database-specific project processing
+process_database_project() {
     local project_name="$1"
-    local project_path="$PROJECTS_DIR/$project_name"
-
-    if [[ ! -d "$project_path" ]]; then
-        log_warn "Project directory not found: $project_path"
-        return 0
-    fi
-
-    # Detect project type
-    local project_type
-    project_type=$(detect_project_type "$project_path")
-    log_info "Processing $project_name (type: $project_type)"
-
-    # Skip projects that are not Laravel or Symfony
-    if [[ "$project_type" != "laravel" && "$project_type" != "symfony" ]]; then
-        log_info "Skipping project: $project_name (type: $project_type)"
-        return 0
-    fi
+    local project_path="$2"
 
     # Parse environment files for database configuration
     parse_env_files "$project_path"
@@ -670,22 +550,7 @@ process_project() {
 
 # Main function - entry point for database and user automation
 main() {
-    log_info "Starting database and user automation for .local projects..."
-
-    # Step 1: Scan for .local projects
-    if ! scan_local_projects; then
-        log_info "Database automation completed (no projects found)"
-        echo ""
-        return 0
-    fi
-
-    # Step 2: Process each discovered project
-    for project in "${discovered_projects[@]}"; do
-        process_project "$project" || true
-    done
-
-    log_info "Database and user automation completed"
-    echo ""
+    run_project_automation "Database" "process_database_project"
 }
 
 # Execute main function
