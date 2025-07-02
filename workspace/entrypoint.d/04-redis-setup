@@ -3,23 +3,19 @@
 # ============================================================================
 # REDIS ACL SETUP SCRIPT
 # ============================================================================
-# Configures multiple passwords for the default Redis user
+# Scans .local projects and configures Redis ACL for discovered passwords
 # ============================================================================
 set -euo pipefail
 
-# Color output functions
-log_ok() { echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"; }
-log_warn() { echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"; }
-log_error() { echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"; }
-log_info() { echo "[$SCRIPT_NAME] $*"; }
-log_skip() { echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"; }
-
-SCRIPT_NAME=$(basename "$0")
-readonly SCRIPT_NAME
+# Source common functions
+# shellcheck source=workspace/entrypoint.d/00-base
+source /entrypoint.d/00-base
 
 # Redis configuration
 readonly REDIS_HOST="redis"
-readonly LEGACY_PASSWORDS=("secret" "redis_secret" "redis" "default")
+
+# Arrays to store discovered configurations
+declare -a discovered_redis_configs=()
 
 # ============================================================================
 # PREREQUISITES CHECK
@@ -28,17 +24,14 @@ readonly LEGACY_PASSWORDS=("secret" "redis_secret" "redis" "default")
 check_prerequisites() {
     log_info "Checking prerequisites for Redis ACL setup..."
 
-    if ! command -v redis-cli >/dev/null 2>&1; then
+    if ! command_exists redis-cli; then
         log_skip "Redis client (redis-cli) not installed"
         return 1
     fi
-    log_ok "Redis client (redis-cli) is available"
 
-    if [[ -z "${REDIS_PASSWORD:-}" ]]; then
-        log_warn "Primary REDIS_PASSWORD not set, setup might be incomplete"
-    else
-        log_ok "Primary REDIS_PASSWORD is set"
-    fi
+    local redis_version
+    redis_version=$(redis-cli --version 2>/dev/null | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' || echo "unknown")
+    log_ok "Redis client (redis-cli) available: version $redis_version"
 
     log_ok "Prerequisites check completed"
     return 0
@@ -49,62 +42,101 @@ check_prerequisites() {
 # ============================================================================
 
 test_redis_connection() {
-    log_info "Testing connection to Redis server ($REDIS_HOST)..."
-    local max_attempts=5
-    local attempt=1
-
-    while [[ $attempt -le $max_attempts ]]; do
-        if redis-cli -h "$REDIS_HOST" -a "${REDIS_PASSWORD:-}" ping >/dev/null 2>&1; then
-            log_ok "Redis server is accessible"
-            return 0
-        fi
-
-        if [[ $attempt -lt $max_attempts ]]; then
-            log_info "Attempt $attempt/$max_attempts failed, retrying in 2 seconds..."
-            sleep 2
-        fi
-        ((attempt++))
-    done
-
-    log_warn "Redis server is not accessible at $REDIS_HOST"
-    log_warn "Redis ACL setup will be skipped"
-    return 1
+    retry_connection "redis-cli -h '$REDIS_HOST' ping" "Redis server ($REDIS_HOST)"
 }
 
 # ============================================================================
-# ACL CONFIGURATION
+# ENVIRONMENT FILE PARSING
 # ============================================================================
 
-configure_acl() {
-    log_info "Configuring multiple passwords for default Redis user..."
-    log_info "We do this to allow developers to connect without changing local configs."
+# Parse environment files in project directory for Redis configuration
+parse_env_files() {
+    local project_path="$1"
+    local project_name
+    project_name=$(basename "$project_path")
 
-    local -a acl_command_parts=("ACL" "SETUSER" "default" "on")
+    # Clear previous discoveries for this project
+    discovered_redis_configs=()
 
-    # Add primary password from .env if it exists
-    if [[ -n "${REDIS_PASSWORD:-}" ]]; then
-        acl_command_parts+=(">${REDIS_PASSWORD}")
-        log_info "Added primary password from REDIS_PASSWORD env variable"
-    fi
+    for env_file in "${ENV_FILES[@]}"; do
+        local full_path="$project_path/$env_file"
 
-    # Add legacy passwords
-    for pass in "${LEGACY_PASSWORDS[@]}"; do
-        acl_command_parts+=(">$pass")
+        if [[ ! -f "$full_path" ]]; then
+            continue
+        fi
+
+        # Look for REDIS_PASSWORD using updated parsing
+        local redis_password
+        if redis_password=$(grep "^REDIS_PASSWORD=" "$full_path" | head -1 | cut -d'=' -f2-); then
+            # Remove leading/trailing whitespace
+            redis_password=$(echo "$redis_password" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+
+            # Remove quotes if present
+            if [[ "$redis_password" =~ ^\".*\"$ ]] || [[ "$redis_password" =~ ^\'.*\'$ ]]; then
+                redis_password="${redis_password:1:-1}"
+            fi
+
+            if [[ -n "$redis_password" ]]; then
+                discovered_redis_configs+=("$redis_password:$env_file")
+                log_info "Found Redis password in $env_file"
+            fi
+        fi
     done
-    log_info "Added legacy passwords: ${LEGACY_PASSWORDS[*]}"
+}
 
-    # Add full permissions
-    acl_command_parts+=("~*" "+@all")
+# ============================================================================
+# REDIS ACL CONFIGURATION
+# ============================================================================
 
-    log_info "Executing ACL command..."
-    if redis-cli -h "$REDIS_HOST" -a "${REDIS_PASSWORD:-}" "${acl_command_parts[@]}" >/dev/null 2>&1; then
-        log_ok "Redis ACLs for default user updated successfully"
+# Configure Redis ACL for a specific password
+configure_redis_password() {
+    local password="$1"
+    local env_file="$2"
+    local project_name="$3"
+
+    local masked_password
+    masked_password=$(mask_password "$password")
+    local context="project: $project_name, file: $env_file"
+
+    log_info "Configuring Redis ACL for password '$masked_password' ($context)"
+
+    # Build ACL command
+    local -a acl_command_parts=("ACL" "SETUSER" "default" "on" ">$password" "~*" "+@all")
+
+    # Execute ACL command
+    if redis-cli -h "$REDIS_HOST" "${acl_command_parts[@]}" >/dev/null 2>&1; then
+        log_ok "Redis ACL configured for password '$masked_password' ($context)"
+        return 0
     else
-        log_error "Failed to update Redis ACLs"
+        log_error "Failed to configure Redis ACL for password '$masked_password' ($context)"
         # Try to get more info on failure
-        redis-cli -h "$REDIS_HOST" -a "${REDIS_PASSWORD:-}" "${acl_command_parts[@]}" || true
+        redis-cli -h "$REDIS_HOST" "${acl_command_parts[@]}" 2>&1 | head -3 || true
         return 1
     fi
+}
+
+# ============================================================================
+# PROJECT PROCESSING
+# ============================================================================
+
+# Callback function for Redis-specific project processing
+process_redis_project() {
+    local project_name="$1"
+    local project_path="$2"
+
+    # Parse environment files for Redis configuration
+    parse_env_files "$project_path"
+
+    if [[ ${#discovered_redis_configs[@]} -eq 0 ]]; then
+        log_info "No Redis password configuration found for $project_name"
+        return 0
+    fi
+
+    # Process each Redis configuration found for this project
+    for config in "${discovered_redis_configs[@]}"; do
+        IFS=':' read -r password env_file <<< "$config"
+        configure_redis_password "$password" "$env_file" "$project_name" || true
+    done
 
     return 0
 }
@@ -114,28 +146,24 @@ configure_acl() {
 # ============================================================================
 
 main() {
-    log_info "Setting up Redis ACLs..."
+    log_info "Setting up Redis ACLs for workspace container..."
 
+    # Check prerequisites
     if ! check_prerequisites; then
         log_info "Redis ACL setup completed (skipped due to failed prerequisites)"
         echo ""
         return 0
     fi
 
+    # Test Redis server connection
     if ! test_redis_connection; then
         log_info "Redis ACL setup completed (server not accessible)"
         echo ""
         return 0
     fi
 
-    if ! configure_acl; then
-        log_error "Redis ACL configuration failed"
-        echo ""
-        return 1
-    fi
-
-    log_info "Redis ACL setup completed"
-    echo ""
+    # Process .local projects for Redis configurations
+    run_project_automation "Redis ACL" "process_redis_project"
     return 0
 }
 

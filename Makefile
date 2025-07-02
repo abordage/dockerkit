@@ -17,7 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status health setup start stop restart reset \
-		build build-nc rebuild shell dk-install dk-uninstall lint
+		build build-nc rebuild dk-install dk-uninstall lint
 
 # Colors for output
 RED := \033[0;31m
@@ -61,8 +61,6 @@ help: ## Show this help message
 	@echo "$(BLUE)Examples:$(NC)"
 	@echo "  $(GREEN)make start$(NC)          # Start all services"
 	@echo "  $(GREEN)make build$(NC)          # Build all containers"
-	@echo "  $(GREEN)make shell$(NC)          # Enter workspace container"
-	@echo "  $(GREEN)make dk-install$(NC)     # Install dk command for quick access"
 	@echo "  $(GREEN)make lint$(NC)           # Run all quality checks"
 
 status: ## Show current system status
@@ -109,13 +107,6 @@ build-nc: ## Build all containers without cache
 	@$(DOCKER_COMPOSE) build --no-cache
 
 rebuild: build-nc start ## Rebuild everything and start with aliases
-
-# =============================================================================
-# DEVELOPMENT TOOLS
-# =============================================================================
-
-shell: ## Enter workspace container shell
-	@$(DOCKER_COMPOSE) exec --user root workspace bash
 
 # =============================================================================
 # DK COMMAND MANAGEMENT

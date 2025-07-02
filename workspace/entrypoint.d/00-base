@@ -1,0 +1,262 @@
+#!/bin/bash
+
+# Base script with common functions for all entrypoint scripts
+# This script should be sourced by other entrypoint scripts
+
+# Script name for logging
+SCRIPT_NAME=$(basename "$0")
+
+# Common constants
+PROJECTS_DIR="/var/www"
+# shellcheck disable=SC2034  # Used by sourcing scripts
+readonly ENV_FILES=(".env" ".env.testing")
+
+# Logging functions
+log_ok() {
+    echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"
+}
+
+log_warn() {
+    echo -e "[$SCRIPT_NAME] \033[93m[WARN]\033[0m $*"
+}
+
+log_error() {
+    echo -e "[$SCRIPT_NAME] \033[31m[ERROR]\033[0m $*"
+}
+
+log_info() {
+    echo "[$SCRIPT_NAME] $*"
+}
+
+log_skip() {
+    echo -e "[$SCRIPT_NAME] \033[36m[SKIP]\033[0m $*"
+}
+
+# Retry connection with configurable attempts
+retry_connection() {
+    local command="$1"
+    local service_name="$2"
+    local max_attempts="${3:-5}"
+    local delay="${4:-2}"
+    local attempt=1
+
+    log_info "Testing connection to $service_name..."
+
+    while [[ $attempt -le $max_attempts ]]; do
+        if eval "$command" >/dev/null 2>&1; then
+            log_ok "$service_name is accessible"
+            return 0
+        fi
+
+        if [[ $attempt -lt $max_attempts ]]; then
+            log_info "Attempt $attempt/$max_attempts failed, retrying in $delay seconds..."
+            sleep "$delay"
+        fi
+        ((attempt++))
+    done
+
+    log_warn "$service_name is not accessible"
+    log_warn "$service_name setup will be skipped"
+    return 1
+}
+
+# Array to store discovered projects
+declare -a discovered_projects=()
+
+# Discover .local projects in the projects directory
+discover_projects() {
+    log_info "Discovering projects in $PROJECTS_DIR..."
+
+    discovered_projects=()
+
+    if [[ ! -d "$PROJECTS_DIR" ]]; then
+        log_warn "Projects directory $PROJECTS_DIR not found"
+        return 1
+    fi
+
+    for project_path in "$PROJECTS_DIR"/*; do
+        if [[ ! -d "$project_path" ]]; then
+            continue
+        fi
+
+        local project_name
+        project_name=$(basename "$project_path")
+
+        # Skip service directories and non-.local projects
+        if [[ "$project_name" == "html" || "$project_name" == "logs" || "$project_name" == "certs" ]]; then
+            continue
+        fi
+
+        if [[ "$project_name" == *.local ]]; then
+            discovered_projects+=("$project_name")
+            # log_info "Found project: $project_name"
+        fi
+    done
+
+    if [[ ${#discovered_projects[@]} -eq 0 ]]; then
+        log_info "No .local projects found"
+        return 1
+    fi
+
+    log_ok "Discovered ${#discovered_projects[@]} projects"
+    return 0
+}
+
+# Get project type based on files and structure
+get_project_type() {
+    local project_name="$1"
+    local project_path="$PROJECTS_DIR/$project_name"
+
+    if [[ ! -d "$project_path" ]]; then
+        echo "unknown"
+        return 1
+    fi
+
+    # Laravel detection
+    if [[ -f "$project_path/artisan" && -f "$project_path/composer.json" ]]; then
+        echo "laravel"
+        return 0
+    fi
+
+    # Symfony detection
+    if [[ -f "$project_path/bin/console" && -f "$project_path/composer.json" ]]; then
+        echo "symfony"
+        return 0
+    fi
+
+    # WordPress detection
+    if [[ -f "$project_path/wp-config.php" || -f "$project_path/wp-config-sample.php" ]]; then
+        echo "wordpress"
+        return 0
+    fi
+
+    # Static site detection (has index.html but no PHP files)
+    if [[ -f "$project_path/index.html" ]] && ! find "$project_path" -name "*.php" -type f | head -1 | grep -q .; then
+        echo "static"
+        return 0
+    fi
+
+    # Simple PHP detection (has .php files)
+    if find "$project_path" -name "*.php" -type f | head -1 | grep -q .; then
+        echo "simple"
+        return 0
+    fi
+
+    echo "unknown"
+    return 1
+}
+
+# Get value from project's .env file
+get_env_value() {
+    local project_name="$1"
+    local key="$2"
+    local env_file="$PROJECTS_DIR/$project_name/.env"
+
+    parse_env_value "$env_file" "$key"
+}
+
+# Parse value from specific .env file
+parse_env_value() {
+    local env_file="$1"
+    local key="$2"
+
+    if [[ ! -f "$env_file" ]]; then
+        return 1
+    fi
+
+    # Extract value for the given key from .env file
+    # Handle quoted and unquoted values, ignore comments
+    local value
+    value=$(grep "^$key=" "$env_file" | head -1 | cut -d'=' -f2-)
+
+    # Remove leading/trailing whitespace
+    value=$(echo "$value" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+
+    # Remove quotes if present (both single and double)
+    if [[ "$value" =~ ^\".*\"$ ]] || [[ "$value" =~ ^\'.*\'$ ]]; then
+        value="${value:1:-1}"
+    fi
+
+    if [[ -n "$value" ]]; then
+        echo "$value"
+        return 0
+    fi
+
+    return 1
+}
+
+# Check if command is available
+command_exists() {
+    local command_name="$1"
+    command -v "$command_name" >/dev/null 2>&1
+}
+
+# Create a masked version of password for logging
+mask_password() {
+    local password="$1"
+    local length=${#password}
+
+    if [[ $length -le 4 ]]; then
+        echo "***"
+    elif [[ $length -le 8 ]]; then
+        echo "${password:0:2}***${password: -2}"
+    else
+        local stars_count=$((length - 4))
+        local stars=""
+        for ((i=0; i<stars_count; i++)); do
+            stars+="*"
+        done
+        echo "${password:0:2}${stars}${password: -2}"
+    fi
+}
+
+# Base project processing function with callback for service-specific logic
+process_project_base() {
+    local project_name="$1"
+    local service_name="$2"
+    local callback_function="$3"
+    local project_path="$PROJECTS_DIR/$project_name"
+
+    if [[ ! -d "$project_path" ]]; then
+        log_warn "Project directory not found: $project_path"
+        return 0
+    fi
+
+    # Detect project type
+    local project_type
+    project_type=$(get_project_type "$project_name")
+    log_info "Processing $project_name (type: $project_type)"
+
+    # Skip projects that are not Laravel or Symfony
+    if [[ "$project_type" != "laravel" && "$project_type" != "symfony" ]]; then
+        log_info "Skipping project: $project_name (type: $project_type)"
+        return 0
+    fi
+
+    # Call service-specific callback function
+    "$callback_function" "$project_name" "$project_path"
+}
+
+# Base automation function for services that process projects
+run_project_automation() {
+    local service_name="$1"
+    local callback_function="$2"
+
+    log_info "Starting $service_name automation for .local projects..."
+
+    # Step 1: Scan for .local projects
+    if ! discover_projects; then
+        log_info "$service_name automation completed (no projects found)"
+        echo ""
+        return 0
+    fi
+
+    # Step 2: Process each discovered project
+    for project in "${discovered_projects[@]}"; do
+        process_project_base "$project" "$service_name" "$callback_function" || true
+    done
+
+    log_info "$service_name automation completed"
+    echo ""
+    return 0
+}
