@@ -34,11 +34,6 @@ readonly POLICY_PRIVATE="private"
 # Global arrays for discovered data
 declare -a discovered_minio_configs=()
 
-# Global arrays for deduplication tracking
-declare -a processed_users=()
-declare -a processed_buckets=()
-declare -a processed_bucket_policies=()
-
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
@@ -51,67 +46,6 @@ format_minio_context() {
     local env_file="$4"
 
     echo "[$project_name] bucket: $bucket_name, user: $user_name, env: $env_file"
-}
-
-# ============================================================================
-# DEDUPLICATION FUNCTIONS
-# ============================================================================
-
-# Check if user was already processed in current run
-is_user_processed() {
-    local user_name="$1"
-
-    for processed_user in "${processed_users[@]}"; do
-        if [[ "$processed_user" == "$user_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark user as processed
-mark_user_processed() {
-    local user_name="$1"
-    processed_users+=("$user_name")
-}
-
-# Check if bucket was already processed in current run
-is_bucket_processed() {
-    local bucket_name="$1"
-
-    for processed_bucket in "${processed_buckets[@]}"; do
-        if [[ "$processed_bucket" == "$bucket_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark bucket as processed
-mark_bucket_processed() {
-    local bucket_name="$1"
-    processed_buckets+=("$bucket_name")
-}
-
-# Check if bucket policy was already processed in current run
-is_bucket_policy_processed() {
-    local bucket_name="$1"
-
-    for processed_policy in "${processed_bucket_policies[@]}"; do
-        if [[ "$processed_policy" == "$bucket_name" ]]; then
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-# Mark bucket policy as processed
-mark_bucket_policy_processed() {
-    local bucket_name="$1"
-    processed_bucket_policies+=("$bucket_name")
 }
 
 # ============================================================================
@@ -209,30 +143,7 @@ validate_aws_config() {
 # ============================================================================
 
 check_prerequisites() {
-    log_info "Checking prerequisites for MinIO client setup..."
-
-    # Check if MinIO client is installed
-    if ! command_exists mc; then
-        log_skip "MinIO client (mc) not installed"
-        return 1
-    fi
-
-    local mc_version
-    mc_version=$(mc --version 2>/dev/null | head -1 | grep -o 'RELEASE[^ ]*' || echo "unknown")
-    log_ok "MinIO client (mc) available: version $mc_version"
-
-    # Check credentials
-    if [[ -z "${MINIO_ROOT_USER:-}" ]] || [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
-        log_warn "MINIO credentials not set, skipping setup"
-        log_info "Required environment variables:"
-        log_info "  - MINIO_ROOT_USER"
-        log_info "  - MINIO_ROOT_PASSWORD"
-        return 1
-    fi
-    log_ok "MinIO credentials configured"
-
-    log_ok "Prerequisites check completed"
-    return 0
+    run_standard_prerequisites "MinIO client" "MinIO client" "mc" "RELEASE[^ ]*" "MINIO_ROOT_USER" "MINIO_ROOT_PASSWORD"
 }
 
 # ============================================================================
@@ -240,7 +151,7 @@ check_prerequisites() {
 # ============================================================================
 
 test_minio_connection() {
-    retry_connection "curl -s --connect-timeout 3 '$MINIO_URL/minio/health/live'" "MinIO server ($MINIO_URL)"
+    test_service_connection "MinIO server" "$MINIO_HOST" "curl -s --connect-timeout 3 '$MINIO_URL/minio/health/live'" "$MINIO_URL"
 }
 
 # ============================================================================
@@ -453,16 +364,17 @@ process_minio_config() {
     fi
 
     # Step 1: Create MinIO user (check deduplication first)
-    if is_user_processed "$access_key"; then
+    local user_key="minio_user:$access_key"
+    if is_item_processed "$user_key"; then
         log_skip "User '$access_key' already processed in current run: $context"
     elif minio_user_exists "$access_key"; then
         log_skip "User '$access_key' already exists: $context"
-        mark_user_processed "$access_key"
+        mark_item_processed "$user_key"
     else
         log_info "Creating MinIO user '$access_key': $context"
         if create_minio_user "$access_key" "$secret_key"; then
             log_ok "User '$access_key' created: $context"
-            mark_user_processed "$access_key"
+            mark_item_processed "$user_key"
         else
             log_error "Failed to create user '$access_key': $context"
             return 1
@@ -470,16 +382,17 @@ process_minio_config() {
     fi
 
     # Step 2: Create bucket (check deduplication first)
-    if is_bucket_processed "$bucket_name"; then
+    local bucket_key="minio_bucket:$bucket_name"
+    if is_item_processed "$bucket_key"; then
         log_skip "Bucket '$bucket_name' already processed in current run: $context"
     elif minio_bucket_exists "$bucket_name"; then
         log_skip "Bucket '$bucket_name' already exists: $context"
-        mark_bucket_processed "$bucket_name"
+        mark_item_processed "$bucket_key"
     else
         log_info "Creating bucket '$bucket_name': $context"
         if create_minio_bucket "$bucket_name"; then
             log_ok "Bucket '$bucket_name' created: $context"
-            mark_bucket_processed "$bucket_name"
+            mark_item_processed "$bucket_key"
         else
             log_error "Failed to create bucket '$bucket_name': $context"
             return 1
@@ -487,13 +400,14 @@ process_minio_config() {
     fi
 
     # Step 3: Set bucket policy (check deduplication first)
-    if is_bucket_policy_processed "$bucket_name"; then
+    local bucket_policy_key="minio_bucket_policy:$bucket_name"
+    if is_item_processed "$bucket_policy_key"; then
         log_skip "Bucket policy for '$bucket_name' already processed in current run: $context"
     else
         log_info "Setting public policy for bucket '$bucket_name': $context"
         if set_bucket_policy "$bucket_name" "$POLICY_PUBLIC"; then
             log_ok "Public policy set for bucket '$bucket_name': $context"
-            mark_bucket_policy_processed "$bucket_name"
+            mark_item_processed "$bucket_policy_key"
         else
             log_warn "Failed to set public policy for bucket '$bucket_name': $context"
         fi
@@ -509,8 +423,6 @@ process_minio_config() {
 
     return 0
 }
-
-
 
 # ============================================================================
 # MAIN EXECUTION

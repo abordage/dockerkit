@@ -11,6 +11,9 @@ PROJECTS_DIR="/var/www"
 # shellcheck disable=SC2034  # Used by sourcing scripts
 readonly ENV_FILES=(".env" ".env.testing")
 
+# Global arrays for deduplication tracking (shared across all services)
+declare -a global_processed_items=()
+
 # Logging functions
 log_ok() {
     echo -e "[$SCRIPT_NAME] \033[32m[OK]\033[0m $*"
@@ -146,15 +149,6 @@ get_project_type() {
     return 1
 }
 
-# Get value from project's .env file
-get_env_value() {
-    local project_name="$1"
-    local key="$2"
-    local env_file="$PROJECTS_DIR/$project_name/.env"
-
-    parse_env_value "$env_file" "$key"
-}
-
 # Parse value from specific .env file
 parse_env_value() {
     local env_file="$1"
@@ -260,3 +254,144 @@ run_project_automation() {
     echo ""
     return 0
 }
+
+# ============================================================================
+# COMMON DEDUPLICATION FUNCTIONS
+# ============================================================================
+
+# Generic deduplication check
+is_item_processed() {
+    local item_key="$1"
+
+    for processed_item in "${global_processed_items[@]}"; do
+        if [[ "$processed_item" == "$item_key" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Mark item as processed
+mark_item_processed() {
+    local item_key="$1"
+    global_processed_items+=("$item_key")
+}
+
+# ============================================================================
+# COMMON SERVICE CONNECTION TESTING
+# ============================================================================
+
+# Test service connection with standardized approach
+test_service_connection() {
+    local service_name="$1"
+    local host="$2"
+    local test_command="$3"
+    local service_url="${4:-$host}"
+
+    retry_connection "$test_command" "$service_name ($service_url)" 5 2
+}
+
+# ============================================================================
+# COMMON CLIENT VERSION DETECTION
+# ============================================================================
+
+# Get client version with standardized parsing
+get_client_version() {
+    local client_command="$1"
+    local version_pattern="$2"
+    local version_output
+
+    if version_output=$($client_command 2>/dev/null | head -1); then
+        if [[ -n "$version_pattern" ]]; then
+            echo "$version_output" | grep -o "$version_pattern" || echo "unknown"
+        else
+            # Extract version number from common patterns like "curl 7.88.1", "psql 15.3", etc.
+            echo "$version_output" | sed -E 's/^[^0-9]*([0-9]+\.[0-9]+(\.[0-9]+)?).*/\1/' || echo "unknown"
+        fi
+    else
+        echo "unknown"
+    fi
+}
+
+# ============================================================================
+# COMMON PREREQUISITES CHECKING
+# ============================================================================
+
+# Check if required client is available with version info
+check_client_prerequisites() {
+    local client_name="$1"
+    local client_command="$2"
+    local version_pattern="$3"
+    local display_name="${4:-$client_name}"
+
+    log_info "Checking $display_name client availability..."
+
+    if ! command_exists "$client_command"; then
+        log_skip "$display_name client ($client_command) not installed"
+        return 1
+    fi
+
+    local client_version
+    client_version=$(get_client_version "$client_command $version_pattern" "")
+    log_ok "$display_name client ($client_command) available: version $client_version"
+
+    return 0
+}
+
+# Check required environment variables
+check_env_variables() {
+    local service_name="$1"
+    shift
+    local required_vars=("$@")
+    local missing_vars=()
+
+    for var_name in "${required_vars[@]}"; do
+        if [[ -z "${!var_name:-}" ]]; then
+            missing_vars+=("$var_name")
+        fi
+    done
+
+    if [[ ${#missing_vars[@]} -gt 0 ]]; then
+        log_warn "$service_name credentials not set, skipping setup"
+        log_info "Required environment variables:"
+        for var in "${missing_vars[@]}"; do
+            log_info "  - $var"
+        done
+        return 1
+    fi
+
+    log_ok "$service_name credentials configured"
+    return 0
+}
+
+# Standard prerequisites check pattern
+run_standard_prerequisites() {
+    local service_name="$1"
+    local client_name="$2"
+    local client_command="$3"
+    local version_pattern="$4"
+    shift 4
+    local required_env_vars=("$@")
+
+    log_info "Checking prerequisites for $service_name setup..."
+
+    # Check client availability
+    if ! check_client_prerequisites "$client_name" "$client_command" "$version_pattern"; then
+        return 1
+    fi
+
+    # Check environment variables if provided
+    if [[ ${#required_env_vars[@]} -gt 0 ]]; then
+        if ! check_env_variables "$service_name" "${required_env_vars[@]}"; then
+            return 1
+        fi
+    fi
+
+    log_ok "Prerequisites check completed"
+    return 0
+}
+
+
+
+

@@ -1,0 +1,381 @@
+#!/bin/bash
+
+# ============================================================================
+# RABBITMQ SETUP SCRIPT
+# ============================================================================
+# Scans .local projects and creates RabbitMQ users, vhosts and permissions
+# ============================================================================
+set -euo pipefail
+
+# Source common functions
+# shellcheck source=workspace/entrypoint.d/00-base
+source /entrypoint.d/00-base
+
+# RabbitMQ configuration
+readonly RABBITMQ_HOST="rabbitmq"
+readonly RABBITMQ_API_PORT="15672"
+readonly RABBITMQ_API_URL="http://$RABBITMQ_HOST:$RABBITMQ_API_PORT/api"
+
+# Environment keys
+readonly ENV_KEY_RABBITMQ_USER="RABBITMQ_USER"
+readonly ENV_KEY_RABBITMQ_PASSWORD="RABBITMQ_PASSWORD"
+readonly ENV_KEY_RABBITMQ_VHOST="RABBITMQ_VHOST"
+
+# Default permissions (configure, write, read)
+readonly DEFAULT_PERMISSIONS='{"configure":".*","write":".*","read":".*"}'
+readonly DEFAULT_VHOST="/"
+
+# Arrays to store discovered configurations
+declare -a discovered_rabbitmq_configs=()
+
+# ============================================================================
+# PREREQUISITES CHECK
+# ============================================================================
+
+check_prerequisites() {
+    log_info "Checking prerequisites for RabbitMQ setup..."
+
+    # Check environment variables
+    if ! check_env_variables "RabbitMQ" "RABBITMQ_DEFAULT_USER" "RABBITMQ_DEFAULT_PASS"; then
+        return 1
+    fi
+
+    log_ok "Prerequisites check completed"
+    return 0
+}
+
+# ============================================================================
+# RABBITMQ SERVER CONNECTION
+# ============================================================================
+
+test_rabbitmq_connection() {
+    test_service_connection "RabbitMQ Management API" "$RABBITMQ_HOST" \
+        "curl -s --connect-timeout 3 --user '$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS' '$RABBITMQ_API_URL/overview'"
+}
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+# Format RabbitMQ context for logging
+format_rabbitmq_context() {
+    local project_name="$1"
+    local username="$2"
+    local vhost="$3"
+    local env_file="$4"
+
+    echo "[$project_name] user: $username, vhost: $vhost, env: $env_file"
+}
+
+# URL encode vhost name for API calls
+url_encode_vhost() {
+    local vhost="$1"
+    # Replace / with %2F for URL encoding
+    echo "${vhost//\//%2F}"
+}
+
+# ============================================================================
+# ENVIRONMENT FILE PARSING
+# ============================================================================
+
+# Parse environment files for RabbitMQ configuration
+parse_env_files() {
+    local project_path="$1"
+
+    # Clear previous discoveries for this project
+    discovered_rabbitmq_configs=()
+
+    for env_file in "${ENV_FILES[@]}"; do
+        local env_path="$project_path/$env_file"
+
+        if [[ ! -f "$env_path" ]]; then
+            continue
+        fi
+
+        # Parse RabbitMQ configuration
+        local rabbitmq_user rabbitmq_password rabbitmq_vhost project_name
+        project_name=$(basename "$project_path")
+
+        rabbitmq_user=$(parse_env_value "$env_path" "$ENV_KEY_RABBITMQ_USER")
+        rabbitmq_password=$(parse_env_value "$env_path" "$ENV_KEY_RABBITMQ_PASSWORD")
+        rabbitmq_vhost=$(parse_env_value "$env_path" "$ENV_KEY_RABBITMQ_VHOST")
+
+        # Use default vhost if not specified
+        if [[ -z "$rabbitmq_vhost" ]]; then
+            rabbitmq_vhost="$DEFAULT_VHOST"
+        fi
+
+        # Validate extracted values - need at least user and password
+        if [[ -n "$rabbitmq_user" && -n "$rabbitmq_password" ]]; then
+            # Store format: "user:password:vhost:env_file"
+            discovered_rabbitmq_configs+=("$rabbitmq_user:$rabbitmq_password:$rabbitmq_vhost:$env_file")
+
+            local masked_password context
+            masked_password=$(mask_password "$rabbitmq_password")
+            context=$(format_rabbitmq_context "$project_name" "$rabbitmq_user" "$rabbitmq_vhost" "$env_file")
+            log_info "Found RabbitMQ config: $context (password: $masked_password)"
+        fi
+    done
+}
+
+# ============================================================================
+# RABBITMQ API FUNCTIONS
+# ============================================================================
+
+# Check if RabbitMQ user exists
+rabbitmq_user_exists() {
+    local username="$1"
+
+    local response
+    if response=$(curl -s --connect-timeout 5 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        "$RABBITMQ_API_URL/users/$username" 2>/dev/null); then
+        # If we get a 200 response with user data, user exists
+        if echo "$response" | jq -e '.name' >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Create RabbitMQ user
+create_rabbitmq_user() {
+    local username="$1"
+    local password="$2"
+
+    local user_data
+    user_data=$(jq -n --arg pass "$password" '{"password":$pass,"tags":""}')
+
+    if curl -s --connect-timeout 10 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        -X PUT "$RABBITMQ_API_URL/users/$username" \
+        -H "Content-Type: application/json" \
+        -d "$user_data" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if RabbitMQ virtual host exists
+rabbitmq_vhost_exists() {
+    local vhost="$1"
+    local encoded_vhost
+    encoded_vhost=$(url_encode_vhost "$vhost")
+
+    local response
+    if response=$(curl -s --connect-timeout 5 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        "$RABBITMQ_API_URL/vhosts/$encoded_vhost" 2>/dev/null); then
+        # If we get a 200 response with vhost data, vhost exists
+        if echo "$response" | jq -e '.name' >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Create RabbitMQ virtual host
+create_rabbitmq_vhost() {
+    local vhost="$1"
+    local encoded_vhost
+    encoded_vhost=$(url_encode_vhost "$vhost")
+
+    if curl -s --connect-timeout 10 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        -X PUT "$RABBITMQ_API_URL/vhosts/$encoded_vhost" \
+        -H "Content-Type: application/json" \
+        -d '{}' >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if RabbitMQ user has permissions on vhost
+rabbitmq_permissions_exist() {
+    local vhost="$1"
+    local username="$2"
+    local encoded_vhost
+    encoded_vhost=$(url_encode_vhost "$vhost")
+
+    local response
+    if response=$(curl -s --connect-timeout 5 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        "$RABBITMQ_API_URL/permissions/$encoded_vhost/$username" 2>/dev/null); then
+        # If we get a 200 response with permissions data, permissions exist
+        if echo "$response" | jq -e '.user' >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Set RabbitMQ user permissions on virtual host
+set_rabbitmq_permissions() {
+    local vhost="$1"
+    local username="$2"
+    local encoded_vhost
+    encoded_vhost=$(url_encode_vhost "$vhost")
+
+    if curl -s --connect-timeout 10 \
+        --user "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS" \
+        -X PUT "$RABBITMQ_API_URL/permissions/$encoded_vhost/$username" \
+        -H "Content-Type: application/json" \
+        -d "$DEFAULT_PERMISSIONS" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# ============================================================================
+# RABBITMQ CONFIGURATION PROCESSING
+# ============================================================================
+
+# Process single RabbitMQ configuration
+process_rabbitmq_config() {
+    local project_name="$1"
+    local username="$2"
+    local password="$3"
+    local vhost="$4"
+    local env_file="$5"
+
+    local context
+    context=$(format_rabbitmq_context "$project_name" "$username" "$vhost" "$env_file")
+
+    # Step 1: Create RabbitMQ user (check deduplication first)
+    local user_key="rabbitmq_user:$username"
+    if is_item_processed "$user_key"; then
+        log_skip "User '$username' already processed in current run: $context"
+    elif rabbitmq_user_exists "$username"; then
+        log_skip "User '$username' already exists: $context"
+        mark_item_processed "$user_key"
+    else
+        log_info "Creating RabbitMQ user '$username': $context"
+        if create_rabbitmq_user "$username" "$password"; then
+            log_ok "User '$username' created: $context"
+            mark_item_processed "$user_key"
+        else
+            log_error "Failed to create user '$username': $context"
+            return 1
+        fi
+    fi
+
+    # Step 2: Create virtual host (check deduplication first)
+    local vhost_key="rabbitmq_vhost:$vhost"
+    if is_item_processed "$vhost_key"; then
+        log_skip "Virtual host '$vhost' already processed in current run: $context"
+    elif rabbitmq_vhost_exists "$vhost"; then
+        log_skip "Virtual host '$vhost' already exists: $context"
+        mark_item_processed "$vhost_key"
+    else
+        log_info "Creating virtual host '$vhost': $context"
+        if create_rabbitmq_vhost "$vhost"; then
+            log_ok "Virtual host '$vhost' created: $context"
+            mark_item_processed "$vhost_key"
+        else
+            log_error "Failed to create virtual host '$vhost': $context"
+            return 1
+        fi
+    fi
+
+    # Step 3: Set user permissions on virtual host (check deduplication first)
+    local permissions_key="rabbitmq_permissions:$vhost:$username"
+    if is_item_processed "$permissions_key"; then
+        log_skip "Permissions for user '$username' on vhost '$vhost' already processed: $context"
+    elif rabbitmq_permissions_exist "$vhost" "$username"; then
+        log_skip "Permissions for user '$username' on vhost '$vhost' already exist: $context"
+        mark_item_processed "$permissions_key"
+    else
+        log_info "Setting permissions for user '$username' on vhost '$vhost': $context"
+        if set_rabbitmq_permissions "$vhost" "$username"; then
+            log_ok "Permissions configured for user '$username' on vhost '$vhost': $context"
+            mark_item_processed "$permissions_key"
+        else
+            log_warn "Failed to set permissions for user '$username' on vhost '$vhost': $context"
+        fi
+    fi
+
+    return 0
+}
+
+# ============================================================================
+# PROJECT PROCESSING
+# ============================================================================
+
+# Callback function for RabbitMQ-specific project processing
+process_rabbitmq_project() {
+    local project_name="$1"
+    local project_path="$2"
+
+    if [[ ! -d "$project_path" ]]; then
+        log_warn "Project directory not found: $project_path"
+        return 0
+    fi
+
+    # Detect project type for informational purposes
+    local project_type
+    project_type=$(get_project_type "$project_name")
+    log_info "Processing $project_name (type: $project_type)"
+
+    # Parse environment files for RabbitMQ configuration
+    parse_env_files "$project_path"
+
+    if [[ ${#discovered_rabbitmq_configs[@]} -eq 0 ]]; then
+        log_info "No RabbitMQ configuration found for $project_name"
+        return 0
+    fi
+
+    # Process each RabbitMQ configuration found for this project
+    for config in "${discovered_rabbitmq_configs[@]}"; do
+        IFS=':' read -r username password vhost env_file <<< "$config"
+        process_rabbitmq_config "$project_name" "$username" "$password" "$vhost" "$env_file" || true
+    done
+
+    return 0
+}
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+main() {
+    log_info "Setting up RabbitMQ for workspace container..."
+
+    # Check prerequisites
+    if ! check_prerequisites; then
+        log_info "RabbitMQ setup completed (skipped due to failed prerequisites)"
+        echo ""
+        return 0
+    fi
+
+    # Test RabbitMQ Management API connection
+    if ! test_rabbitmq_connection; then
+        log_info "RabbitMQ setup completed (server not accessible)"
+        echo ""
+        return 0
+    fi
+
+    # Process .local projects for RabbitMQ configurations
+    log_info "Starting RabbitMQ automation for .local projects..."
+
+    # Step 1: Scan for .local projects
+    if ! discover_projects; then
+        log_info "RabbitMQ automation completed (no projects found)"
+        echo ""
+        return 0
+    fi
+
+    # Step 2: Process each discovered project (all types)
+    for project in "${discovered_projects[@]}"; do
+        process_rabbitmq_project "$project" "$PROJECTS_DIR/$project" || true
+    done
+
+    log_info "RabbitMQ automation completed"
+    echo ""
+    return 0
+}
+
+# Execute main function
+main "$@"
