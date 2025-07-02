@@ -224,40 +224,46 @@ DockerKit eliminates manual configuration through comprehensive automation that 
 - **Policy configuration** with public/private bucket support
 - **Multiple project isolation** with dedicated access controls
 
-#### 5. **Cache and Queue Services**
+#### 5. **Redis Cache Configuration**
 
-- **Redis ACL configuration** with multiple password support for development flexibility
-- **RabbitMQ user and virtual host creation** based on project requirements
-- **Legacy password compatibility** for seamless integration with existing projects
+- **Multi-password ACL support** for Redis default user configuration
+- **Project-based scanning** for `REDIS_PASSWORD` in `.env` files
+- **Deduplication logic** to avoid duplicate password configurations
 
-#### 6. **Web Server Configuration**
+#### 6. **RabbitMQ Queue Management**
+
+- **User and virtual host creation** via Management API
+- **Comprehensive permission setup** (configure, write, read)
+- **Environment variable scanning** for `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
+
+#### 7. **Web Server Configuration**
 
 - **Nginx configuration generation** from project-specific templates
 - **Framework-optimized configs** with modern/legacy PHP-FPM routing
 - **Security headers and rules** tailored per project type
 - **Performance optimizations** built into generated configurations
 
-#### 7. **SSL Certificate Management**
+#### 8. **SSL Certificate Management**
 
 - **Automatic SSL certificate generation** using mkcert for all `.local` domains
 - **Certificate validation and renewal** as needed
 - **HTTPS-enabled nginx configs** when certificates are available
 - **Container CA installation** for internal HTTPS communication
 
-#### 8. **Host File Management**
+#### 9. **Host File Management**
 
 - **Automatic `.local` domain addition** to system hosts file using hostctl
 - **Clean management** with profile-based organization
 - **Cross-platform support** for macOS, Linux, and WSL2
 
-#### 9. **Network Configuration**
+#### 10. **Network Configuration**
 
 - **Docker Compose aliases generation** for microservice communication
 - **Internal DNS resolution** for `.local` domains within Docker network
 - **Service discovery** enabling containers to communicate via project domains
 - **Network isolation** with secure inter-container communication
 
-#### 10. **Development Environment Setup**
+#### 11. **Development Environment Setup**
 
 - **Configuration file creation** from examples (`.env`, auth.json, php.ini)
 - **Directory structure preparation** for logs, certificates, configurations
@@ -275,25 +281,32 @@ DockerKit's automation is powered by initialization scripts that run during cont
 - Enables secure communication between containers
 - Updates system certificate store automatically
 
-**`02-minio-setup`**
+**`02-redis-setup`**
+
+- Configures Redis ACLs with multiple password support
+- Scans Laravel/Symfony projects for `REDIS_PASSWORD` in `.env` files
+- Ensures secure access while maintaining development flexibility
+
+**`03-rabbitmq-setup`**
+
+- Creates RabbitMQ users, virtual hosts, and permissions
+- Scans all project types for RabbitMQ configuration
+- Uses Management API for comprehensive setup
+- Supports `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` variables
+
+**`04-minio-setup`**
 
 - Scans all `.local` projects for MinIO/AWS configuration
 - Creates users and buckets based on project `.env` files
 - Sets up appropriate bucket policies (public/private)
 - Handles credential management and access control
 
-**`03-database-setup`**
+**`05-database-setup`**
 
 - Analyzes project `.env` files for database configuration
 - Creates PostgreSQL/MySQL databases and users automatically
 - Applies proper permissions and access controls
 - Supports multiple environment files per project
-
-**`04-redis-setup`**
-
-- Configures Redis ACLs with multiple password support
-- Sets up legacy compatibility passwords for existing projects
-- Ensures secure access while maintaining development flexibility
 
 #### PHP-FPM Container (`php-fpm/entrypoint.d/`)
 
