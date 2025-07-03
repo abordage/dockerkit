@@ -67,18 +67,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     cron \
     debianutils \
     default-jdk \
-    default-mysql-client \
     dnsutils \
     gifsicle \
     gosu \
     graphviz \
+    gnupg \
     iputils-ping \
     jpegoptim \
     nano \
     optipng \
     p7zip-full \
     pngquant \
-    postgresql-client-15 \
     sudo \
     tree \
     unzip \
@@ -104,6 +103,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rsync \
     sqlite3 \
     wget && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install PostgreSQL 17 client
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends postgresql-client-17 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install latest MySQL client
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    curl -fsSLO https://dev.mysql.com/get/mysql-apt-config_0.8.30-1_all.deb && \
+    DEBIAN_FRONTEND=noninteractive dpkg -i mysql-apt-config_0.8.30-1_all.deb && \
+    rm mysql-apt-config_0.8.30-1_all.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends mysql-community-client && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure sudo for dockerkit user
