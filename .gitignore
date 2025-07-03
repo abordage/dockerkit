@@ -18,3 +18,8 @@
 # Auto-generated network aliases
 docker-compose.aliases.yml
 
+# Ignore dump files but not directories
+dumps/mysql/*
+dumps/postgres/*
+!dumps/mysql/.gitkeep
+!dumps/postgres/.gitkeep

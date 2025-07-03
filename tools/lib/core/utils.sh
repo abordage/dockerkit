@@ -27,6 +27,27 @@ fi
 # Mark as loaded
 readonly DOCKERKIT_UTILS_LOADED="true"
 
+# =============================================================================
+# DEBUG FUNCTIONS
+# =============================================================================
+
+# Debug logging configuration
+readonly DEBUG="${DEBUG:-0}"
+
+# Unified debug logging
+debug_log() {
+    local component="${1:-general}"
+    local message="$2"
+
+    if [[ "$DEBUG" == "1" ]]; then
+        printf "DEBUG[%s]: %s\n" "$component" "$message" >&2
+    fi
+}
+
+# =============================================================================
+# SYSTEM UTILITIES
+# =============================================================================
+
 # Detect operating system
 detect_os() {
     case "$(uname -s)" in

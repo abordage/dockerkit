@@ -53,6 +53,7 @@ RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
 FROM base AS dependencies
 
 USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install essential system tools, database clients, and Java
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -67,6 +68,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     cron \
     debianutils \
     default-jdk \
+    default-mysql-client \
     dnsutils \
     gifsicle \
     gosu \
@@ -74,6 +76,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gnupg \
     iputils-ping \
     jpegoptim \
+    lsb-release \
     nano \
     optipng \
     p7zip-full \
@@ -85,6 +88,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     zip && \
     update-ca-certificates --fresh && \
     rm -rf /var/lib/apt/lists/*
+
+# Configure sudo for dockerkit user
+RUN echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${APP_USER}" && chmod 0440 "/etc/sudoers.d/${APP_USER}"
 
 # Install latest versions from Debian Backports for better features and security
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -115,20 +121,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends postgresql-client-17 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install latest MySQL client
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    set -eux; \
-    curl -fsSLO https://dev.mysql.com/get/mysql-apt-config_0.8.30-1_all.deb && \
-    DEBIAN_FRONTEND=noninteractive dpkg -i mysql-apt-config_0.8.30-1_all.deb && \
-    rm mysql-apt-config_0.8.30-1_all.deb && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends mysql-community-client && \
-    rm -rf /var/lib/apt/lists/*
-
-# Configure sudo for dockerkit user
-RUN echo "${APP_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${APP_USER}" && chmod 0440 "/etc/sudoers.d/${APP_USER}"
-
 # Install yq (YAML processor) for config management
 RUN set -eux; \
     ARCH=$(uname -m); \
@@ -142,9 +134,6 @@ RUN set -eux; \
     chmod +x /usr/local/bin/yq && \
     yq --version
 
-# Install mlocati/docker-php-extension-installer
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
-
 USER ${APP_UID}:${APP_GID}
 
 # ============================================================================
@@ -156,6 +145,9 @@ USER root
 
 # Import ARG values needed in this stage
 ARG DEPENDENCY_PHP_EXTENSIONS
+
+# Install mlocati/docker-php-extension-installer
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
 RUN --mount=type=cache,target=/tmp/ipe-cache \
     install-php-extensions ${DEPENDENCY_PHP_EXTENSIONS}

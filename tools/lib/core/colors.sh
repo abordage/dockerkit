@@ -87,5 +87,5 @@ print_info() {
 }
 
 print_tip() {
-    printf ' %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
+    printf '  %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
 }

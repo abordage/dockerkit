@@ -132,3 +132,9 @@ reset: ## Reset project to initial state (clean containers, volumes, configs)
 lint: ## Run all linting and quality checks (Dockerfiles, bash scripts, docker-compose)
 	@tools/lint.sh
 
+# =============================================================================
+# DATABASE MANAGEMENT
+# =============================================================================
+
+dump: ## Create/restore database dump
+	@tools/dump.sh
