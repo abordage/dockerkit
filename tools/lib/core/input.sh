@@ -34,21 +34,18 @@ readonly DOCKERKIT_INPUT_LOADED="true"
 # DEBUG AND UTILITY FUNCTIONS
 # =============================================================================
 
-# Debug logging
 _input_debug() {
     if [[ "$INPUT_DEBUG" == "1" ]]; then
         printf "DEBUG[input]: %s\n" "$1" >&2
     fi
 }
 
-# System beep
 _input_beep() {
     if [[ "$INPUT_BEEP_ENABLED" == "1" ]]; then
         printf '\a' >&2
     fi
 }
 
-# Display character in debug format
 _debug_char() {
     local char="$1"
     if [[ -z "$char" ]]; then
@@ -68,7 +65,6 @@ _debug_char() {
 # VALIDATION FUNCTIONS
 # =============================================================================
 
-# Validate menu selection (1-N)
 _validate_menu_input() {
     local char="$1"
     local current_selection="$2"
@@ -84,14 +80,12 @@ _validate_menu_input() {
     return 1
 }
 
-# Validate yes/no input
 _validate_yesno_input() {
     local char="$1"
     local current_selection="$2"
     [[ "$char" =~ ^[yYnN]$ ]]
 }
 
-# Validate text input against regex pattern
 _validate_text_input() {
     local char="$1"
     local current_selection="$2"
@@ -103,7 +97,6 @@ _validate_text_input() {
 # CORE INPUT ENGINE
 # =============================================================================
 
-# Universal character-by-character input engine
 _input_engine() {
     local validation_func="$1"
     local output_var=""
@@ -151,7 +144,6 @@ _input_engine() {
 # SPECIALIZED INPUT FUNCTIONS
 # =============================================================================
 
-# Menu selection with numbered options
 input_menu() {
     local prompt="$1"
     shift
@@ -178,7 +170,6 @@ input_menu() {
     echo "${options[$((selection-1))]}"
 }
 
-# Yes/No question with default
 input_yesno() {
     local prompt="$1"
     local default="${2:-y}"
@@ -215,7 +206,6 @@ input_yesno() {
     done
 }
 
-# Text input with regex validation
 input_text() {
     local prompt="$1"
     local pattern="${2:-[a-zA-Z0-9_-]}"
@@ -244,7 +234,6 @@ input_text() {
 # DISPLAY FUNCTIONS
 # =============================================================================
 
-# Display menu options with adaptive columns
 _display_menu_options() {
     local options=("$@")
     local total_items=${#options[@]}
@@ -305,20 +294,17 @@ _display_menu_options() {
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-# Quick confirmation (yes/no with sensible defaults)
 confirm() {
     local message="$1"
     local default="${2:-y}"
     input_yesno "$message" "$default"
 }
 
-# Database name input (common pattern)
 input_database_name() {
     local prompt="${1:-Enter database name: }"
     input_text "$prompt" "[a-zA-Z0-9_]+"
 }
 
-# File name input (common pattern)
 input_filename() {
     local prompt="${1:-Enter filename: }"
     input_text "$prompt" "[a-zA-Z0-9._-]+"

@@ -15,37 +15,23 @@ DOCKERKIT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 export DOCKERKIT_DIR
 
 # Load core libraries
-# shellcheck source=lib/core/base.sh
 source "$SCRIPT_DIR/lib/core/base.sh"
-# shellcheck source=lib/core/colors.sh
 source "$SCRIPT_DIR/lib/core/colors.sh"
-# shellcheck source=lib/core/utils.sh
 source "$SCRIPT_DIR/lib/core/utils.sh"
-# shellcheck source=lib/core/config.sh
 source "$SCRIPT_DIR/lib/core/config.sh"
-# shellcheck source=lib/core/validation.sh
 source "$SCRIPT_DIR/lib/core/validation.sh"
-# shellcheck source=lib/core/files.sh
 source "$SCRIPT_DIR/lib/core/files.sh"
 
 # Load service libraries
-# shellcheck source=lib/services/packages.sh
 source "$SCRIPT_DIR/lib/services/packages.sh"
-# shellcheck source=lib/services/ssl.sh
 source "$SCRIPT_DIR/lib/services/ssl.sh"
-# shellcheck source=lib/services/hosts.sh
 source "$SCRIPT_DIR/lib/services/hosts.sh"
-# shellcheck source=lib/services/projects.sh
 source "$SCRIPT_DIR/lib/services/projects.sh"
-# shellcheck source=lib/services/nginx.sh
 source "$SCRIPT_DIR/lib/services/nginx.sh"
-# shellcheck source=lib/services/templates.sh
 source "$SCRIPT_DIR/lib/services/templates.sh"
-# shellcheck source=lib/services/aliases.sh
 source "$SCRIPT_DIR/lib/services/aliases.sh"
 
 # Load system libraries
-# shellcheck source=lib/status/tools-status.sh
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
 
 # Parse command line arguments using universal function

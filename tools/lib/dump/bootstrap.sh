@@ -6,15 +6,11 @@
 # Initialization and library loading for database dump operations
 # =============================================================================
 
-# Load core utilities
 source "$SCRIPT_DIR/lib/core/utils.sh"
-
-# Load dump-specific libraries
 source "$SCRIPT_DIR/lib/dump/registry.sh"
 source "$SCRIPT_DIR/lib/dump/ui.sh"
 source "$SCRIPT_DIR/lib/dump/workflows.sh"
 
-# Load database drivers
 source "$SCRIPT_DIR/lib/dump/drivers/mysql.sh"
 source "$SCRIPT_DIR/lib/dump/drivers/postgres.sh"
 
@@ -24,11 +20,11 @@ source "$SCRIPT_DIR/lib/dump/drivers/postgres.sh"
 
 readonly DUMPS_DIR="$DOCKERKIT_DIR/dumps"
 readonly TIMESTAMP_FORMAT="%Y-%m-%d_%H-%M-%S-UTC"
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
-# Execute command in workspace container
 workspace_exec() {
     debug_log "dump" "Executing in workspace container: $*"
     local result
@@ -46,7 +42,6 @@ workspace_exec() {
 # INITIALIZATION FUNCTIONS
 # =============================================================================
 
-# Initialize dump environment
 initialize_dump_environment() {
     # Verify dumps directory exists
     if [[ ! -d "$DUMPS_DIR" ]]; then
@@ -64,7 +59,6 @@ initialize_dump_environment() {
     fi
 }
 
-# Run interactive workflow
 run_interactive_workflow() {
     # Step 1: Select database type
     local db_type
@@ -93,7 +87,6 @@ run_interactive_workflow() {
     esac
 }
 
-# Generate dump filename with timestamp
 generate_dump_filename() {
     local db_type="$1"
     local db_name="$2"

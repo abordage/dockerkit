@@ -16,7 +16,7 @@ fi
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=./base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Mark as loaded

@@ -22,7 +22,6 @@ export DOCKERKIT_DIR
 cd "$DOCKERKIT_DIR"
 
 # Load the main diagnostics module
-# shellcheck source=./lib/status/system-status.sh
 source "$SCRIPT_DIR/lib/status/system-status.sh"
 
 # Main execution

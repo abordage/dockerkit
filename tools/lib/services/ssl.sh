@@ -11,19 +11,16 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 SSL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
+
 source "$SSL_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$SSL_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=../core/validation.sh
 source "$SSL_SCRIPT_DIR/../core/validation.sh"
 
-# Initialize SSL environment
 initialize_ssl_environment() {
     if ! command_exists "mkcert"; then
         print_error "mkcert is required but not installed"
@@ -48,7 +45,6 @@ initialize_ssl_environment() {
     copy_root_certificates
 }
 
-# Check if CA is installed
 is_ca_installed() {
     if mkcert -CAROOT >/dev/null 2>&1; then
         local ca_root
@@ -62,7 +58,6 @@ is_ca_installed() {
     return "$EXIT_GENERAL_ERROR"
 }
 
-# Install Certificate Authority
 install_ca() {
     print_info "Installing Certificate Authority..."
 
@@ -80,7 +75,6 @@ install_ca() {
     fi
 }
 
-# Copy mkcert root certificates to SSL directory
 copy_root_certificates() {
     local ssl_ca_dir="${DOCKERKIT_DIR}/${SSL_CA_DIR:-ssl-ca}"
 
@@ -109,7 +103,6 @@ copy_root_certificates() {
     fi
 }
 
-# Generate SSL certificates for sites
 generate_ssl_certificates() {
     local sites=("$@")
 
@@ -134,7 +127,6 @@ generate_ssl_certificates() {
 
 
 
-# Generate certificate for single site
 generate_certificate_for_site() {
     local site_name="$1"
     local ssl_dir="$2"
@@ -175,7 +167,6 @@ generate_certificate_for_site() {
     fi
 }
 
-# Check if certificate is valid
 is_certificate_valid() {
     local cert_file="$1"
     local domain="$2"

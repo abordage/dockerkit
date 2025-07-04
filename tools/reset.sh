@@ -22,21 +22,15 @@ DOCKERKIT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 export DOCKERKIT_DIR
 
 # Load core libraries
-# shellcheck source=lib/core/base.sh
 source "$SCRIPT_DIR/lib/core/base.sh"
-# shellcheck source=lib/core/colors.sh
 source "$SCRIPT_DIR/lib/core/colors.sh"
-# shellcheck source=lib/core/utils.sh
 source "$SCRIPT_DIR/lib/core/utils.sh"
-# shellcheck source=lib/core/config.sh
 source "$SCRIPT_DIR/lib/core/config.sh"
-# shellcheck source=lib/core/files.sh
 source "$SCRIPT_DIR/lib/core/files.sh"
-# shellcheck source=lib/core/docker.sh
 source "$SCRIPT_DIR/lib/core/docker.sh"
+source "$SCRIPT_DIR/lib/core/input.sh"
 
 # Load service libraries
-# shellcheck source=lib/services/cleanup.sh
 source "$SCRIPT_DIR/lib/services/cleanup.sh"
 
 # Parse command line arguments using universal function
@@ -84,54 +78,93 @@ main() {
 
     # Load environment variables
     if [ -f "$DOCKERKIT_DIR/.env" ]; then
-        # shellcheck source=/dev/null
-        source "$DOCKERKIT_DIR/.env"
+                source "$DOCKERKIT_DIR/.env"
     fi
 
     print_warning "This will reset the project to initial state!"
     print_warning "Project containers, volumes, configs, and certificates will be removed."
     print_warning "Additional system-wide cleanup steps will require separate confirmation."
-    echo ""
 
     # Confirm reset operation
-    if ! confirm_action "Do you want to continue with the reset?" "yes"; then
-        print_info "Reset cancelled by user"
+    if ! input_yesno "Do you want to continue with the reset?" "y"; then
+        print_tip "Reset cancelled by user"
         exit "$EXIT_SUCCESS"
     fi
 
     # =================================================================
-    # CORE PROJECT CLEANUP (automatic)
+    # PLANNING: CHECK WHAT CAN BE CLEANED
     # =================================================================
 
-    # Step 1: Remove SSL certificates
-    cleanup_ssl_certificates
+    local cleanup_dangling=false
+    local cleanup_unused=false
+    local cleanup_cache=false
 
-    # Step 2: Remove nginx configurations
-    cleanup_nginx_configs
+    # Check for dangling images
+    if ensure_docker_available; then
+        local dangling_count
+        dangling_count=$(count_docker_resources "images" --filter "dangling=true")
+        if [ "$dangling_count" -gt 0 ]; then
+            print_warning "Found $dangling_count dangling images (unused/orphaned)"
+            if input_yesno "Do you want to remove all dangling images system-wide?" "y"; then
+                cleanup_dangling=true
+            fi
+        fi
 
-    # Step 3: Remove network aliases
-    cleanup_network_aliases
+        # Check for unused images
+        if has_unused_images; then
+            local total_images
+            total_images=$(count_docker_resources "images")
+            print_warning "Found unused images among $total_images total images (tagged but not used by containers)"
+            if input_yesno "Do you want to remove all unused images system-wide?" "n"; then
+                cleanup_unused=true
+            fi
+        fi
 
-    # Step 4: Docker project cleanup (containers, volumes, images, networks)
+        # Check for Docker cache
+        local cache_size
+        cache_size=$(get_docker_cache_size)
+        if [ -n "$cache_size" ] && [ "$cache_size" != "0B" ] && [ "$cache_size" != "0" ] && [ "$cache_size" != "0 B" ]; then
+            print_warning "Found Docker build cache: $cache_size"
+            if input_yesno "Do you want to remove all Docker build cache system-wide?" "n"; then
+                cleanup_cache=true
+            fi
+        fi
+    fi
+
+    # =================================================================
+    # EXECUTION: PERFORM CLEANUP WITHOUT QUESTIONS
+    # =================================================================
+
+    # Core project cleanup
+    print_section "Removing SSL certificates"
+    remove_ssl_certificates
+
+    print_section "Removing nginx configurations"
+    remove_nginx_configs
+
+    print_section "Removing network aliases"
+    remove_network_aliases
+
+    print_section "Docker cleanup"
     local project_name
     project_name=$(get_docker_project_name "$DOCKERKIT_DIR")
-    cleanup_docker_project "$project_name"
-    echo ""
+    remove_docker_project "$project_name"
 
-    # =================================================================
-    # OPTIONAL CLEANUP (with confirmations)
-    # =================================================================
+    # Optional system-wide cleanup
+    if [ "$cleanup_dangling" = true ]; then
+        print_section "Removing dangling images"
+        remove_dangling_images
+    fi
 
-    # Step 5: Clean dangling Docker images system-wide (optional, default: Yes)
-    cleanup_dangling_images
-    echo ""
+    if [ "$cleanup_unused" = true ]; then
+        print_section "Removing unused images"
+        remove_unused_images
+    fi
 
-    # Step 6: Clean unused Docker images system-wide (optional, default: No)
-    cleanup_unused_images
-    echo ""
-
-    # Step 7: Clean Docker build cache system-wide (optional, default: No)
-    cleanup_docker_cache
+    if [ "$cleanup_cache" = true ]; then
+        print_section "Removing Docker build cache"
+        remove_docker_cache
+    fi
 
     # Summary
     print_header "RESET COMPLETED SUCCESSFULLY!"

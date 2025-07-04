@@ -16,7 +16,7 @@ fi
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=./base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Mark as loaded
@@ -28,7 +28,6 @@ readonly DOCKERKIT_VALIDATION_LOADED="true"
 # VALIDATION PATTERNS
 # =============================================================================
 
-# Domain validation pattern (only define if not already set)
 if [ -z "${PATTERN_LOCAL_DOMAIN:-}" ]; then
     readonly PATTERN_LOCAL_DOMAIN='^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.local$'
 fi
@@ -37,7 +36,6 @@ fi
 # DOMAIN VALIDATION
 # =============================================================================
 
-# Validate .local domain name
 is_valid_local_domain() {
     local domain="$1"
     [[ -n "$domain" ]] && [[ "$domain" =~ $PATTERN_LOCAL_DOMAIN ]]
@@ -47,7 +45,6 @@ is_valid_local_domain() {
 # PROJECT VALIDATION
 # =============================================================================
 
-# Validate project directory exists and is accessible
 validate_project_directory() {
     local project_path="$1"
 
@@ -66,7 +63,6 @@ validate_project_directory() {
 # TEMPLATE VALIDATION
 # =============================================================================
 
-# Validate nginx template syntax
 validate_template_syntax() {
     local template_path="$1"
 

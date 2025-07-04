@@ -6,7 +6,6 @@
 # Business logic for database export and import operations
 # =============================================================================
 
-# Universal function to handle dump creation with compression
 create_dump_with_compression() {
     local driver="$1"
     local db_name="$2"
@@ -15,12 +14,16 @@ create_dump_with_compression() {
 
     print_success "Database: $db_name"
     print_success "File: $dump_file"
-    print_success "Compression: $([[ "$compress" == "true" ]] && echo "enabled" || echo "disabled")"
+
+   if [[ "$compress" == "true" ]]; then
+       print_success "Compression: enabled"
+   else
+       print_success "Compression: disabled"
+   fi
 
     "${driver}_create_dump" "$db_name" "$dump_file" "$compress"
 }
 
-# Universal function to handle dump restoration
 restore_dump_file() {
     local driver="$1"
     local dump_file="$2"
@@ -32,11 +35,9 @@ restore_dump_file() {
     "${driver}_restore_dump" "$dump_file" "$target_db"
 }
 
-# Find dump files for driver
 find_dump_files() {
     local driver="$1"
-    local dumps_dir
-    dumps_dir=$("${driver}_dumps_dir")
+    local dumps_dir="/dumps/$driver"
 
     # Find all SQL dump files and sort by modification time (newest first)
     workspace_exec bash -c "
@@ -51,7 +52,6 @@ find_dump_files() {
 # EXPORT WORKFLOW
 # =============================================================================
 
-# Main export workflow
 run_export_workflow() {
     local db_type="$1"
     local driver
@@ -72,7 +72,6 @@ run_export_workflow() {
     local databases=()
     local db_name
 
-    # Bash 3.x compatible way to fill array
     while IFS= read -r db_name; do
         databases+=("$db_name")
     done < <("${driver}_list_databases")
@@ -106,14 +105,12 @@ run_export_workflow() {
     fi
 }
 
-# Select source database for export
 select_source_database() {
     local databases=("$@")
 
     input_menu "Select database to dump:" "${databases[@]}"
 }
 
-# Ask about compression
 ask_compression() {
     if input_yesno "Do you want to compress the dump with Gzip?" "y"; then
         echo "true"
@@ -126,13 +123,10 @@ ask_compression() {
 # IMPORT WORKFLOW
 # =============================================================================
 
-# Main import workflow
 run_import_workflow() {
     local db_type="$1"
     local driver
     driver=$(get_db_driver "$db_type")
-
-    # print_section "Starting $db_type import workflow"
 
     # Validate database type
     validate_db_type "$db_type" || exit "$EXIT_INVALID_INPUT"
@@ -163,7 +157,6 @@ run_import_workflow() {
     fi
 }
 
-# Select dump file for import
 select_dump_file() {
     local driver="$1"
 
@@ -171,7 +164,6 @@ select_dump_file() {
     local dump_files=()
     local dump_file
 
-    # Bash 3.x compatible way to fill array
     while IFS= read -r dump_file; do
         dump_files+=("$dump_file")
     done < <(find_dump_files "$driver")
@@ -184,12 +176,10 @@ select_dump_file() {
 
     # Convert full paths to relative names for display
     local dump_options=()
-    local dump_basenames=()
     for file in "${dump_files[@]}"; do
         local basename
         basename=$(basename "$file")
         dump_options+=("$basename")
-        dump_basenames+=("$basename")
     done
 
     # Select dump file
@@ -199,7 +189,6 @@ select_dump_file() {
     echo "$selected_dump"
 }
 
-# Select target database for import
 select_target_database() {
     local driver="$1"
 
@@ -213,14 +202,12 @@ select_target_database() {
     fi
 }
 
-# Select existing database
 select_existing_database() {
     local driver="$1"
 
     local databases=()
     local db_name
 
-    # Bash 3.x compatible way to fill array
     while IFS= read -r db_name; do
         databases+=("$db_name")
     done < <("${driver}_list_databases")
@@ -234,7 +221,6 @@ select_existing_database() {
     input_menu "Select target database:" "${databases[@]}"
 }
 
-# Create new database
 create_new_database() {
     local driver="$1"
 
@@ -258,7 +244,6 @@ create_new_database() {
     if "${driver}_create_database" "$db_name" >/dev/null; then
         # Ensure database access for application users
         "${driver}_ensure_database_access" "$db_name"
-        # print_success "Database '$db_name' created successfully"
         echo "$db_name"
     else
         print_error "Failed to create database: $db_name"

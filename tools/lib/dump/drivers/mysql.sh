@@ -16,11 +16,11 @@ readonly MYSQL_PASSWORD="${MYSQL_ROOT_PASSWORD:-root}"
 readonly MYSQL_DEFAULT_DB="mysql"
 readonly MYSQL_SYSTEM_DBS="information_schema|performance_schema|mysql|sys"
 readonly MYSQL_DUMPS_PATH="/dumps/mysql"
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
-# Execute MySQL command
 mysql_exec() {
     local database="${1:-$MYSQL_DEFAULT_DB}"
     shift
@@ -36,47 +36,19 @@ mysql_exec() {
         "$@" 2>/dev/null
 }
 
-# Execute MySQL command with output cleanup
-mysql_exec_clean() {
-    mysql_exec "$@" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$'
-}
-
-# Execute mysqldump command
-mysql_dump_exec() {
-    local db_name="$1"
-    shift
-
-    debug_log "mysql" "Executing mysqldump for database '$db_name' with args: $*"
-
-    workspace_exec mysqldump \
-        -h"$MYSQL_HOST" \
-        -u"$MYSQL_USER" \
-        -p"$MYSQL_PASSWORD" \
-        --single-transaction --routines --triggers \
-        "$db_name" "$@" 2>/dev/null
-}
-
-# Execute bash command in container
 mysql_bash_exec() {
     workspace_exec bash -c "$1" 2>/dev/null
 }
 
-# Get full dump file path
 mysql_dump_path() {
     local dump_file="$1"
     echo "$MYSQL_DUMPS_PATH/$dump_file"
-}
-
-# Get dumps directory path
-mysql_dumps_dir() {
-    echo "$MYSQL_DUMPS_PATH"
 }
 
 # =============================================================================
 # CONNECTION FUNCTIONS
 # =============================================================================
 
-# Test MySQL connection
 mysql_test_connection() {
     debug_log "mysql" "Testing MySQL connection to host=$MYSQL_HOST, user=$MYSQL_USER, database=$MYSQL_DEFAULT_DB"
 
@@ -103,13 +75,11 @@ mysql_test_connection() {
 # DATABASE MANAGEMENT
 # =============================================================================
 
-# List all databases (excluding system databases)
 mysql_list_databases() {
     mysql_exec "$MYSQL_DEFAULT_DB" -s -N -e "SHOW DATABASES;" | \
     grep -v -E "^($MYSQL_SYSTEM_DBS)$"
 }
 
-# Check if database exists
 mysql_database_exists() {
     local db_name="$1"
 
@@ -117,14 +87,12 @@ mysql_database_exists() {
     grep -q "^$db_name$"
 }
 
-# Create database
 mysql_create_database() {
     local db_name="$1"
 
     mysql_exec "$MYSQL_DEFAULT_DB" -e "CREATE DATABASE \`$db_name\`;"
 }
 
-# Drop database
 mysql_drop_database() {
     local db_name="$1"
 
@@ -135,7 +103,6 @@ mysql_drop_database() {
 # DUMP OPERATIONS
 # =============================================================================
 
-# Create database dump
 mysql_create_dump() {
     local db_name="$1"
     local dump_file="$2"
@@ -159,7 +126,6 @@ mysql_create_dump() {
     fi
 }
 
-# Restore database dump
 mysql_restore_dump() {
     local dump_file="$1"
     local target_db="$2"
@@ -188,29 +154,9 @@ mysql_restore_dump() {
 }
 
 # =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-# Get MySQL version
-mysql_get_version() {
-    mysql_exec "$MYSQL_DEFAULT_DB" -s -N -e "SELECT VERSION();"
-}
-
-# Get database size
-mysql_get_database_size() {
-    local db_name="$1"
-
-    mysql_exec "$MYSQL_DEFAULT_DB" -s -N -e "
-        SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'Size (MB)'
-        FROM information_schema.TABLES
-        WHERE table_schema = '$db_name';"
-}
-
-# =============================================================================
 # DATABASE ACCESS MANAGEMENT
 # =============================================================================
 
-# Ensure database access for application users
 mysql_ensure_database_access() {
     local database="$1"
 
@@ -220,7 +166,6 @@ mysql_ensure_database_access() {
     local users=()
     local user
 
-    # Bash 3.x compatible way to fill array
     while IFS= read -r user; do
         users+=("$user")
     done < <(mysql_exec "$MYSQL_DEFAULT_DB" -s -N -e "SELECT DISTINCT User FROM mysql.user WHERE User != 'root' AND User != '' AND User != 'mysql.session' AND User != 'mysql.sys'" 2>/dev/null || true)
@@ -240,9 +185,3 @@ mysql_ensure_database_access() {
     mysql_exec "$MYSQL_DEFAULT_DB" -e "FLUSH PRIVILEGES" 2>/dev/null || true
     debug_log "mysql" "Database access grants completed"
 }
-
-# =============================================================================
-# EXPORT FUNCTIONS
-# =============================================================================
-
-

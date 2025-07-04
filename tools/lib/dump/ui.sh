@@ -33,7 +33,6 @@ select_database_type() {
     local db_types=()
     local db_type
 
-    # Bash 3.x compatible way to fill array
     while IFS= read -r db_type; do
         db_types+=("$db_type")
     done < <(get_supported_db_types)

@@ -18,7 +18,6 @@ readonly DOCKERKIT_MATH_LOADED="true"
 # BASIC MATHEMATICAL OPERATIONS
 # =============================================================================
 
-# Perform mathematical operations with precision control
 math_operation() {
     local expression="$1"
     local precision="${2:-0}"
@@ -39,15 +38,6 @@ math_operation() {
     fi
 }
 
-# Add two numbers
-math_add() {
-    local val1="$1"
-    local val2="$2"
-
-    math_operation "$val1 + $val2"
-}
-
-# Subtract two numbers
 math_subtract() {
     local val1="$1"
     local val2="$2"
@@ -64,7 +54,6 @@ math_subtract() {
     fi
 }
 
-# Multiply two numbers
 math_multiply() {
     local val1="$1"
     local val2="$2"
@@ -81,21 +70,10 @@ math_multiply() {
     fi
 }
 
-# Divide two numbers
-math_divide() {
-    local val1="$1"
-    local val2="$2"
-    local precision="${3:-2}"
-
-    math_operation "$val1 / $val2" "$precision"
-}
-
 # =============================================================================
 # COMPARISON FUNCTIONS
 # =============================================================================
 
-# Universal comparison function for all operators
-# Operators: >, >=, <, <=, ==, !=
 math_compare() {
     local val1="$1"
     local operator="$2"
@@ -116,21 +94,12 @@ math_compare() {
     fi
 }
 
-# Legacy wrapper functions for backward compatibility
 math_compare_gt() {
     math_compare "$1" ">" "$2"
 }
 
 math_compare_gte() {
     math_compare "$1" ">=" "$2"
-}
-
-math_compare_lt() {
-    math_compare "$1" "<" "$2"
-}
-
-math_compare_lte() {
-    math_compare "$1" "<=" "$2"
 }
 
 math_compare_eq() {
@@ -141,7 +110,6 @@ math_compare_eq() {
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Round number to specified decimal places
 math_round() {
     local number="$1"
     local decimals="${2:-0}"
@@ -167,18 +135,6 @@ math_round() {
     fi
 }
 
-# Get absolute value of a number
-math_abs() {
-    local number="$1"
-
-    if math_compare_lt "$number" "0"; then
-        math_multiply "$number" "-1"
-    else
-        echo "$number"
-    fi
-}
-
-# Calculate percentage: (value / total) * 100
 math_percentage() {
     local value="$1"
     local total="$2"
@@ -192,66 +148,4 @@ math_percentage() {
         # Round the result to the specified precision
         math_round "$result" "$precision"
     fi
-}
-
-# =============================================================================
-# ADVANCED MATHEMATICAL FUNCTIONS
-# =============================================================================
-
-# Calculate square root (requires bc)
-math_sqrt() {
-    local number="$1"
-    local precision="${2:-2}"
-
-    if command -v bc >/dev/null 2>&1; then
-        echo "scale=$precision; sqrt($number)" | bc -l
-    else
-        echo "0"
-    fi
-}
-
-# Calculate power (base^exponent)
-math_power() {
-    local base="$1"
-    local exponent="$2"
-    local precision="${3:-2}"
-
-    math_operation "$base ^ $exponent" "$precision"
-}
-
-# =============================================================================
-# VALIDATION FUNCTIONS
-# =============================================================================
-
-# Check if a value is a valid number
-is_number() {
-    local value="$1"
-
-    # Regular expression to match integer or decimal numbers
-    if [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Check if value is zero
-is_zero() {
-    local value="$1"
-
-    math_compare_eq "$value" "0"
-}
-
-# Check if value is positive
-is_positive() {
-    local value="$1"
-
-    math_compare_gt "$value" "0"
-}
-
-# Check if value is negative
-is_negative() {
-    local value="$1"
-
-    math_compare_lt "$value" "0"
 }

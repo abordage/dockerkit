@@ -37,8 +37,6 @@ get_db_driver() {
     esac
 }
 
-
-
 # Check if database type is supported
 is_db_type_supported() {
     local db_type="$1"
