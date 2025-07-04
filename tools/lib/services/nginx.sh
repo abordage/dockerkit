@@ -74,7 +74,7 @@ process_project_config() {
     fi
 
     if generate_from_template "$template_file" "$config_file" "$project_name" "$document_root"; then
-        print_success "Configuration generated for: $project_name"
+        print_success "Configuration generated for $project_name"
         return "$EXIT_SUCCESS"
     else
         print_error "Failed to generate configuration for: $project_name"

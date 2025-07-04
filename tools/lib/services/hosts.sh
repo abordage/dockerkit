@@ -38,7 +38,7 @@ setup_hosts_entries() {
     for site in "${sites[@]}"; do
         # Add IPv4 domain to profile
         if sudo hostctl add domains "$PROFILE_NAME" "$site" >/dev/null 2>&1; then
-            print_success "Host entry added for: $site"
+            print_success "Host entry added for $site"
         else
             print_success "Host entry already exists for: $site"
         fi

@@ -164,7 +164,7 @@ generate_network_aliases() {
 
     # Show status for each site individually
     for project in "${projects[@]}"; do
-        print_success "Network alias added for: $project"
+        print_success "Network alias added for $project"
     done
 
     # Show final status

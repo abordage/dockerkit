@@ -160,7 +160,7 @@ generate_certificate_for_site() {
             mv "$ssl_dir/${site_name}-key.pem" "$key_file"
         fi
 
-        print_success "SSL certificate generated for: $site_name"
+        print_success "SSL certificate generated for $site_name"
     else
         print_error "Failed to generate certificate for $site_name"
         return "$EXIT_GENERAL_ERROR"
