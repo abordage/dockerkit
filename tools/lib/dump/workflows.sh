@@ -160,6 +160,14 @@ run_import_workflow() {
 select_dump_file() {
     local driver="$1"
 
+    # Check if dump files exist before trying to list them
+    local dumps_dir="/dumps/$driver"
+    if ! workspace_exec bash -c "find '$dumps_dir' -name '*.sql' -o -name '*.sql.gz' 2>/dev/null | head -1" | grep -q "."; then
+        printf '  %b %s\n' "$(red "${CROSS_ICON}")" "No dump files found for $driver database" >&2
+        printf '  %s %s\n' "${DOWN_ARROW_UP_ARROW}" "The dumps/$driver/ directory is empty" >&2
+        exit "$EXIT_FILE_NOT_FOUND"
+    fi
+
     # Find dump files for this database type
     local dump_files=()
     local dump_file
@@ -167,12 +175,6 @@ select_dump_file() {
     while IFS= read -r dump_file; do
         dump_files+=("$dump_file")
     done < <(find_dump_files "$driver")
-
-    if [[ ${#dump_files[@]} -eq 0 ]]; then
-        print_error "No dump files found for $driver"
-        print_tip "Create a dump first or place dump files in: dumps/"
-        exit "$EXIT_FILE_NOT_FOUND"
-    fi
 
     # Convert full paths to relative names for display
     local dump_options=()

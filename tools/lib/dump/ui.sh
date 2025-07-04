@@ -20,8 +20,8 @@ readonly OPERATIONS=(
 )
 
 readonly OPERATION_LABELS=(
-    "Export (create dump)"
-    "Import (restore dump)"
+    "Backup database"
+    "Restore database"
 )
 
 # =============================================================================
