@@ -1,3 +1,11 @@
+# [1.9.0](https://github.com/abordage/dockerkit/compare/v1.8.0...v1.9.0) (2025-07-04)
+
+
+### Features
+
+* **tools:** implement unified database dump management system ([40e88ce](https://github.com/abordage/dockerkit/commit/40e88ce81dad6a90ca9c23b842deec60c9d1a4ba))
+* **workspace:** update PostgreSQL and MySQL clients to latest versions ([a86468d](https://github.com/abordage/dockerkit/commit/a86468dcecfd75d071738e9865c350affd117304))
+
 # [1.8.0](https://github.com/abordage/dockerkit/compare/v1.7.0...v1.8.0) (2025-07-02)
 
 
