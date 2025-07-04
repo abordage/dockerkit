@@ -11,19 +11,15 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 TEMPLATE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
 source "$TEMPLATE_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$TEMPLATE_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=../core/validation.sh
 source "$TEMPLATE_SCRIPT_DIR/../core/validation.sh"
 
-# Validate all nginx templates
 validate_nginx_templates() {
     local templates_dir="$DOCKERKIT_DIR/$NGINX_TEMPLATES_DIR"
     local missing_templates=()

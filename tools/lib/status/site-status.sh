@@ -11,19 +11,14 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 SITE_STATUS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
 source "$SITE_STATUS_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$SITE_STATUS_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=../core/math.sh
 source "$SITE_STATUS_SCRIPT_DIR/../core/math.sh"
 
-# Check status of all .local sites
 check_site_status() {
     local sites=()
     # shellcheck disable=SC2207
@@ -42,7 +37,6 @@ check_site_status() {
     done
 }
 
-# Discover sites from nginx configurations
 discover_sites_from_configs() {
     # Get DOCKERKIT_DIR from environment or calculate it
     local dockerkit_dir="${DOCKERKIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
@@ -70,7 +64,6 @@ discover_sites_from_configs() {
     fi
 }
 
-# Test a single site status
 test_site_status() {
     local site_name="$1"
     local url="https://$site_name"
@@ -83,7 +76,6 @@ test_site_status() {
     parse_and_display_site_result "$site_name" "$curl_output"
 }
 
-# Perform curl performance test
 perform_curl_test() {
     local url="$1"
     local format_string="DNS_LOOKUP:%{time_namelookup}|TCP_CONNECT:%{time_connect}|SSL_HANDSHAKE:%{time_appconnect}|PRETRANSFER:%{time_pretransfer}|TRANSFER_START:%{time_starttransfer}|TOTAL_TIME:%{time_total}|HTTP_CODE:%{http_code}"
@@ -97,7 +89,6 @@ perform_curl_test() {
          "$url" 2>/dev/null || echo "DNS_LOOKUP:0|TCP_CONNECT:0|SSL_HANDSHAKE:0|PRETRANSFER:0|TRANSFER_START:0|TOTAL_TIME:999|HTTP_CODE:000"
 }
 
-# Validate and set default value for timing data
 validate_and_default_time() {
     local value="$1"
     local default="${2:-0.000}"
@@ -109,7 +100,6 @@ validate_and_default_time() {
     fi
 }
 
-# Parse curl output and display formatted result for a site
 parse_and_display_site_result() {
     local site_name="$1"
     local curl_output="$2"
@@ -173,7 +163,6 @@ parse_and_display_site_result() {
     fi
 }
 
-# Format timing information with TTFB (white color for details in parentheses)
 format_timing_info() {
     local dns_time="$1"
     local ssl_time="$2"
@@ -182,7 +171,6 @@ format_timing_info() {
     echo "(DNS: ${dns_time}, SSL: ${ssl_time}, TTFB: ${ttfb_time})"
 }
 
-# Format total time with color coding based on performance
 format_total_time() {
     local total_time="$1"
 
@@ -203,7 +191,6 @@ format_total_time() {
     fi
 }
 
-# Check if time is above threshold (using math functions for floating point comparison)
 is_time_above_threshold() {
     local time_value="$1"
     local threshold="$2"
@@ -212,7 +199,6 @@ is_time_above_threshold() {
     math_compare_gt "$time_value" "$threshold"
 }
 
-# Format time with smart units (ms for < 0.1s, s for >= 0.1s)
 format_time_smart() {
     local time_val="$1"
 
@@ -237,7 +223,6 @@ format_time_smart() {
     fi
 }
 
-# Legacy function for backward compatibility (now uses smart formatting)
 round_time() {
     format_time_smart "$1"
 }

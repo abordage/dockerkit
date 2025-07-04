@@ -11,19 +11,16 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 DETECTOR_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
+
 source "$DETECTOR_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$DETECTOR_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=../core/validation.sh
 source "$DETECTOR_SCRIPT_DIR/../core/validation.sh"
 
-# Scan for local projects in projects directory
 scan_local_projects() {
     local projects_dir="${PROJECTS_DIR:-$(dirname "$DOCKERKIT_DIR")}"
     local projects=()
@@ -50,7 +47,6 @@ scan_local_projects() {
     printf '%s\n' "${projects[@]}"
 }
 
-# Detect project type based on files and structure
 detect_project_type() {
     local project_path="$1"
 
@@ -113,7 +109,6 @@ detect_project_type() {
     return "$EXIT_SUCCESS"
 }
 
-# Get document root based on project type and name
 get_document_root() {
     local project_type="$1"
     local project_name="$2"
@@ -128,7 +123,6 @@ get_document_root() {
     esac
 }
 
-# Get project path from name
 get_project_path() {
     local project_name="$1"
     local projects_dir="${PROJECTS_DIR:-$(dirname "$DOCKERKIT_DIR")}"
@@ -136,7 +130,6 @@ get_project_path() {
     echo "$projects_dir/$project_name"
 }
 
-# Validate project exists and is accessible
 validate_project() {
     local project_name="$1"
     local project_path

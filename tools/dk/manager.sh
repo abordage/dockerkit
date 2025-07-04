@@ -15,9 +15,7 @@ DOCKERKIT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 export DOCKERKIT_DIR
 
 # Load core libraries
-# shellcheck source=../lib/core/base.sh
 source "$SCRIPT_DIR/../lib/core/base.sh"
-# shellcheck source=../lib/core/utils.sh
 source "$SCRIPT_DIR/../lib/core/utils.sh"
 
 # =============================================================================
@@ -36,13 +34,6 @@ readonly DK_MARKER_END="# END DockerKit dk-manager"
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Functions detect_os() and get_current_version() moved to utils.sh for reuse
-
-# Note: Automatic backup cleanup disabled to avoid macOS permission prompts
-# Users can manually remove old backup files if needed:
-# rm ~/.zshrc.dk-backup-* (keep only recent ones)
-
-# Validate system dependencies
 validate_dependencies() {
     local missing_deps=()
 
@@ -66,7 +57,6 @@ validate_dependencies() {
     return "$EXIT_SUCCESS"
 }
 
-# Check and automatically add DockerKit bin to PATH
 ensure_dockerkit_path() {
     local config_file="$1"
     local dockerkit_bin="$HOME/.dockerkit/bin"
@@ -94,7 +84,6 @@ ensure_dockerkit_path() {
     return "$EXIT_SUCCESS"
 }
 
-# Detect user shell configuration file
 detect_shell_config() {
     local user_shell="${SHELL:-/bin/bash}"
     local shell_name
@@ -121,7 +110,6 @@ detect_shell_config() {
     esac
 }
 
-# Generate shell integration function
 generate_shell_integration() {
     cat << EOF
 $DK_MARKER_BEGIN
@@ -140,7 +128,6 @@ $DK_MARKER_END
 EOF
 }
 
-# Ensure shell config file exists and is writable
 ensure_shell_config() {
     local config_file="$1"
     local config_dir
@@ -172,7 +159,6 @@ ensure_shell_config() {
     return "$EXIT_SUCCESS"
 }
 
-# Check if shell integration needs update
 needs_shell_integration_update() {
     local config_file="$1"
 
@@ -186,7 +172,6 @@ needs_shell_integration_update() {
     return 1
 }
 
-# Add shell integration to config file
 add_shell_integration() {
     local config_file="$1"
 
@@ -221,7 +206,6 @@ add_shell_integration() {
     return "$EXIT_SUCCESS"
 }
 
-# Remove shell integration from config file
 remove_shell_integration() {
     local config_file="$1"
     local mode="${2:-verbose}"
@@ -254,7 +238,6 @@ remove_shell_integration() {
 # CORE FUNCTIONS
 # =============================================================================
 
-# Check system prerequisites
 check_prerequisites() {
     local os_type
     os_type="$(detect_os)"
@@ -281,7 +264,6 @@ check_prerequisites() {
     return "$EXIT_SUCCESS"
 }
 
-# Setup installation directory
 setup_installation_directory() {
     if test ! -d "$DK_INSTALL_DIR"; then
         if ! mkdir -p "$DK_INSTALL_DIR"; then
@@ -299,7 +281,6 @@ setup_installation_directory() {
     return "$EXIT_SUCCESS"
 }
 
-# Check if shell integration is configured
 check_shell_integration() {
     local config_file
     config_file="$(detect_shell_config)"
@@ -311,7 +292,6 @@ check_shell_integration() {
     fi
 }
 
-# Install dk command
 install_dk_command() {
     # Validate system dependencies
     if ! validate_dependencies; then
@@ -346,7 +326,6 @@ install_dk_command() {
     return "$EXIT_SUCCESS"
 }
 
-# Uninstall dk command
 uninstall_dk_command() {
     if test ! -f "$DK_INSTALL_PATH"; then
         print_success "dk command not installed"
@@ -369,7 +348,6 @@ uninstall_dk_command() {
     return "$EXIT_SUCCESS"
 }
 
-# Show help
 show_help() {
     cat << EOF
 DockerKit dk Command Manager

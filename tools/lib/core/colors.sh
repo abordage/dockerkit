@@ -14,7 +14,6 @@ if [[ "${DOCKERKIT_COLORS_LOADED:-}" == "true" ]]; then
     return 0
 fi
 
-# Local ANSI color codes (not exported, only for this file)
 readonly _RED='\033[0;31m'
 readonly _GREEN='\033[0;32m'
 readonly _YELLOW='\033[1;33m'
@@ -25,17 +24,14 @@ readonly _WHITE='\033[1;37m'
 readonly _GRAY='\033[2;37m'
 readonly _RESET='\033[0m'
 
-# Icons (only define if not already set)
 if [ -z "${CHECK_ICON:-}" ]; then
     readonly CHECK_ICON="✓"
     readonly CROSS_ICON="✗"
     readonly DOWN_ARROW_UP_ARROW="↳"
 fi
 
-# Mark as loaded
 readonly DOCKERKIT_COLORS_LOADED="true"
 
-# Color wrapper functions for inline text coloring
 green() { printf '%b' "${_GREEN}$1${_RESET}"; }
 red() { printf '%b' "${_RED}$1${_RESET}"; }
 yellow() { printf '%b' "${_YELLOW}$1${_RESET}"; }
@@ -45,12 +41,10 @@ purple() { printf '%b' "${_PURPLE}$1${_RESET}"; }
 white() { printf '%b' "${_WHITE}$1${_RESET}"; }
 gray() { printf '%b' "${_GRAY}$1${_RESET}"; }
 
-# Basic print function for standardized output
 print() {
     printf '%b\n' "$1"
 }
 
-# Output formatting functions
 print_header() {
     local message="$1"
     local box_width=62
@@ -87,5 +81,5 @@ print_info() {
 }
 
 print_tip() {
-    printf ' %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
+    printf '  %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
 }

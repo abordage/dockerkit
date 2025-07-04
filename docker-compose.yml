@@ -50,6 +50,7 @@ services:
       - POSTGRES_DB
       - MYSQL_USER
       - MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD
       - REDIS_PASSWORD
       # RabbitMQ Management API credentials
       - RABBITMQ_DEFAULT_USER
@@ -61,6 +62,7 @@ services:
       - ./workspace/entrypoint.d:/entrypoint.d:ro
       - ./workspace/crontab.d:/etc/cron.d:ro
       - ./ssl-ca:/ssl-ca:ro
+      - ./dumps:/dumps:rw
     healthcheck:
       test: [ "CMD-SHELL", "php --version" ]
       interval: ${HEALTH_CHECK_INTERVAL}

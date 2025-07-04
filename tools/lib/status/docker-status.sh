@@ -11,17 +11,13 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 DOCKER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
 source "$DOCKER_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/docker.sh
 source "$DOCKER_SCRIPT_DIR/../core/docker.sh"
 
-# Check and display Docker environment information
 check_docker_environment() {
     print_section "Docker Environment"
 
@@ -55,7 +51,6 @@ check_docker_environment() {
     check_docker_images
 }
 
-# Check Docker Desktop status
 check_docker_desktop() {
     ensure_docker_available || return "$EXIT_MISSING_DEPENDENCY"
 
@@ -77,7 +72,6 @@ check_docker_desktop() {
     fi
 }
 
-# Check Docker daemon status
 check_docker_daemon() {
     ensure_docker_available || return "$EXIT_MISSING_DEPENDENCY"
 
@@ -125,7 +119,6 @@ check_docker_daemon() {
 
 
 
-# Check Docker resources allocation
 check_docker_resources() {
     ensure_docker_available || return "$EXIT_MISSING_DEPENDENCY"
 
@@ -162,7 +155,6 @@ check_docker_resources() {
     fi
 }
 
-# Check Docker system status
 check_docker_system_status() {
     ensure_docker_available || return "$EXIT_MISSING_DEPENDENCY"
 
@@ -208,7 +200,6 @@ check_docker_system_status() {
     fi
 }
 
-# Check Docker images status
 check_docker_images() {
     ensure_docker_available || return "$EXIT_MISSING_DEPENDENCY"
 

@@ -8,7 +8,6 @@
 set -euo pipefail
 
 # Source common functions
-# shellcheck source=workspace/entrypoint.d/00-base
 source /entrypoint.d/00-base
 
 # MinIO configuration constants

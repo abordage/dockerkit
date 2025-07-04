@@ -11,17 +11,15 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 PKG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
+
 source "$PKG_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$PKG_SCRIPT_DIR/../core/config.sh"
 
-# Check dependencies and show installation instructions
 check_system_dependencies() {
     local os_type
     os_type=$(detect_os)
@@ -37,7 +35,6 @@ check_system_dependencies() {
     esac
 }
 
-# Universal function to check required development tools
 check_required_tools() {
     local required_tools=("hostctl" "mkcert")
     local missing_tools=()

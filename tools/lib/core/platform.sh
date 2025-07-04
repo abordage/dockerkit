@@ -16,14 +16,13 @@ readonly DOCKERKIT_PLATFORM_LOADED="true"
 
 # Load base utilities
 PLATFORM_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=./utils.sh
+
 source "$PLATFORM_SCRIPT_DIR/utils.sh"
 
 # =============================================================================
 # SYSTEM INFORMATION FUNCTIONS
 # =============================================================================
 
-# Get CPU information in a cross-platform way
 get_cpu_info() {
     local os_type
     os_type=$(detect_os)
@@ -63,7 +62,6 @@ get_cpu_info() {
     esac
 }
 
-# Get memory information in a cross-platform way
 get_memory_info() {
     local os_type
     os_type=$(detect_os)
@@ -123,7 +121,6 @@ get_memory_info() {
     esac
 }
 
-# Get disk information in a cross-platform way
 get_disk_info() {
     local os_type
     os_type=$(detect_os)
@@ -187,7 +184,6 @@ get_disk_info() {
 # PERFORMANCE MONITORING FUNCTIONS
 # =============================================================================
 
-# Get system load average in a cross-platform way
 get_load_average() {
     local os_type result
     os_type=$(detect_os)
@@ -211,7 +207,6 @@ get_load_average() {
     get_platform_info "Load average" "$result (1m, 5m, 15m)"
 }
 
-# Get CPU usage in a cross-platform way
 get_cpu_usage() {
     local os_type
     os_type=$(detect_os)
@@ -244,15 +239,11 @@ get_cpu_usage() {
             fi
             ;;
         linux|wsl2|*)
-            # TODO: Implement accurate CPU usage monitoring for Linux
-            # Current /proc/stat approach has issues with incomplete calculations
-            # Consider using: iostat, sar, or proper /proc/stat parsing with all fields
-            print_warning "CPU usage: TODO - Implement accurate CPU monitoring for Linux"
+            print_warning "CPU usage: Linux monitoring not implemented"
             ;;
     esac
 }
 
-# Get process information in a cross-platform way
 get_process_info() {
     local os_type
     os_type=$(detect_os)
@@ -286,15 +277,11 @@ get_process_info() {
             fi
             ;;
         linux|wsl2|*)
-            # TODO: Implement efficient process monitoring for Linux
-            # Current find+exec approach is extremely slow on systems with many processes
-            # Consider using: ps aux, /proc/loadavg, or optimized /proc parsing
-            print_warning "Processes: TODO - Implement efficient process monitoring for Linux"
+            print_warning "Processes: Linux monitoring not implemented"
             ;;
     esac
 }
 
-# Get network statistics in a cross-platform way
 get_network_stats() {
     local os_type
     os_type=$(detect_os)
@@ -323,10 +310,7 @@ get_network_stats() {
             fi
             ;;
         linux|wsl2|*)
-            # TODO: Implement efficient network monitoring for Linux
-            # Current /proc/net/dev parsing with subshells is overcomplicated
-            # Consider using: ss, netstat, iftop, or simple awk-based /proc/net/dev parsing
-            print_warning "Network: TODO - Implement efficient network monitoring for Linux"
+            print_warning "Network: Linux monitoring not implemented"
             ;;
     esac
 }
@@ -335,7 +319,6 @@ get_network_stats() {
 # UTILITY FUNCTIONS
 # =============================================================================
 
-# Format bytes into human readable format
 format_bytes() {
     local bytes="$1"
 
@@ -350,7 +333,6 @@ format_bytes() {
     fi
 }
 
-# Get system uptime in a cross-platform way
 get_uptime() {
     local result
     result=$(uptime 2>/dev/null | sed 's/.*up *//; s/, *load.*//' | sed 's/, *[0-9]* users*//')
@@ -362,8 +344,6 @@ get_uptime() {
 # PLATFORM HELPER FUNCTIONS
 # =============================================================================
 
-# Execute platform-specific command and return result
-# Usage: run_platform_command "macos_cmd" "linux_cmd" "fallback_msg"
 run_platform_command() {
     local macos_cmd="$1"
     local linux_cmd="$2"
@@ -385,8 +365,6 @@ run_platform_command() {
     esac
 }
 
-# Get platform-specific information with error handling
-# Usage: get_platform_info "description" "success_result" "error_result"
 get_platform_info() {
     local description="$1"
     local result="$2"
@@ -398,7 +376,3 @@ get_platform_info() {
         print_warning "$description: $error_fallback"
     fi
 }
-
-# =============================================================================
-# PLATFORM DETECTION AND SYSTEM INFORMATION
-# =============================================================================

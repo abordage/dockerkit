@@ -436,6 +436,40 @@ mysql -h mysql -u dockerkit -p
 mysqldump -h mysql -u dockerkit -p default > backup.sql
 ```
 
+### Database Dump Management
+
+DockerKit includes a comprehensive database dump management system with support for MySQL and PostgreSQL.
+
+#### Features
+
+- **Interactive workflow** with step-by-step database and operation selection
+- **MySQL and PostgreSQL support** with automatic driver detection  
+- **Compression support** with optional gzip compression for smaller files
+
+#### Usage
+
+```bash
+# Start interactive dump manager
+make dump
+
+# Follow the prompts:
+# 1. Select database type (MySQL/PostgreSQL)
+# 2. Select operation (Backup database/Restore database)
+# 3. Complete the workflow based on your choice
+```
+
+#### Manual File Placement
+
+You can also manually place dump files in the appropriate directories:
+
+```bash
+# Copy external dumps to DockerKit
+cp /path/to/external.sql dumps/mysql/
+cp /path/to/backup.sql.gz dumps/postgres/
+
+# Then use 'make dump' to restore them
+```
+
 ### Object Storage Tools
 
 #### MinIO Client (mc)
@@ -500,6 +534,12 @@ make start         # Start all services
 make stop          # Stop all services
 make restart       # Restart all services
 make status        # Check system status
+```
+
+### Database Management
+
+```bash
+make dump          # Interactive database backup/restore tool
 ```
 
 ### Quick Access Tool
@@ -591,6 +631,7 @@ Yes! Edit `docker-compose.yml` to add any Docker service you need.
 - [x] Add automatic hosts file generation for local projects
 - [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
 - [x] Add a quick access tool (dk command) for instant workspace connection from any .local project
+- [x] Add comprehensive database dump management system with MySQL/PostgreSQL support
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [x] Implement automatic database and user creation for detected projects

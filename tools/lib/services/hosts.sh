@@ -11,17 +11,15 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 HOSTS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
+
 source "$HOSTS_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$HOSTS_SCRIPT_DIR/../core/config.sh"
 
-# Setup hosts entries for sites
 setup_hosts_entries() {
     local sites=("$@")
 
@@ -40,7 +38,7 @@ setup_hosts_entries() {
     for site in "${sites[@]}"; do
         # Add IPv4 domain to profile
         if sudo hostctl add domains "$PROFILE_NAME" "$site" >/dev/null 2>&1; then
-            print_success "Host entry added for: $site"
+            print_success "Host entry added for $site"
         else
             print_success "Host entry already exists for: $site"
         fi

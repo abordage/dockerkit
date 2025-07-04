@@ -23,27 +23,22 @@ fi
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=./base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Ensure colors are loaded
 if [ -z "${RED:-}" ]; then
-    # shellcheck source=./colors.sh
     source "$(dirname "${BASH_SOURCE[0]}")/colors.sh"
 fi
 
 readonly DOCKERKIT_DOCKER_LOADED="true"
 
-# Docker label constants
 readonly DOCKER_COMPOSE_PROJECT_LABEL="com.docker.compose.project"
 readonly DOCKER_COMPOSE_SERVICE_LABEL="com.docker.compose.service"
 
-# Docker format constants
 readonly DOCKER_NAME_FORMAT="{{.Name}}"
 readonly DOCKER_ID_FORMAT="{{.ID}}"
 readonly DOCKER_SIZE_FORMAT="{{.Size}}"
-
-# Export constants for use in other modules
 export DOCKER_COMPOSE_PROJECT_LABEL DOCKER_COMPOSE_SERVICE_LABEL
 export DOCKER_NAME_FORMAT DOCKER_ID_FORMAT DOCKER_SIZE_FORMAT
 
@@ -51,7 +46,6 @@ export DOCKER_NAME_FORMAT DOCKER_ID_FORMAT DOCKER_SIZE_FORMAT
 # DOCKER AVAILABILITY AND PROJECT INFO
 # =============================================================================
 
-# Check if Docker is available and running
 ensure_docker_available() {
     if ! command -v docker &> /dev/null; then
         print_error "Docker is not installed or not in PATH"
@@ -66,7 +60,6 @@ ensure_docker_available() {
     return "$EXIT_SUCCESS"
 }
 
-# Get Docker Compose project name
 get_docker_project_name() {
     local project_dir="${1:-$DOCKERKIT_DIR}"
 
@@ -78,7 +71,6 @@ get_docker_project_name() {
     basename "$project_dir"
 }
 
-# Detect if Docker Desktop or Docker Engine is available
 has_docker_desktop() {
     if command -v docker >/dev/null 2>&1; then
         docker info >/dev/null 2>&1
@@ -91,7 +83,6 @@ has_docker_desktop() {
 # DOCKER RESOURCE OPERATIONS
 # =============================================================================
 
-# Internal: Get Docker command for resource type
 _get_docker_command() {
     local resource_type="$1"
 
@@ -107,7 +98,6 @@ _get_docker_command() {
     esac
 }
 
-# Internal: Execute Docker command with optional format and filters
 _execute_docker_command() {
     local resource_type="$1"
     local format="$2"  # empty string or format string
@@ -128,7 +118,6 @@ _execute_docker_command() {
     "${cmd_array[@]}" 2>/dev/null || echo ""
 }
 
-# Count Docker resources by filter
 count_docker_resources() {
     local resource_type="$1"
     shift
@@ -141,7 +130,6 @@ count_docker_resources() {
     fi
 }
 
-# Get Docker resources by filter
 get_docker_resources() {
     local resource_type="$1"
     local format="$2"
@@ -155,7 +143,6 @@ get_docker_resources() {
     fi
 }
 
-# Remove Docker resources by IDs
 remove_docker_resources() {
     local resource_type="$1"
     local resource_ids="$2"
@@ -195,7 +182,6 @@ remove_docker_resources() {
 # DOCKER SYSTEM INFORMATION
 # =============================================================================
 
-# Get Docker build cache size
 get_docker_cache_size() {
     if ! ensure_docker_available; then
         echo "0B"
@@ -208,7 +194,6 @@ get_docker_cache_size() {
     echo "${cache_size:-0B}"
 }
 
-# Check if there are unused images (non-dangling but not used by containers)
 has_unused_images() {
     if ! ensure_docker_available; then
         return "$EXIT_GENERAL_ERROR"

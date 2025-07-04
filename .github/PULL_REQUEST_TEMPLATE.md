@@ -2,15 +2,6 @@
 
 Brief description of changes
 
-## Type of Change
-
-- [ ] New feature (`feat`)
-- [ ] Bug fix (`fix`)
-- [ ] Documentation (`docs`)
-- [ ] Refactoring (`refactor`)
-- [ ] Maintenance (`chore`)
-- [ ] Performance improvement (`perf`)
-
 ## Checklist
 
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
@@ -29,5 +20,5 @@ Describe how you tested your changes:
 
 - [ ] Tested on macOS
 - [ ] Tested on Linux
-- [ ] Tested with fresh installation
-- [ ] Tested with existing setup
+- [ ] Tested with a fresh installation
+- [ ] Tested with the existing setup

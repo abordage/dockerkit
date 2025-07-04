@@ -11,31 +11,22 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 LIB_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
 source "$LIB_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$LIB_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=../core/math.sh
 source "$LIB_SCRIPT_DIR/../core/math.sh"
-# shellcheck source=../core/platform.sh
 source "$LIB_SCRIPT_DIR/../core/platform.sh"
-# shellcheck source=./tools-status.sh
 source "$LIB_SCRIPT_DIR/tools-status.sh"
-# shellcheck source=./docker-status.sh
 source "$LIB_SCRIPT_DIR/docker-status.sh"
-# shellcheck source=./site-status.sh
 source "$LIB_SCRIPT_DIR/site-status.sh"
 
 # =============================================================================
 # CONFIGURATION CHECKING FUNCTIONS
 # =============================================================================
 
-# Helper function to check if .env file is in valid state
 is_env_file_valid() {
     local syntax_errors="$1"
     local missing_count="$2"
@@ -46,7 +37,6 @@ is_env_file_valid() {
     [ "$empty_count" -eq 0 ]
 }
 
-# Get total memory in GB
 get_total_memory_gb() {
     if command_exists "sysctl"; then
         local mem_bytes
@@ -60,7 +50,6 @@ get_total_memory_gb() {
     echo "unknown"
 }
 
-# Get memory information
 get_memory_info() {
     local total_mem used_mem
     total_mem=$(get_total_memory_gb)
@@ -104,7 +93,6 @@ get_memory_info() {
     fi
 }
 
-# Main diagnostics function
 run_system_diagnostics() {
     print_header "SYSTEM DIAGNOSTICS"
 
@@ -130,7 +118,6 @@ run_system_diagnostics() {
     echo ""
 }
 
-# Show operating system information
 show_operating_system() {
     print_section "Operating System"
 
@@ -148,7 +135,6 @@ show_operating_system() {
     fi
 }
 
-# Validate project configuration
 validate_project_configuration() {
     print_section "Project Configuration"
 
@@ -159,17 +145,14 @@ validate_project_configuration() {
     check_ssl_certificates
 }
 
-# Show project information
 show_project_info() {
     if [ -f ".env" ]; then
-        # shellcheck source=/dev/null
-        source .env
+                source .env
     else
         print_warning "No .env file found"
     fi
 }
 
-# Check .env file
 check_env_file() {
     if [ ! -f ".env" ]; then
         print_error ".env file missing"
@@ -219,7 +202,6 @@ check_env_file() {
     fi
 }
 
-# Check Makefile configuration
 check_makefile_config() {
     if [ ! -f "Makefile" ]; then
         print_error "Makefile missing"
@@ -250,7 +232,6 @@ check_makefile_config() {
     fi
 }
 
-# Check nginx templates
 check_nginx_templates() {
     local templates_dir="$NGINX_TEMPLATES_DIR"
     local missing_templates=()
@@ -275,7 +256,6 @@ check_nginx_templates() {
     return "$EXIT_SUCCESS"
 }
 
-# Check SSL certificates
 check_ssl_certificates() {
     local ssl_dir="$NGINX_SSL_DIR"
     local ssl_ca_dir="${DOCKERKIT_DIR}/${SSL_CA_DIR:-ssl-ca}"
@@ -307,7 +287,6 @@ check_ssl_certificates() {
     fi
 }
 
-# Show system resources information
 show_system_resources() {
     print_section "System Resources"
 
@@ -321,7 +300,6 @@ show_system_resources() {
     get_disk_info
 }
 
-# Show system performance information
 show_system_performance() {
     print_section "System Performance"
 

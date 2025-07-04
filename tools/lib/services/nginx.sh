@@ -10,19 +10,16 @@ set -euo pipefail
 
 # Load base functionality
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../core" && pwd)"
-# shellcheck source=../core/base.sh
+
 source "$BASE_DIR/base.sh"
 
 # Load dependencies
 NGINX_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../core/utils.sh
+
 source "$NGINX_SCRIPT_DIR/../core/utils.sh"
-# shellcheck source=../core/config.sh
 source "$NGINX_SCRIPT_DIR/../core/config.sh"
-# shellcheck source=./projects.sh
 source "$NGINX_SCRIPT_DIR/projects.sh"
 
-# Generate nginx configurations for projects
 generate_nginx_configs() {
     local projects=("$@")
 
@@ -54,7 +51,6 @@ generate_nginx_configs() {
     fi
 }
 
-# Process single project configuration
 process_project_config() {
     local project_name="$1"
     local config_file="$DOCKERKIT_DIR/$NGINX_SITES_DIR/${project_name}.conf"
@@ -78,7 +74,7 @@ process_project_config() {
     fi
 
     if generate_from_template "$template_file" "$config_file" "$project_name" "$document_root"; then
-        print_success "Configuration generated for: $project_name"
+        print_success "Configuration generated for $project_name"
         return "$EXIT_SUCCESS"
     else
         print_error "Failed to generate configuration for: $project_name"
@@ -86,7 +82,6 @@ process_project_config() {
     fi
 }
 
-# Select appropriate template based on project type and SSL availability
 select_template() {
     local project_type="$1"
     local project_name="$2"
@@ -101,7 +96,6 @@ select_template() {
     fi
 }
 
-# Generate configuration from template
 generate_from_template() {
     local template_file="$1"
     local config_file="$2"

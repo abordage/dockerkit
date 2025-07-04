@@ -15,11 +15,8 @@ DOCKERKIT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 export DOCKERKIT_DIR
 
 # Load core libraries
-# shellcheck source=lib/core/base.sh
 source "$SCRIPT_DIR/lib/core/base.sh"
-# shellcheck source=lib/core/colors.sh
 source "$SCRIPT_DIR/lib/core/colors.sh"
-# shellcheck source=lib/core/utils.sh
 source "$SCRIPT_DIR/lib/core/utils.sh"
 
 # Show help
