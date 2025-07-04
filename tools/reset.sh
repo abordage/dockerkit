@@ -82,8 +82,8 @@ main() {
     fi
 
     print_warning "This will reset the project to initial state!"
-    print_warning "Project containers, volumes, configs, and certificates will be removed."
-    print_warning "Additional system-wide cleanup steps will require separate confirmation."
+    print "Project containers, volumes, configs, and certificates will be removed."
+    print "Additional system-wide cleanup steps will require separate confirmation."
 
     # Confirm reset operation
     if ! input_yesno "Do you want to continue with the reset?" "y"; then
@@ -112,9 +112,9 @@ main() {
 
         # Check for unused images
         if has_unused_images; then
-            local total_images
-            total_images=$(count_docker_resources "images")
-            print_warning "Found unused images among $total_images total images (tagged but not used by containers)"
+            #local total_images
+            # total_images=$(count_docker_resources "images")
+            # print "Found unused images among $total_images total images (tagged but not used by containers)"
             if input_yesno "Do you want to remove all unused images system-wide?" "n"; then
                 cleanup_unused=true
             fi
@@ -124,7 +124,7 @@ main() {
         local cache_size
         cache_size=$(get_docker_cache_size)
         if [ -n "$cache_size" ] && [ "$cache_size" != "0B" ] && [ "$cache_size" != "0" ] && [ "$cache_size" != "0 B" ]; then
-            print_warning "Found Docker build cache: $cache_size"
+            # print "Found Docker build cache: $cache_size"
             if input_yesno "Do you want to remove all Docker build cache system-wide?" "n"; then
                 cleanup_cache=true
             fi
