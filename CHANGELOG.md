@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/abordage/dockerkit/compare/v1.9.0...v1.10.0) (2025-07-07)
+
+
+### Features
+
+* **workspace:** add deployer CLI and bash completion to global tools ([31b2183](https://github.com/abordage/dockerkit/commit/31b2183e67c153569b0855b34e1e2d4fe1e84358))
+
 # [1.9.0](https://github.com/abordage/dockerkit/compare/v1.8.0...v1.9.0) (2025-07-04)
 
 
