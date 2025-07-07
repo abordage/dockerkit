@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/abordage/dockerkit/compare/v1.10.0...v1.11.0) (2025-07-07)
+
+
+### Features
+
+* **workspace:** add SSH support for deployment configuration ([866bf34](https://github.com/abordage/dockerkit/commit/866bf34a03d0dfa07408838f7022a144a6181c0e))
+
 # [1.10.0](https://github.com/abordage/dockerkit/compare/v1.9.0...v1.10.0) (2025-07-07)
 
 
