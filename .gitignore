@@ -15,6 +15,10 @@
 /workspace/auth.json
 /workspace/php.ini
 
+# SSH keys for deployment
+/workspace/ssh/*
+!/workspace/ssh/.gitkeep
+
 # Auto-generated network aliases
 docker-compose.aliases.yml
 

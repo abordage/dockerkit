@@ -63,6 +63,8 @@ services:
       - ./workspace/crontab.d:/etc/cron.d:ro
       - ./ssl-ca:/ssl-ca:ro
       - ./dumps:/dumps:rw
+      # SSH keys for deployment
+      - ${HOST_SSH_PATH:-./workspace/ssh}:/home/${APP_USER}/.ssh:ro
     healthcheck:
       test: [ "CMD-SHELL", "php --version" ]
       interval: ${HEALTH_CHECK_INTERVAL}
