@@ -409,6 +409,38 @@ composer update
 composer update --with-all-dependencies
 ```
 
+### Deployment Tools
+
+#### Deployer
+
+Modern deployment tool for PHP applications with zero-downtime deployments:
+
+```bash
+# Initialize deployer in your project
+dep init
+
+# Deploy to staging
+dep deploy staging
+
+# Deploy to production
+dep deploy production
+
+# Rollback if something goes wrong
+dep rollback
+
+# List available tasks
+dep list
+```
+
+**Key Features:**
+
+- **Zero-downtime deployments** with automatic rollback support
+- **Multi-server deployments** with parallel execution
+- **Framework recipes** for Laravel, Symfony, WordPress, and more
+- **Server provisioning** with automatic PHP, MySQL, and HTTPS setup
+
+**Documentation:** [deployer.org](https://deployer.org)
+
 ### Database Tools
 
 #### PostgreSQL Client

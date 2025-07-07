@@ -300,7 +300,7 @@ RUN set -eux; \
     composer --version; \
     composer config --global allow-plugins.ergebnis/composer-normalize true; \
     composer config --global allow-plugins.pyrech/composer-changelogs true; \
-    composer global require ergebnis/composer-normalize pyrech/composer-changelogs; \
+    composer global require ergebnis/composer-normalize pyrech/composer-changelogs deployer/deployer; \
     \
     # Install global NPM packages \
     npm install -g npm@latest; \
@@ -350,6 +350,8 @@ RUN set -eux; \
     npm completion > /etc/bash_completion.d/npm && \
     \
     yq shell-completion bash > /etc/bash_completion.d/yq && \
+    \
+    dep completion bash > /etc/bash_completion.d/deployer && \
     \
     curl -fsSL https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash \
          -o /etc/bash_completion.d/git-completion.bash
