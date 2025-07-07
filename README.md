@@ -441,6 +441,33 @@ dep list
 
 **Documentation:** [deployer.org](https://deployer.org)
 
+#### SSH Configuration for Deployment
+
+Deployer requires SSH access to remote servers. Configure SSH keys using the `HOST_SSH_PATH` environment variable:
+
+```bash
+# Option 1: Use your system SSH keys (recommended)
+HOST_SSH_PATH=~/.ssh
+
+# Option 2: Use workspace SSH directory (secure)
+HOST_SSH_PATH=./workspace/ssh
+
+# Option 3: Leave empty to use default workspace/ssh
+HOST_SSH_PATH=
+```
+
+**Using system SSH keys:**
+
+- Automatically inherits all your configured SSH keys
+- Supports SSH config files and known_hosts
+- Works with SSH agent forwarding
+
+**Using workspace SSH directory:**
+
+- Copy your deployment keys to `workspace/ssh/`
+- Isolated from system SSH configuration
+- Version control friendly (keys are ignored by git)
+
 ### Database Tools
 
 #### PostgreSQL Client

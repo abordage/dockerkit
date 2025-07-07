@@ -351,8 +351,6 @@ RUN set -eux; \
     \
     yq shell-completion bash > /etc/bash_completion.d/yq && \
     \
-    dep completion bash > /etc/bash_completion.d/deployer && \
-    \
     curl -fsSL https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash \
          -o /etc/bash_completion.d/git-completion.bash
 
