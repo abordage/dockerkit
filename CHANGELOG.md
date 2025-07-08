@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/abordage/dockerkit/compare/v1.11.0...v1.11.1) (2025-07-08)
+
+
+### Bug Fixes
+
+* **workspace:** add SSH keys setup script for secure deployment ([e28fd25](https://github.com/abordage/dockerkit/commit/e28fd25fe037c11f8878541d166db00bc960b7d6))
+
 # [1.11.0](https://github.com/abordage/dockerkit/compare/v1.10.0...v1.11.0) (2025-07-07)
 
 
