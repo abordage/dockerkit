@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# ============================================================================
+# SSH KEYS SETUP SCRIPT
+# ============================================================================
+# Copies SSH keys from mounted volume and sets proper permissions
+# ============================================================================
+set -euo pipefail
+
+# Source common functions
+source /entrypoint.d/00-base
+
+readonly SSH_SOURCE="/ssh-keys"
+readonly SSH_TARGET="/home/${APP_USER}/.ssh"
+
+# ============================================================================
+# PREREQUISITES CHECK
+# ============================================================================
+
+check_prerequisites() {
+    log_info "Checking prerequisites for SSH keys setup..."
+
+    # Check if source directory exists
+    if [[ ! -d "$SSH_SOURCE" ]]; then
+        log_skip "SSH source directory not found: $SSH_SOURCE"
+        return 1
+    fi
+
+    # Check if there are any files in source directory
+    if [[ -z "$(ls -A "$SSH_SOURCE" 2>/dev/null)" ]]; then
+        log_skip "SSH source directory is empty: $SSH_SOURCE"
+        return 1
+    fi
+
+    log_ok "Prerequisites check completed"
+    return 0
+}
+
+# ============================================================================
+# SSH KEYS PROCESSING
+# ============================================================================
+
+copy_ssh_keys() {
+    log_info "Copying SSH keys from $SSH_SOURCE to $SSH_TARGET..."
+
+    # Create target directory with proper ownership
+    mkdir -p "$SSH_TARGET"
+    chown "${APP_USER}:${APP_USER}" "$SSH_TARGET" 2>/dev/null || true
+
+    # Copy all files from source to target
+    if cp -r "$SSH_SOURCE"/* "$SSH_TARGET"/ 2>/dev/null; then
+        # Change ownership of copied files
+        chown -R "${APP_USER}:${APP_USER}" "$SSH_TARGET" 2>/dev/null || true
+        log_ok "SSH keys copied successfully"
+        return 0
+    else
+        log_error "Failed to copy SSH keys"
+        return 1
+    fi
+}
+
+fix_ssh_permissions() {
+    log_info "Setting proper permissions for SSH keys..."
+
+    # Set directory permissions
+    chmod 700 "$SSH_TARGET" 2>/dev/null || {
+        log_error "Failed to set directory permissions"
+        return 1
+    }
+
+    # Set private key permissions (files without .pub extension)
+    find "$SSH_TARGET" -name "id_*" -not -name "*.pub" -exec chmod 600 {} \; 2>/dev/null || true
+
+    # Set public key permissions
+    find "$SSH_TARGET" -name "*.pub" -exec chmod 644 {} \; 2>/dev/null || true
+
+    # Set config file permissions if exists
+    if [[ -f "$SSH_TARGET/config" ]]; then
+        chmod 600 "$SSH_TARGET/config" 2>/dev/null || true
+    fi
+
+    # Set known_hosts permissions if exists
+    if [[ -f "$SSH_TARGET/known_hosts" ]]; then
+        chmod 644 "$SSH_TARGET/known_hosts" 2>/dev/null || true
+    fi
+
+    log_ok "SSH key permissions set successfully"
+    return 0
+}
+
+validate_ssh_keys() {
+    log_info "Validating SSH keys..."
+
+    local key_count=0
+    local private_keys=()
+
+    # Find private keys
+    while IFS= read -r -d '' key_file; do
+        if [[ -f "$key_file" && ! "$key_file" == *.pub ]]; then
+            private_keys+=("$key_file")
+            ((key_count++))
+        fi
+    done < <(find "$SSH_TARGET" -name "id_*" -print0 2>/dev/null)
+
+    if [[ $key_count -eq 0 ]]; then
+        log_warn "No private SSH keys found in $SSH_TARGET"
+        return 0
+    fi
+
+    # Validate each private key
+    for key_file in "${private_keys[@]}"; do
+        local key_name
+        key_name=$(basename "$key_file")
+
+        # Check if key is readable
+        if [[ -r "$key_file" ]]; then
+            log_ok "Private key '$key_name' is accessible"
+        else
+            log_warn "Private key '$key_name' is not readable"
+        fi
+    done
+
+    log_ok "Found and validated $key_count private SSH key(s)"
+    return 0
+}
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+main() {
+    log_info "Setting up SSH keys for deployment..."
+
+    # Check prerequisites
+    if ! check_prerequisites; then
+        log_info "SSH keys setup completed (skipped)"
+        echo ""
+        return 0
+    fi
+
+    # Copy SSH keys from mounted volume
+    if ! copy_ssh_keys; then
+        log_error "SSH keys setup failed (copy failed)"
+        echo ""
+        return 1
+    fi
+
+    # Set proper permissions
+    if ! fix_ssh_permissions; then
+        log_error "SSH keys setup failed (permissions failed)"
+        echo ""
+        return 1
+    fi
+
+    # Validate setup
+    validate_ssh_keys || true
+
+    log_info "SSH keys setup completed successfully"
+    echo ""
+    return 0
+}
+
+# Execute main function
+main "$@"

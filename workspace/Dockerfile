@@ -78,6 +78,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     jpegoptim \
     lsb-release \
     nano \
+    openssh-client \
     optipng \
     p7zip-full \
     pngquant \

@@ -460,13 +460,15 @@ HOST_SSH_PATH=
 
 - Automatically inherits all your configured SSH keys
 - Supports SSH config files and known_hosts
-- Works with SSH agent forwarding
+- Keys are securely copied into a container with proper permissions
+- Original keys remain read-only on host system
 
 **Using workspace SSH directory:**
 
 - Copy your deployment keys to `workspace/ssh/`
 - Isolated from system SSH configuration
-- Version control friendly (keys are ignored by git)
+- Version control friendly (git ignores keys)
+- Automatic permission fixing (600 for private keys, 644 for public keys)
 
 ### Database Tools
 
