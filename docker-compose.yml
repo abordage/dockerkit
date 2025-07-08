@@ -64,7 +64,7 @@ services:
       - ./ssl-ca:/ssl-ca:ro
       - ./dumps:/dumps:rw
       # SSH keys for deployment
-      - ${HOST_SSH_PATH:-./workspace/ssh}:/home/${APP_USER}/.ssh:ro
+      - ${HOST_SSH_PATH:-./workspace/ssh}:/ssh-keys:ro
     healthcheck:
       test: [ "CMD-SHELL", "php --version" ]
       interval: ${HEALTH_CHECK_INTERVAL}

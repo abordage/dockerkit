@@ -83,7 +83,7 @@ setup: ## Complete environment setup (deps, hosts, SSL, nginx for .local project
 start: ## Start selected services with network aliases
 	@echo "$(GREEN)Starting dockerkit services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d $(ENABLE_SERVICES)
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d $(shell echo $(ENABLE_SERVICES))
 
 stop: ## Stop all services (not just selected ones)
 	@echo "$(YELLOW)Stopping all services...$(NC)"
@@ -92,7 +92,7 @@ stop: ## Stop all services (not just selected ones)
 restart: ## Restart selected services with network aliases
 	@echo "$(YELLOW)Restarting selected services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(ENABLE_SERVICES)
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(shell echo $(ENABLE_SERVICES))
 
 # =============================================================================
 # BUILD MANAGEMENT
