@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/abordage/dockerkit/compare/v1.11.1...v1.12.0) (2025-07-10)
+
+
+### Features
+
+* **nginx:** add configuration templates for satis support ([4836266](https://github.com/abordage/dockerkit/commit/483626634a08a3f29f3e0dba60b5233c7dea68e7))
+
 ## [1.11.1](https://github.com/abordage/dockerkit/compare/v1.11.0...v1.11.1) (2025-07-08)
 
 
