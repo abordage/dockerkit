@@ -55,6 +55,14 @@ detect_project_type() {
         return "$EXIT_INVALID_CONFIG"
     fi
 
+    # Satis detection - check before Laravel/Symfony
+    if [ -f "$project_path/composer.json" ]; then
+        if grep -q '"name": "composer/satis"' "$project_path/composer.json" 2>/dev/null; then
+            echo "satis"
+            return "$EXIT_SUCCESS"
+        fi
+    fi
+
     # Laravel detection - artisan file is the key indicator
     if [ -f "$project_path/artisan" ] && [ -f "$project_path/composer.json" ]; then
         # Double-check it's Laravel by looking for Laravel-specific files
@@ -114,7 +122,7 @@ get_document_root() {
     local project_name="$2"
 
     case "$project_type" in
-        laravel|symfony)
+        satis|laravel|symfony)
             echo "/var/www/${project_name}/public"
             ;;
         wordpress|static|simple|*)

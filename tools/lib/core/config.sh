@@ -25,7 +25,7 @@ readonly DOCKERKIT_CONFIG_LOADED="true"
 # Project configuration
 readonly PROFILE_NAME="${PROFILE_NAME:-dockerkit-global}"
 
-readonly DEFAULT_PROJECT_TYPES=("laravel" "symfony" "wordpress" "static" "simple")
+readonly DEFAULT_PROJECT_TYPES=("satis" "laravel" "symfony" "wordpress" "static" "simple")
 
 # Environment variables validation
 readonly REQUIRED_ENV_VARS=(
@@ -48,6 +48,8 @@ readonly REQUIRED_MAKEFILE_TARGETS=(
 readonly REQUIRED_NGINX_TEMPLATES=(
     "simple.conf"
     "simple-ssl.conf"
+    "satis.conf"
+    "satis-ssl.conf"
     "laravel.conf"
     "laravel-ssl.conf"
     "symfony.conf"
