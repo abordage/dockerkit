@@ -301,7 +301,7 @@ RUN set -eux; \
     composer --version; \
     composer config --global allow-plugins.ergebnis/composer-normalize true; \
     composer config --global allow-plugins.pyrech/composer-changelogs true; \
-    composer global require ergebnis/composer-normalize pyrech/composer-changelogs deployer/deployer; \
+    composer global require ergebnis/composer-normalize pyrech/composer-changelogs deployer/deployer laravel/installer; \
     \
     # Install global NPM packages \
     npm install -g npm@latest; \
