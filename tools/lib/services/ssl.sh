@@ -189,4 +189,43 @@ is_certificate_valid() {
     return "$EXIT_GENERAL_ERROR"
 }
 
+cleanup_ssl_certificates() {
+    local current_projects=("$@")
+    local ssl_dir="$DOCKERKIT_DIR/$NGINX_SSL_DIR"
 
+    # Find all .local.crt files
+    local existing_certs=()
+    while IFS= read -r -d '' cert_file; do
+        if [[ "$(basename "$cert_file")" == *.local.crt ]]; then
+            existing_certs+=("$cert_file")
+        fi
+    done < <(find "$ssl_dir" -name "*.local.crt" -print0 2>/dev/null)
+
+    # Check each certificate
+    for cert_file in "${existing_certs[@]}"; do
+        local cert_name
+        cert_name=$(basename "$cert_file" .crt)  # project.local
+
+        # Check if project exists
+        if ! ssl_project_exists_in_list "$cert_name" "${current_projects[@]}"; then
+            local key_file="${cert_file%.crt}.key"
+
+            # Remove certificate and key files
+            rm "$cert_file" 2>/dev/null || true
+            rm "$key_file" 2>/dev/null || true
+        fi
+    done
+}
+
+ssl_project_exists_in_list() {
+    local search_project="$1"
+    shift
+    local projects=("$@")
+
+    for project in "${projects[@]}"; do
+        if [[ "$project" == "$search_project" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}

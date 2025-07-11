@@ -91,7 +91,6 @@ stop: ## Stop all services (not just selected ones)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) down
 
 restart: ## Restart selected services with network aliases
-	@echo "$(YELLOW)Restarting selected services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(shell echo $(ENABLE_SERVICES))
 

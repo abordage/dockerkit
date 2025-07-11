@@ -113,11 +113,13 @@ main() {
 
     # Step 4: Initialize SSL environment
     print_section "Initializing SSL environment"
-    initialize_ssl_environment || print_warning "  ◆ Skipped step: SSL initialization"
+    initialize_ssl_environment || print_warning " ◆ Skipped step: SSL initialization"
 
     # Step 5: Generate SSL certificates
     print_section "Generating SSL certificates"
-    generate_ssl_certificates "${projects_array[@]}" || print_warning "  ◆ Skipped step: SSL generation"
+
+    cleanup_ssl_certificates "${projects_array[@]}"
+    generate_ssl_certificates "${projects_array[@]}" || print_warning " ◆ Skipped step: SSL generation"
 
     # Step 6: Generate nginx configurations
     print_section "Generating nginx configurations"
@@ -130,12 +132,11 @@ main() {
 
     # Cleanup obsolete configurations
     cleanup_nginx_configs "${projects_array[@]}"
-
     generate_nginx_configs "${projects_array[@]}" || true
 
     # Step 7: Generate network aliases
     print_section "Generating network aliases"
-    setup_network_aliases "${projects_array[@]}" || print_warning "  ◆ Skipped step: Network aliases generation"
+    setup_network_aliases "${projects_array[@]}" || print_warning " ◆ Skipped step: Network aliases generation"
 
     # Step 8: Set up hosts entries
     # Request sudo privileges first with user warning
@@ -147,7 +148,7 @@ main() {
     fi
 
     # print_section "Setting up hosts entries"
-    # setup_hosts_entries "${projects_array[@]}" || print_warning "  ◆ Skipped step: Hosts setup"
+    # setup_hosts_entries "${projects_array[@]}" || print_warning " ◆ Skipped step: Hosts setup"
 
     # Step 9: Show summary
     show_setup_summary "${projects_array[@]}"
