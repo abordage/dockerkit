@@ -158,6 +158,35 @@ main() {
 show_setup_summary() {
     local projects=("$@")
 
+    # Ask about container restart first
+    ask_container_restart "${projects[@]}"
+}
+
+# Ask user about container restart
+ask_container_restart() {
+    local projects=("$@")
+    local containers_restarted=false
+
+    if confirm "Restart containers to apply new configuration?" "y"; then
+        if manage_containers "smart"; then
+            print_success "Containers restarted successfully"
+            containers_restarted=true
+            # Show available sites after successful restart
+            show_available_sites "${projects[@]}"
+        else
+            print_error "Failed to restart containers"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    fi
+
+    # Always show next steps, but conditionally show restart instruction
+    show_next_steps "$containers_restarted"
+}
+
+# Show available sites
+show_available_sites() {
+    local projects=("$@")
+
     print_section "Available sites"
     for project in "${projects[@]}"; do
         local ssl_cert="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${project}.crt"
@@ -167,28 +196,24 @@ show_setup_summary() {
             print_success "http://$project"
         fi
     done
-
-    print_section "Next steps:"
-    echo -e " $(cyan '1.') Review $(green '.env') configuration"
-    echo -e " $(cyan '2.') Start containers: $(green 'make start')"
-    echo -e " $(cyan '3.') View all commands: $(green 'make help')"
-
-    # Ask about container restart
-    ask_container_restart
 }
 
-# Ask user about container restart
-ask_container_restart() {
-    if confirm "Restart containers to apply new configuration?" "y"; then
-        if manage_containers "smart"; then
-            print_success "Containers restarted successfully"
-        else
-            print_error "Failed to restart containers"
-            exit "$EXIT_GENERAL_ERROR"
-        fi
-    else
-        print_tip "You can restart them later with: make restart"
+# Show next steps
+show_next_steps() {
+    local containers_restarted="${1:-false}"
+    local step_num=1
+
+    print_section "Next steps:"
+    echo -e " $(cyan "${step_num}.") Review $(green '.env') configuration"
+    ((step_num++))
+
+    # Show restart instruction only if containers were not restarted
+    if [ "$containers_restarted" = "false" ]; then
+        echo -e " $(cyan "${step_num}.") Restart containers: $(green 'make restart')"
+        ((step_num++))
     fi
+
+    echo -e " $(cyan "${step_num}.") View all commands: $(green 'make help')"
 }
 
 # Script entry point

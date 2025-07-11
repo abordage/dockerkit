@@ -86,7 +86,10 @@ setup_development_environment() {
     print_success "URL: https://${project_name}"
 
     print_section "Next steps:"
-    echo -e " $(cyan '1.') Configure environment: $(green 'make setup')"
-    echo -e " $(cyan '2.') Start containers: $(green 'make start')"
-    echo -e " $(cyan '3.') Open the project directory in your IDE to start development"
+    local step_num=1
+    echo -e " $(cyan "${step_num}.") Configure environment: $(green 'make setup')"
+    ((step_num++))
+    echo -e " $(cyan "${step_num}.") Start containers: $(green 'make start')"
+    ((step_num++))
+    echo -e " $(cyan "${step_num}.") Open the project directory in your IDE to start development"
 }
