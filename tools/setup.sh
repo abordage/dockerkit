@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/lib/core/utils.sh"
 source "$SCRIPT_DIR/lib/core/config.sh"
 source "$SCRIPT_DIR/lib/core/validation.sh"
 source "$SCRIPT_DIR/lib/core/files.sh"
+source "$SCRIPT_DIR/lib/core/input.sh"
 
 # Load service libraries
 source "$SCRIPT_DIR/lib/services/packages.sh"
@@ -31,6 +32,7 @@ source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
 source "$SCRIPT_DIR/lib/services/git.sh"
+source "$SCRIPT_DIR/lib/services/containers.sh"
 
 # Load system libraries
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
@@ -135,7 +137,7 @@ main() {
     # Step 8: Set up hosts entries
     # Request sudo privileges first with user warning
     echo ""
-    print_warning "◆ Administrator password required for hosts file modification"
+    print_warning "Administrator password required for hosts file modification"
     if ! request_sudo; then
         print_error "Failed to obtain administrator privileges"
         exit "$EXIT_PERMISSION_DENIED"
@@ -152,9 +154,7 @@ main() {
 show_setup_summary() {
     local projects=("$@")
 
-    print_header "SETUP COMPLETED SUCCESSFULLY!"
-
-    print_section "Available sites:"
+    print_section "Available sites"
     for project in "${projects[@]}"; do
         local ssl_cert="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${project}.crt"
         if [ -f "$ssl_cert" ]; then
@@ -165,10 +165,26 @@ show_setup_summary() {
     done
 
     print_section "Next steps:"
-    echo -e "  $(cyan '1.') Review $(green '.env') configuration"
-    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
-    echo -e "  $(cyan '3.') View all commands: $(green 'make help')"
-    echo ""
+    echo -e " $(cyan '1.') Review $(green '.env') configuration"
+    echo -e " $(cyan '2.') Start containers: $(green 'make start')"
+    echo -e " $(cyan '3.') View all commands: $(green 'make help')"
+
+    # Ask about container restart
+    ask_container_restart
+}
+
+# Ask user about container restart
+ask_container_restart() {
+    if confirm "Restart containers to apply new configuration?" "y"; then
+        if manage_containers "smart"; then
+            print_success "Containers restarted successfully"
+        else
+            print_error "Failed to restart containers"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    else
+        print_tip "You can restart them later with: make restart"
+    fi
 }
 
 # Script entry point

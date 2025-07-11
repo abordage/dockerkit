@@ -215,7 +215,7 @@ show_upgrade_recommendations() {
     fi
 
     echo ""
-    echo -e "$(yellow '◆ RECOMMENDATIONS')"
+    echo -e "$(yellow 'RECOMMENDATIONS')"
 
     local counter=1
 

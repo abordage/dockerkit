@@ -169,8 +169,8 @@ main() {
     # Summary
     print_header "RESET COMPLETED SUCCESSFULLY!"
     print_section "Next steps:"
-    echo -e "  $(cyan '1.') Run setup: $(green 'make setup')"
-    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
+    echo -e " $(cyan '1.') Run setup: $(green 'make setup')"
+    echo -e " $(cyan '2.') Start containers: $(green 'make start')"
     echo ""
 }
 

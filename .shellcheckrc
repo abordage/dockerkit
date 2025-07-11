@@ -1,6 +1,7 @@
 # ShellCheck configuration for DockerKit
 # Disable SC1091 as it's common in modular projects with dynamic source paths
-disable=SC1091
+# Disable SC2086 for Docker Compose commands where word splitting is intentional
+disable=SC1091,SC2086
 
 # Enable external source following for better analysis
 external-sources=true

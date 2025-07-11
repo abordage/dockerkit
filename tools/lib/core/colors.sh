@@ -25,9 +25,9 @@ readonly _GRAY='\033[2;37m'
 readonly _RESET='\033[0m'
 
 if [ -z "${CHECK_ICON:-}" ]; then
-    readonly CHECK_ICON="✓"
+    readonly CHECK_ICON="✔" # ✓
     readonly CROSS_ICON="✗"
-    readonly DOWN_ARROW_UP_ARROW="↳"
+    readonly DOWN_ARROW_UP_ARROW="#" # ↳ ⓘ
 fi
 
 readonly DOCKERKIT_COLORS_LOADED="true"
@@ -61,11 +61,11 @@ print_header() {
 }
 
 print_section() {
-    printf '\n%b\n' "$(cyan "➤ $1")"
+    printf '\n%b\n' "$(cyan "$1")"
 }
 
 print_success() {
-    printf '  %b %s\n' "$(green "${CHECK_ICON}")" "$1"
+    printf ' %b %s\n' "$(green "${CHECK_ICON}")" "$1"
 }
 
 print_warning() {
@@ -73,13 +73,13 @@ print_warning() {
 }
 
 print_error() {
-    printf '  %b %s\n' "$(red "${CROSS_ICON}")" "$1"
+    printf ' %b %s\n' "$(red "${CROSS_ICON}")" "$1"
 }
 
 print_info() {
-    printf '  %b\n' "$(blue "$1")"
+    printf ' %b\n' "$(blue "$1")"
 }
 
 print_tip() {
-    printf '  %s %s\n' "${DOWN_ARROW_UP_ARROW}" "$1"
+    printf ' %s %s\n' "$(yellow "${DOWN_ARROW_UP_ARROW}")" "$1"
 }
