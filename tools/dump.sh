@@ -19,6 +19,7 @@ source "$SCRIPT_DIR/lib/core/base.sh"
 source "$SCRIPT_DIR/lib/core/colors.sh"
 source "$SCRIPT_DIR/lib/core/utils.sh"
 source "$SCRIPT_DIR/lib/core/validation.sh"
+source "$SCRIPT_DIR/lib/core/docker.sh"
 
 # Load dump-specific libraries
 source "$SCRIPT_DIR/lib/dump/bootstrap.sh"

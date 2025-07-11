@@ -17,7 +17,8 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status health setup start stop restart reset \
-		build build-nc rebuild dk-install dk-uninstall lint
+		build build-nc rebuild dk-install dk-uninstall lint \
+		dump create
 
 # Colors for output
 RED := \033[0;31m
@@ -138,3 +139,10 @@ lint: ## Run all linting and quality checks (Dockerfiles, bash scripts, docker-c
 
 dump: ## Create/restore database dump
 	@tools/dump.sh
+
+# =============================================================================
+# PROJECT CREATION
+# =============================================================================
+
+create: ## Create new project
+	@tools/create.sh
