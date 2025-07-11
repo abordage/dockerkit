@@ -30,6 +30,7 @@ source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
+source "$SCRIPT_DIR/lib/services/git.sh"
 
 # Load system libraries
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
@@ -50,6 +51,7 @@ USAGE:
     DESCRIPTION:
     Complete setup of DockerKit development environment including:
     • System dependencies check (with installation instructions)
+    • Git configuration generation
     • Project detection and analysis (.local domains only)
     • Network aliases generation for Docker Compose
     • Hosts file management
