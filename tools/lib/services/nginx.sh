@@ -116,4 +116,52 @@ generate_from_template() {
     fi
 }
 
+cleanup_nginx_configs() {
+    local current_projects=("$@")
+    local configs_dir="$DOCKERKIT_DIR/$NGINX_SITES_DIR"
+    local removed_configs=()
+
+    # Check if configs directory exists
+    if [ ! -d "$configs_dir" ]; then
+        return 0
+    fi
+
+    # Get all .local.conf files
+    local existing_configs=()
+    while IFS= read -r -d '' config_file; do
+        if [[ "$(basename "$config_file")" == *.local.conf ]]; then
+            existing_configs+=("$config_file")
+        fi
+    done < <(find "$configs_dir" -name "*.local.conf" -print0 2>/dev/null)
+
+    # Check each configuration only if there are any
+    if [ ${#existing_configs[@]} -gt 0 ]; then
+        for config_file in "${existing_configs[@]}"; do
+            local config_name
+            config_name=$(basename "$config_file" .conf)  # project.local
+
+            # Check if project exists
+            if ! project_exists_in_list "$config_name" "${current_projects[@]}"; then
+                if rm "$config_file"; then
+                    removed_configs+=("$config_name")
+                else
+                    print_error "Failed to remove: $config_name"
+                fi
+            fi
+        done
+    fi
+}
+
+project_exists_in_list() {
+    local search_project="$1"
+    shift
+    local projects=("$@")
+
+    for project in "${projects[@]}"; do
+        if [[ "$project" == "$search_project" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 

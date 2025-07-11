@@ -21,6 +21,7 @@ source "$SCRIPT_DIR/lib/core/utils.sh"
 source "$SCRIPT_DIR/lib/core/config.sh"
 source "$SCRIPT_DIR/lib/core/validation.sh"
 source "$SCRIPT_DIR/lib/core/files.sh"
+source "$SCRIPT_DIR/lib/core/input.sh"
 
 # Load service libraries
 source "$SCRIPT_DIR/lib/services/packages.sh"
@@ -30,6 +31,8 @@ source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
+source "$SCRIPT_DIR/lib/services/git.sh"
+source "$SCRIPT_DIR/lib/services/containers.sh"
 
 # Load system libraries
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
@@ -50,6 +53,7 @@ USAGE:
     DESCRIPTION:
     Complete setup of DockerKit development environment including:
     • System dependencies check (with installation instructions)
+    • Git configuration generation
     • Project detection and analysis (.local domains only)
     • Network aliases generation for Docker Compose
     • Hosts file management
@@ -109,11 +113,13 @@ main() {
 
     # Step 4: Initialize SSL environment
     print_section "Initializing SSL environment"
-    initialize_ssl_environment || print_warning "  ◆ Skipped step: SSL initialization"
+    initialize_ssl_environment || print_warning " ◆ Skipped step: SSL initialization"
 
     # Step 5: Generate SSL certificates
     print_section "Generating SSL certificates"
-    generate_ssl_certificates "${projects_array[@]}" || print_warning "  ◆ Skipped step: SSL generation"
+
+    cleanup_ssl_certificates "${projects_array[@]}"
+    generate_ssl_certificates "${projects_array[@]}" || print_warning " ◆ Skipped step: SSL generation"
 
     # Step 6: Generate nginx configurations
     print_section "Generating nginx configurations"
@@ -124,23 +130,25 @@ main() {
         exit "$EXIT_INVALID_CONFIG"
     fi
 
+    # Cleanup obsolete configurations
+    cleanup_nginx_configs "${projects_array[@]}"
     generate_nginx_configs "${projects_array[@]}" || true
 
     # Step 7: Generate network aliases
     print_section "Generating network aliases"
-    setup_network_aliases "${projects_array[@]}" || print_warning "  ◆ Skipped step: Network aliases generation"
+    setup_network_aliases "${projects_array[@]}" || print_warning " ◆ Skipped step: Network aliases generation"
 
     # Step 8: Set up hosts entries
     # Request sudo privileges first with user warning
     echo ""
-    print_warning "◆ Administrator password required for hosts file modification"
+    print_warning "Administrator password required for hosts file modification"
     if ! request_sudo; then
         print_error "Failed to obtain administrator privileges"
         exit "$EXIT_PERMISSION_DENIED"
     fi
 
-    print_section "Setting up hosts entries"
-    setup_hosts_entries "${projects_array[@]}" || print_warning "  ◆ Skipped step: Hosts setup"
+    # print_section "Setting up hosts entries"
+    setup_hosts_entries "${projects_array[@]}" || print_warning " ◆ Skipped step: Hosts setup"
 
     # Step 9: Show summary
     show_setup_summary "${projects_array[@]}"
@@ -150,9 +158,36 @@ main() {
 show_setup_summary() {
     local projects=("$@")
 
-    print_header "SETUP COMPLETED SUCCESSFULLY!"
+    # Ask about container restart first
+    ask_container_restart "${projects[@]}"
+}
 
-    print_section "Available sites:"
+# Ask user about container restart
+ask_container_restart() {
+    local projects=("$@")
+    local containers_restarted=false
+
+    if confirm "Restart containers to apply new configuration?" "y"; then
+        if manage_containers "smart"; then
+            print_success "Containers restarted successfully"
+            containers_restarted=true
+            # Show available sites after successful restart
+            show_available_sites "${projects[@]}"
+        else
+            print_error "Failed to restart containers"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
+    fi
+
+    # Always show next steps, but conditionally show restart instruction
+    show_next_steps "$containers_restarted"
+}
+
+# Show available sites
+show_available_sites() {
+    local projects=("$@")
+
+    print_section "Available sites"
     for project in "${projects[@]}"; do
         local ssl_cert="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${project}.crt"
         if [ -f "$ssl_cert" ]; then
@@ -161,12 +196,24 @@ show_setup_summary() {
             print_success "http://$project"
         fi
     done
+}
+
+# Show next steps
+show_next_steps() {
+    local containers_restarted="${1:-false}"
+    local step_num=1
 
     print_section "Next steps:"
-    echo -e "  $(cyan '1.') Review $(green '.env') configuration"
-    echo -e "  $(cyan '2.') Start containers: $(green 'make start')"
-    echo -e "  $(cyan '3.') View all commands: $(green 'make help')"
-    echo ""
+    echo -e " $(cyan "${step_num}.") Review $(green '.env') configuration"
+    ((step_num++))
+
+    # Show restart instruction only if containers were not restarted
+    if [ "$containers_restarted" = "false" ]; then
+        echo -e " $(cyan "${step_num}.") Restart containers: $(green 'make restart')"
+        ((step_num++))
+    fi
+
+    echo -e " $(cyan "${step_num}.") View all commands: $(green 'make help')"
 }
 
 # Script entry point

@@ -208,3 +208,20 @@ has_unused_images() {
 
     return "$EXIT_GENERAL_ERROR"
 }
+
+# =============================================================================
+# WORKSPACE CONTAINER OPERATIONS
+# =============================================================================
+
+workspace_exec() {
+    debug_log "workspace" "Executing in workspace container: $*"
+    local result
+    if docker compose exec workspace "$@"; then
+        debug_log "workspace" "Workspace command succeeded: $*"
+        return 0
+    else
+        result=$?
+        debug_log "workspace" "Workspace command failed with exit code $result: $*"
+        return $result
+    fi
+}

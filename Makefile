@@ -16,8 +16,8 @@ ifneq (,$(wildcard $(ENV_FILE)))
 endif
 
 # Declare all targets as phony (they don't create files)
-.PHONY: help status health setup start stop restart reset \
-		build build-nc rebuild dk-install dk-uninstall lint
+.PHONY: help status setup start stop restart reset \
+		dk-install dk-uninstall project dump lint
 
 # Colors for output
 RED := \033[0;31m
@@ -66,9 +66,6 @@ help: ## Show this help message
 status: ## Show current system status
 	@tools/status.sh
 
-health: ## Check container health status
-	@$(DOCKER_COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
-
 # =============================================================================
 # ENVIRONMENT SETUP
 # =============================================================================
@@ -81,32 +78,16 @@ setup: ## Complete environment setup (deps, hosts, SSL, nginx for .local project
 # =============================================================================
 
 start: ## Start selected services with network aliases
-	@echo "$(GREEN)Starting dockerkit services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d $(shell echo $(ENABLE_SERVICES))
 
 stop: ## Stop all services (not just selected ones)
 	@echo "$(YELLOW)Stopping all services...$(NC)"
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) down
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) stop
 
 restart: ## Restart selected services with network aliases
-	@echo "$(YELLOW)Restarting selected services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(shell echo $(ENABLE_SERVICES))
-
-# =============================================================================
-# BUILD MANAGEMENT
-# =============================================================================
-
-build: ## Build all containers
-	@echo "$(GREEN)Building all containers...$(NC)"
-	@$(DOCKER_COMPOSE) build
-
-build-nc: ## Build all containers without cache
-	@echo "$(GREEN)Building all containers from scratch...$(NC)"
-	@$(DOCKER_COMPOSE) build --no-cache
-
-rebuild: build-nc start ## Rebuild everything and start with aliases
 
 # =============================================================================
 # DK COMMAND MANAGEMENT
@@ -138,3 +119,10 @@ lint: ## Run all linting and quality checks (Dockerfiles, bash scripts, docker-c
 
 dump: ## Create/restore database dump
 	@tools/dump.sh
+
+# =============================================================================
+# PROJECT CREATION
+# =============================================================================
+
+project: ## Create new project
+	@tools/project.sh

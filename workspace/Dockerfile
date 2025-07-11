@@ -122,6 +122,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends postgresql-client-17 && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Symfony CLI from official repository
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    curl -1sLf 'https://dl.cloudsmith.io/public/symfony/stable/setup.deb.sh' | bash && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends symfony-cli && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install yq (YAML processor) for config management
 RUN set -eux; \
     ARCH=$(uname -m); \
@@ -297,11 +306,10 @@ ENV PATH="${COMPOSER_HOME}/vendor/bin:${NPM_CONFIG_PREFIX}/bin:${PATH}"
 # Install and configure user-specific tools
 RUN set -eux; \
     # Configure composer \
-    composer self-update; \
     composer --version; \
     composer config --global allow-plugins.ergebnis/composer-normalize true; \
     composer config --global allow-plugins.pyrech/composer-changelogs true; \
-    composer global require ergebnis/composer-normalize pyrech/composer-changelogs deployer/deployer; \
+    composer global require ergebnis/composer-normalize pyrech/composer-changelogs deployer/deployer laravel/installer; \
     \
     # Install global NPM packages \
     npm install -g npm@latest; \

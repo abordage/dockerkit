@@ -22,23 +22,6 @@ readonly DUMPS_DIR="$DOCKERKIT_DIR/dumps"
 readonly TIMESTAMP_FORMAT="%Y-%m-%d_%H-%M-%S-UTC"
 
 # =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-workspace_exec() {
-    debug_log "dump" "Executing in workspace container: $*"
-    local result
-    if docker compose exec workspace "$@"; then
-        debug_log "dump" "Workspace command succeeded: $*"
-        return 0
-    else
-        result=$?
-        debug_log "dump" "Workspace command failed with exit code $result: $*"
-        return $result
-    fi
-}
-
-# =============================================================================
 # INITIALIZATION FUNCTIONS
 # =============================================================================
 

@@ -11,7 +11,7 @@
 - **Project-based automation** — automatic scanning and configuration based on your `.env` files
 - **HTTPS between microservices** — containers communicate securely out of the box
 - **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer and other
-- **Streamlined workflow** — `make setup`, `make start`, `make status` covers everything
+- **Streamlined workflow** — `make setup`, `make project`, `make dump` covers everything
 
  **It simply works.** No kidding.
 
@@ -19,7 +19,7 @@
 
 1. [Quick Start](#quick-start)
 2. [Advanced Configuration](#advanced-configuration)
-3. [Project Automation](#project-automation)
+3. [Project Management](#project-management)
 4. [Web Interfaces](#web-interfaces)
 5. [Development Tools](#development-tools)
 6. [Comparison](#comparison)
@@ -189,9 +189,47 @@ Create crontab files in `workspace/crontab/`:
 
 **Apply changes:** `make restart`
 
-## Project Automation
+## Project Management
 
-DockerKit eliminates manual configuration through comprehensive automation that works seamlessly across your entire development environment. Every `.local` project gets automatically configured based on intelligent project detection and environment file analysis.
+DockerKit provides comprehensive project management from creation to configuration through intelligent automation that works seamlessly across your entire development environment.
+
+### New Project
+
+Create new projects interactively with `make project`:
+
+- **Supported frameworks**: Laravel, Symfony  
+- **Workflow**: Choose framework → Enter name (*.local) → Auto-scaffold → Optional setup
+- **Integration**: Automatic Docker configuration and HTTPS setup
+
+**Example:**
+
+```bash
+make project
+# Select: Laravel
+# Enter: myapp.local  
+# ✓ Created and available at https://myapp.local
+```
+
+### Project Auto-Configuration
+
+DockerKit automatically detects and configures existing projects based on intelligent project detection and environment file analysis.
+
+**Supported Project Types:**
+
+| Type            | Detection Method                                      | Document Root |
+|-----------------|-------------------------------------------------------|---------------|
+| **Laravel**     | `artisan` file + `laravel/framework` in composer.json | `/public`     |
+| **Symfony**     | `bin/console` + symfony packages in composer.json     | `/public`     |
+| **Satis**       | `composer/satis` in composer.json                     | `/public`     |
+| **WordPress**   | `wp-config.php` or WordPress directory structure      | `/`           |
+| **Static HTML** | `index.html` without server-side processing           | `/`           |
+| **Simple PHP**  | PHP files without framework                           | `/`           |
+
+**Detection Features:**
+
+- **Discovery**: Scans parent directory for `*.local` projects
+- **Real-time detection**: During setup and container startup  
+- **Smart configuration**: Automatic document root, nginx templates, SSL certificates
 
 ### Automated Features
 
@@ -603,6 +641,12 @@ make status        # Check system status
 make dump          # Interactive database backup/restore tool
 ```
 
+### Create Project
+
+```bash
+make project       # Create new project (Laravel/Symfony)
+```
+
 ### Quick Access Tool
 
 Install `dk` command for instant workspace access from any `.local` project:
@@ -693,6 +737,9 @@ Yes! Edit `docker-compose.yml` to add any Docker service you need.
 - [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
 - [x] Add a quick access tool (dk command) for instant workspace connection from any .local project
 - [x] Add comprehensive database dump management system with MySQL/PostgreSQL support
+- [x] **Project creation tool (make project) for Laravel and Symfony**
+- [x] **Automatic cleanup system for obsolete configurations**
+- [x] **Container management and restart automation**
 - [ ] Configure supervisor for process management
 - [ ] Add Xdebug configuration documentation with IDE setup examples
 - [x] Implement automatic database and user creation for detected projects

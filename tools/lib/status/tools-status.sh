@@ -215,7 +215,7 @@ show_upgrade_recommendations() {
     fi
 
     echo ""
-    echo -e "$(yellow '◆ RECOMMENDATIONS')"
+    echo -e "$(yellow 'RECOMMENDATIONS')"
 
     local counter=1
 
@@ -224,15 +224,15 @@ show_upgrade_recommendations() {
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
                 hostctl)
-                    echo -e "  $(cyan "${counter}.") Install hostctl $(yellow '(required)')"
+                    echo -e " $(cyan "${counter}.") Install hostctl $(yellow '(required)')"
                     counter=$((counter + 1))
                     ;;
                 mkcert)
-                    echo -e "  $(cyan "${counter}.") Install mkcert $(yellow '(required)')"
+                    echo -e " $(cyan "${counter}.") Install mkcert $(yellow '(required)')"
                     counter=$((counter + 1))
                     ;;
                 dk)
-                    echo -e "  $(cyan "${counter}.") Install dk command: $(green 'make dk-install')"
+                    echo -e " $(cyan "${counter}.") Install dk command: $(green 'make dk-install')"
                     counter=$((counter + 1))
                     ;;
             esac
@@ -247,19 +247,19 @@ show_upgrade_recommendations() {
 
             case "$tool" in
                 bash)
-                    echo -e "  $(cyan "${counter}.") Update Bash: $(green "v${current_version}") → $(green "v${min_version}+")"
+                    echo -e " $(cyan "${counter}.") Update Bash: $(green "v${current_version}") → $(green "v${min_version}+")"
                     counter=$((counter + 1))
                     ;;
                 make)
-                    echo -e "  $(cyan "${counter}.") Update Make: $(green "v${current_version}") → $(green "v${min_version}+")"
+                    echo -e " $(cyan "${counter}.") Update Make: $(green "v${current_version}") → $(green "v${min_version}+")"
                     counter=$((counter + 1))
                     ;;
                 git)
-                    echo -e "  $(cyan "${counter}.") Update Git: $(green "v${current_version}") → $(green "v${min_version}+")"
+                    echo -e " $(cyan "${counter}.") Update Git: $(green "v${current_version}") → $(green "v${min_version}+")"
                     counter=$((counter + 1))
                     ;;
                 dk)
-                    echo -e "  $(cyan "${counter}.") Update dk command: $(green "v${current_version}") → $(green "v${min_version}") $(yellow 'make dk-install')"
+                    echo -e " $(cyan "${counter}.") Update dk command: $(green "v${current_version}") → $(green "v${min_version}") $(yellow 'make dk-install')"
                     counter=$((counter + 1))
                     ;;
             esac
@@ -271,7 +271,7 @@ show_upgrade_recommendations() {
         for tool_info in "${UPGRADE_SUGGESTIONS[@]}"; do
             local tool current_version recommended_version
             IFS=':' read -r tool current_version recommended_version <<< "$tool_info"
-            echo -e "  $(cyan "${counter}.") Update $tool: $(green "v${current_version}") → $(green "v${recommended_version}+")"
+            echo -e " $(cyan "${counter}.") Update $tool: $(green "v${current_version}") → $(green "v${recommended_version}+")"
             counter=$((counter + 1))
         done
     fi
@@ -281,15 +281,15 @@ show_upgrade_recommendations() {
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
                 homebrew)
-                    echo -e "  $(cyan "${counter}.") Install Homebrew"
+                    echo -e " $(cyan "${counter}.") Install Homebrew"
                     counter=$((counter + 1))
                     ;;
                 git)
-                    echo -e "  $(cyan "${counter}.") Install Git $(yellow '(required)')"
+                    echo -e " $(cyan "${counter}.") Install Git $(yellow '(required)')"
                     counter=$((counter + 1))
                     ;;
                 curl)
-                    echo -e "  $(cyan "${counter}.") Install cURL $(yellow '(required)')"
+                    echo -e " $(cyan "${counter}.") Install cURL $(yellow '(required)')"
                     counter=$((counter + 1))
                     ;;
             esac
