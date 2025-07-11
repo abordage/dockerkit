@@ -1,3 +1,25 @@
+# [1.13.0](https://github.com/abordage/dockerkit/compare/v1.12.0...v1.13.0) (2025-07-11)
+
+
+### Bug Fixes
+
+* **tools:** improve host entry management and error handling ([0171753](https://github.com/abordage/dockerkit/commit/01717531f4fb2d5205e26e4905369ab657731ced))
+
+
+### Features
+
+* **docs:** update README for project management enhancements ([c8f1e8f](https://github.com/abordage/dockerkit/commit/c8f1e8f1fed59eb0544806e78c3a2e741cc9b519))
+* **tools:** add container management utilities and setup integration ([cca2c31](https://github.com/abordage/dockerkit/commit/cca2c315a74f5f60c432b4b5d63919222422b802))
+* **tools:** add git configuration generation script ([bb1d550](https://github.com/abordage/dockerkit/commit/bb1d5505b584e6b8cb68f32de6b376c39186e310))
+* **tools:** add nginx configuration cleanup for obsolete projects ([0a38f67](https://github.com/abordage/dockerkit/commit/0a38f6731a83d6f2cd26c4e61520bacb0b4aa8a0))
+* **tools:** add SSL certificate cleanup for obsolete projects ([f0d0cdf](https://github.com/abordage/dockerkit/commit/f0d0cdf86550d0dd5d79ecc0dcc738f17e9d3e51))
+* **tools:** improve cleanup scripts with additional existence checks ([ace3d43](https://github.com/abordage/dockerkit/commit/ace3d436ed0dea96face2cfeb4fbe652608ab942))
+* **tools:** introduce project creation tool with Laravel and Symfony support ([26baf3c](https://github.com/abordage/dockerkit/commit/26baf3cb73d5a051bbcf8dec971d1d6a6cfb6009))
+* **tools:** refactor workspace_exec and add a project creation target ([de71a82](https://github.com/abordage/dockerkit/commit/de71a823f6c811da809cc258eff5a3bba47e5df4))
+* **workspace:** add apcu to default PHP extensions ([f1ff839](https://github.com/abordage/dockerkit/commit/f1ff839b9065373fb6b14b5bd5db2a0dac763588))
+* **workspace:** add Laravel installer to global composer packages ([b776d50](https://github.com/abordage/dockerkit/commit/b776d5053aecb7c1867d9e77ca0d8ca256ac1012))
+* **workspace:** add Symfony CLI and git configuration support ([5ff7f30](https://github.com/abordage/dockerkit/commit/5ff7f309406f648fa426d1e62f01ace9a89f89d9))
+
 # [1.12.0](https://github.com/abordage/dockerkit/compare/v1.11.1...v1.12.0) (2025-07-10)
 
 
