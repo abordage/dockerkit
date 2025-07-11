@@ -16,7 +16,7 @@ ifneq (,$(wildcard $(ENV_FILE)))
 endif
 
 # Declare all targets as phony (they don't create files)
-.PHONY: help status health setup start stop restart reset \
+.PHONY: help status setup start stop restart reset \
 		dk-install dk-uninstall project dump lint
 
 # Colors for output
@@ -66,9 +66,6 @@ help: ## Show this help message
 status: ## Show current system status
 	@tools/status.sh
 
-health: ## Check container health status
-	@$(DOCKER_COMPOSE) ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
-
 # =============================================================================
 # ENVIRONMENT SETUP
 # =============================================================================
@@ -81,13 +78,12 @@ setup: ## Complete environment setup (deps, hosts, SSL, nginx for .local project
 # =============================================================================
 
 start: ## Start selected services with network aliases
-	@echo "$(GREEN)Starting dockerkit services: $(ENABLE_SERVICES)$(NC)"
 	@$(call show_aliases_status)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) up -d $(shell echo $(ENABLE_SERVICES))
 
 stop: ## Stop all services (not just selected ones)
 	@echo "$(YELLOW)Stopping all services...$(NC)"
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) down
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) stop
 
 restart: ## Restart selected services with network aliases
 	@$(call show_aliases_status)
