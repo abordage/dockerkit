@@ -141,8 +141,8 @@ main() {
         exit "$EXIT_PERMISSION_DENIED"
     fi
 
-    print_section "Setting up hosts entries"
-    setup_hosts_entries "${projects_array[@]}" || print_warning "  ◆ Skipped step: Hosts setup"
+    # print_section "Setting up hosts entries"
+    # setup_hosts_entries "${projects_array[@]}" || print_warning "  ◆ Skipped step: Hosts setup"
 
     # Step 9: Show summary
     show_setup_summary "${projects_array[@]}"

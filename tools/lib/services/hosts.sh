@@ -34,24 +34,28 @@ setup_hosts_entries() {
         return "$EXIT_MISSING_DEPENDENCY"
     fi
 
-    # Process each site individually
+    # Remove entire profile to clean up old entries
+    sudo hostctl remove "$PROFILE_NAME" >/dev/null 2>&1 || true
+
+    # Add all current sites to the profile
     for site in "${sites[@]}"; do
         # Add IPv4 domain to profile
-        if sudo hostctl add domains "$PROFILE_NAME" "$site" >/dev/null 2>&1; then
-            print_success "Host entry added for $site"
-        else
-            print_success "Host entry already exists for: $site"
+        if ! sudo hostctl add domains "$PROFILE_NAME" "$site" >/dev/null 2>&1; then
+            print_error "Failed to add IPv4 host entry for $site"
+            exit "$EXIT_GENERAL_ERROR"
         fi
 
         # Add IPv6 domain to profile (fixes 5-second DNS delay on macOS)
-        sudo hostctl add domains "$PROFILE_NAME" "$site" --ip ::1 >/dev/null 2>&1
+        if ! sudo hostctl add domains "$PROFILE_NAME" "$site" --ip ::1 >/dev/null 2>&1; then
+            print_error "Failed to add IPv6 host entry for $site"
+            exit "$EXIT_GENERAL_ERROR"
+        fi
     done
 
     # Enable profile
-    if sudo hostctl enable "$PROFILE_NAME" >/dev/null 2>&1; then
-        print_success "Profile $PROFILE_NAME enabled"
-    else
-        print_success "Profile $PROFILE_NAME already enabled"
+    if ! sudo hostctl enable "$PROFILE_NAME" >/dev/null 2>&1; then
+        print_error "Failed to enable profile $PROFILE_NAME"
+        exit "$EXIT_GENERAL_ERROR"
     fi
 }
 
