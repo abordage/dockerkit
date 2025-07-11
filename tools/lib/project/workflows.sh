@@ -80,16 +80,40 @@ interactive_project_workflow() {
 setup_development_environment() {
     local project_name="$1"
 
-    # Final success message
+    # Ask about running setup first
+    ask_setup_execution "$project_name"
+}
+
+# Ask user about setup execution
+ask_setup_execution() {
+    local project_name="$1"
+    local setup_executed=false
+
+    if confirm "Run setup to configure the new project?" "y"; then
+        if "${DOCKERKIT_DIR}/tools/setup.sh"; then
+            setup_executed=true
+        else
+            print_error "Setup execution failed"
+        fi
+    fi
+
+    # Always show success message after setup (or after declining setup)
     print_section "Project Created Successfully!"
     print_success "Location: /var/www/$project_name"
     print_success "URL: https://${project_name}"
 
+    # Show next steps only if setup was not executed
+    if [ "$setup_executed" = "false" ]; then
+        show_project_next_steps
+    fi
+}
+
+# Show next steps for project creation
+show_project_next_steps() {
     print_section "Next steps:"
     local step_num=1
+
     echo -e " $(cyan "${step_num}.") Configure environment: $(green 'make setup')"
-    ((step_num++))
-    echo -e " $(cyan "${step_num}.") Start containers: $(green 'make start')"
     ((step_num++))
     echo -e " $(cyan "${step_num}.") Open the project directory in your IDE to start development"
 }
