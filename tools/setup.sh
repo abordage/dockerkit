@@ -128,6 +128,9 @@ main() {
         exit "$EXIT_INVALID_CONFIG"
     fi
 
+    # Cleanup obsolete configurations
+    cleanup_nginx_configs "${projects_array[@]}"
+
     generate_nginx_configs "${projects_array[@]}" || true
 
     # Step 7: Generate network aliases
