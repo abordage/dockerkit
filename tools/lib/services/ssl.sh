@@ -193,6 +193,11 @@ cleanup_ssl_certificates() {
     local current_projects=("$@")
     local ssl_dir="$DOCKERKIT_DIR/$NGINX_SSL_DIR"
 
+    # Check if SSL directory exists
+    if [ ! -d "$ssl_dir" ]; then
+        return 0
+    fi
+
     # Find all .local.crt files
     local existing_certs=()
     while IFS= read -r -d '' cert_file; do
@@ -201,20 +206,22 @@ cleanup_ssl_certificates() {
         fi
     done < <(find "$ssl_dir" -name "*.local.crt" -print0 2>/dev/null)
 
-    # Check each certificate
-    for cert_file in "${existing_certs[@]}"; do
-        local cert_name
-        cert_name=$(basename "$cert_file" .crt)  # project.local
+    # Check each certificate only if there are any
+    if [ ${#existing_certs[@]} -gt 0 ]; then
+        for cert_file in "${existing_certs[@]}"; do
+            local cert_name
+            cert_name=$(basename "$cert_file" .crt)  # project.local
 
-        # Check if project exists
-        if ! ssl_project_exists_in_list "$cert_name" "${current_projects[@]}"; then
-            local key_file="${cert_file%.crt}.key"
+            # Check if project exists
+            if ! ssl_project_exists_in_list "$cert_name" "${current_projects[@]}"; then
+                local key_file="${cert_file%.crt}.key"
 
-            # Remove certificate and key files
-            rm "$cert_file" 2>/dev/null || true
-            rm "$key_file" 2>/dev/null || true
-        fi
-    done
+                # Remove certificate and key files
+                rm "$cert_file" 2>/dev/null || true
+                rm "$key_file" 2>/dev/null || true
+            fi
+        done
+    fi
 }
 
 ssl_project_exists_in_list() {

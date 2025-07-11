@@ -17,8 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status health setup start stop restart reset \
-		build build-nc rebuild dk-install dk-uninstall lint \
-		dump create
+		dk-install dk-uninstall project dump lint
 
 # Colors for output
 RED := \033[0;31m
@@ -95,20 +94,6 @@ restart: ## Restart selected services with network aliases
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(shell echo $(ENABLE_SERVICES))
 
 # =============================================================================
-# BUILD MANAGEMENT
-# =============================================================================
-
-build: ## Build all containers
-	@echo "$(GREEN)Building all containers...$(NC)"
-	@$(DOCKER_COMPOSE) build
-
-build-nc: ## Build all containers without cache
-	@echo "$(GREEN)Building all containers from scratch...$(NC)"
-	@$(DOCKER_COMPOSE) build --no-cache
-
-rebuild: build-nc start ## Rebuild everything and start with aliases
-
-# =============================================================================
 # DK COMMAND MANAGEMENT
 # =============================================================================
 
@@ -143,5 +128,5 @@ dump: ## Create/restore database dump
 # PROJECT CREATION
 # =============================================================================
 
-create: ## Create new project
-	@tools/create.sh
+project: ## Create new project
+	@tools/project.sh

@@ -121,6 +121,11 @@ cleanup_nginx_configs() {
     local configs_dir="$DOCKERKIT_DIR/$NGINX_SITES_DIR"
     local removed_configs=()
 
+    # Check if configs directory exists
+    if [ ! -d "$configs_dir" ]; then
+        return 0
+    fi
+
     # Get all .local.conf files
     local existing_configs=()
     while IFS= read -r -d '' config_file; do
@@ -129,20 +134,22 @@ cleanup_nginx_configs() {
         fi
     done < <(find "$configs_dir" -name "*.local.conf" -print0 2>/dev/null)
 
-    # Check each configuration
-    for config_file in "${existing_configs[@]}"; do
-        local config_name
-        config_name=$(basename "$config_file" .conf)  # project.local
+    # Check each configuration only if there are any
+    if [ ${#existing_configs[@]} -gt 0 ]; then
+        for config_file in "${existing_configs[@]}"; do
+            local config_name
+            config_name=$(basename "$config_file" .conf)  # project.local
 
-        # Check if project exists
-        if ! project_exists_in_list "$config_name" "${current_projects[@]}"; then
-            if rm "$config_file"; then
-                removed_configs+=("$config_name")
-            else
-                print_error "Failed to remove: $config_name"
+            # Check if project exists
+            if ! project_exists_in_list "$config_name" "${current_projects[@]}"; then
+                if rm "$config_file"; then
+                    removed_configs+=("$config_name")
+                else
+                    print_error "Failed to remove: $config_name"
+                fi
             fi
-        fi
-    done
+        done
+    fi
 }
 
 project_exists_in_list() {

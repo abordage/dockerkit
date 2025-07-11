@@ -51,9 +51,23 @@ manage_containers() {
 }
 
 containers_are_running() {
-    local running_count
-    running_count=$(docker compose ps --format "{{.State}}" 2>/dev/null | grep -c "running" || echo "0")
-    [ "$running_count" -gt 0 ]
+    # Check if docker-compose.yml exists
+    if [ ! -f "docker-compose.yml" ]; then
+        return 1
+    fi
+
+    # Get running containers count safely
+    local running_count=0
+    if docker compose ps --format "{{.State}}" 2>/dev/null | grep -q "running"; then
+        running_count=$(docker compose ps --format "{{.State}}" 2>/dev/null | grep -c "running" 2>/dev/null || echo "0")
+    fi
+
+    # Ensure running_count is a valid number and greater than 0
+    if [[ "$running_count" =~ ^[0-9]+$ ]] && [ "$running_count" -gt 0 ]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 load_env_variables() {
