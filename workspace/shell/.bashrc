@@ -52,14 +52,6 @@ export CLICOLOR=1
 export CLICOLOR_FORCE=1
 export COMPOSER_NO_ANSI=0
 
-# Configure Git colors
-if command -v git >/dev/null 2>&1; then
-    git config --global color.ui auto
-    git config --global color.branch auto
-    git config --global color.diff auto
-    git config --global color.status auto
-fi
-
 # Terminal color support
 if [[ -t 1 ]]; then
     export COLORTERM=truecolor

@@ -57,8 +57,8 @@ services:
       - RABBITMQ_DEFAULT_PASS
     volumes:
       - ${HOST_APP_PATH}:/var/www
+      - ${HOME}/.gitconfig:/home/${APP_USER}/.gitconfig:ro
       - ./workspace/auth.json:/home/${APP_USER}/.composer/auth.json:ro
-      - ./workspace/.gitconfig:/home/${APP_USER}/.gitconfig
       - ./workspace/php.ini:/usr/local/etc/php/conf.d/99-dockerkit.ini:ro
       - ./workspace/entrypoint.d:/entrypoint.d:ro
       - ./workspace/crontab.d:/etc/cron.d:ro

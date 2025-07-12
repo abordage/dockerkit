@@ -15,9 +15,6 @@
 /workspace/auth.json
 /workspace/php.ini
 
-# Git configuration (generated)
-/workspace/.gitconfig
-
 # SSH keys for deployment
 /workspace/ssh/*
 !/workspace/ssh/.gitkeep

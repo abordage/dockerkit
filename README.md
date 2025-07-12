@@ -688,13 +688,13 @@ make reset         # Clean project resources
 
 | Feature                    | DockerKit                                                      | Laradock                        |
 |----------------------------|----------------------------------------------------------------|---------------------------------|
-| **Project Discovery**      | ✅ Automatic scanning for `.local` suffixed folders             | ❌ Manual configuration          |
+| **Project Discovery**      | ✅ Automatic scanning and detection                             | ❌ Manual configuration          |
 | **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                         | ❌ Manual SSL setup              |
-| **Nginx Configuration**    | ✅ Auto-generated configs with project type detection           | ❌ Manual nginx configuration    |
+| **Nginx Configuration**    | ✅ Auto-generated configs                                       | ❌ Manual nginx configuration    |
 | **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl             | ❌ Manual hosts file editing     |
 | **MinIO Management**       | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
 | **Database Creation**      | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
-| **Container Optimization** | ✅ Multi-stage builds, smaller images, faster builds, caching   | ⚠️ Traditional Docker approach  |
+| **Container Optimization** | ✅ Multi-stage builds, smaller images, caching                  | ⚠️ Traditional Docker approach  |
 | **Project Maturity**       | ⚠️ Modern but newer project                                    | ✅ Battle-tested, proven by time |
 | **Available Services**     | ⚠️ Focused essential toolkit                                   | ✅ Extensive service library     |
 | **Community Support**      | ⚠️ Growing community                                           | ✅ Large established community   |
