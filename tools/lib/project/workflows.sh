@@ -67,6 +67,8 @@ interactive_project_workflow() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
+    print_header "PROJECT CREATED!"
+
     # Step 4: Setup development environment
     setup_development_environment "$project_name"
 
@@ -113,7 +115,7 @@ show_project_next_steps() {
     print_section "Next steps:"
     local step_num=1
 
-    echo -e " $(cyan "${step_num}.") Configure environment: $(green 'make setup')"
+    echo -e " $(cyan "${step_num}.") Reconfigure environment: $(green 'make setup')"
     ((step_num++))
     echo -e " $(cyan "${step_num}.") Open the project directory in your IDE to start development"
 }

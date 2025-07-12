@@ -63,9 +63,6 @@ create_managed_files() {
     else
         print_success "Created $created_count/$total_count configuration files"
     fi
-
-    # Generate git configuration
-    generate_git_config || print_warning "  ◆ Skipped: Git configuration generation"
 }
 
 # Ensure project directory exists (relative to DOCKERKIT_DIR)

@@ -31,7 +31,6 @@ source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
-source "$SCRIPT_DIR/lib/services/git.sh"
 source "$SCRIPT_DIR/lib/services/containers.sh"
 
 # Load system libraries
