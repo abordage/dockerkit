@@ -30,8 +30,8 @@ scan_local_projects() {
         return "$EXIT_INVALID_CONFIG"
     fi
 
-    # Look for directories with .local suffix
-    for dir in "$projects_dir"/*.local; do
+    # Look for directories with .localhost suffix
+    for dir in "$projects_dir"/*.localhost; do
         if [ -d "$dir" ]; then
             local project_name
             project_name=$(basename "$dir")
@@ -40,7 +40,7 @@ scan_local_projects() {
     done
 
     if [ ${#projects[@]} -eq 0 ]; then
-        print_info "No .local projects found in $projects_dir"
+        print_info "No .localhost projects found in $projects_dir"
         return "$EXIT_GENERAL_ERROR"
     fi
 

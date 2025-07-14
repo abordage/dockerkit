@@ -160,7 +160,7 @@ remove_ssl_certificates() {
 }
 
 remove_nginx_configs() {
-    remove_files_by_pattern "$DOCKERKIT_DIR/nginx/conf.d" "*.local.conf" "Removed generated nginx configurations"
+    remove_files_by_pattern "$DOCKERKIT_DIR/nginx/conf.d" "*.localhost.conf" "Removed generated nginx configurations"
 }
 
 remove_network_aliases() {

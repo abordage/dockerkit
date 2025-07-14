@@ -42,9 +42,9 @@ endif
 # Function to show aliases status
 define show_aliases_status
 	$(if $(filter true,$(ALIASES_AVAILABLE)), \
-		echo "$(GREEN)Using network aliases for .local projects$(NC)", \
+		echo "$(GREEN)Using network aliases for .localhost projects$(NC)", \
 		echo "$(RED)No aliases file found, using default configuration$(NC)" && \
-		echo "$(YELLOW)Tip: Run 'make setup' to generate aliases for .local projects$(NC)" \
+		echo "$(YELLOW)Tip: Run 'make setup' to generate aliases for .localhost projects$(NC)" \
 	)
 endef
 
@@ -70,7 +70,7 @@ status: ## Show current system status
 # ENVIRONMENT SETUP
 # =============================================================================
 
-setup: ## Complete environment setup (deps, hosts, SSL, nginx for .local projects)
+setup: ## Complete environment setup (deps, hosts, SSL, nginx for .localhost projects)
 	@tools/setup.sh
 
 # =============================================================================
@@ -93,7 +93,7 @@ restart: ## Restart selected services with network aliases
 # DK COMMAND MANAGEMENT
 # =============================================================================
 
-dk-install: ## Install dk command for quick workspace access from any .local project
+dk-install: ## Install dk command for quick workspace access from any .localhost project
 	@tools/dk/manager.sh install
 
 dk-uninstall: ## Remove dk command from system

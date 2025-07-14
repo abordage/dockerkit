@@ -8,7 +8,7 @@
 /nginx/ssl/*.crt
 /nginx/ssl/*.key
 /nginx/ssl/*.csr
-/nginx/conf.d/*.local.conf
+/nginx/conf.d/*.localhost.conf
 .DS_Store
 
 # Composer authentication

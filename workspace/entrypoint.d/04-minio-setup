@@ -451,7 +451,7 @@ main() {
         return 1
     fi
 
-    # Process .local projects for AWS/MinIO configurations
+    # Process .localhost projects for AWS/MinIO configurations
     run_project_automation "MinIO" "process_minio_project"
     return 0
 }

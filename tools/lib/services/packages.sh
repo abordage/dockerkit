@@ -36,7 +36,7 @@ check_system_dependencies() {
 }
 
 check_required_tools() {
-    local required_tools=("hostctl" "mkcert")
+    local required_tools=("mkcert")
     local missing_tools=()
     local all_ok=true
 

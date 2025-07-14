@@ -126,19 +126,19 @@ cleanup_nginx_configs() {
         return 0
     fi
 
-    # Get all .local.conf files
+    # Get all .localhost.conf files
     local existing_configs=()
     while IFS= read -r -d '' config_file; do
-        if [[ "$(basename "$config_file")" == *.local.conf ]]; then
+        if [[ "$(basename "$config_file")" == *.localhost.conf ]]; then
             existing_configs+=("$config_file")
         fi
-    done < <(find "$configs_dir" -name "*.local.conf" -print0 2>/dev/null)
+    done < <(find "$configs_dir" -name "*.localhost.conf" -print0 2>/dev/null)
 
     # Check each configuration only if there are any
     if [ ${#existing_configs[@]} -gt 0 ]; then
         for config_file in "${existing_configs[@]}"; do
             local config_name
-            config_name=$(basename "$config_file" .conf)  # project.local
+            config_name=$(basename "$config_file" .conf)
 
             # Check if project exists
             if ! project_exists_in_list "$config_name" "${current_projects[@]}"; then

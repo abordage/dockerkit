@@ -66,7 +66,7 @@ retry_connection() {
 # Array to store discovered projects
 declare -a discovered_projects=()
 
-# Discover .local projects in the projects directory
+# Discover .localhost projects in the projects directory
 discover_projects() {
     log_info "Discovering projects in $PROJECTS_DIR..."
 
@@ -85,19 +85,14 @@ discover_projects() {
         local project_name
         project_name=$(basename "$project_path")
 
-        # Skip service directories and non-.local projects
-        if [[ "$project_name" == "html" || "$project_name" == "logs" || "$project_name" == "certs" ]]; then
-            continue
-        fi
-
-        if [[ "$project_name" == *.local ]]; then
+        if [[ "$project_name" == *.localhost ]]; then
             discovered_projects+=("$project_name")
             # log_info "Found project: $project_name"
         fi
     done
 
     if [[ ${#discovered_projects[@]} -eq 0 ]]; then
-        log_info "No .local projects found"
+        log_info "No .localhost projects found"
         return 1
     fi
 
@@ -236,9 +231,9 @@ run_project_automation() {
     local service_name="$1"
     local callback_function="$2"
 
-    log_info "Starting $service_name automation for .local projects..."
+    log_info "Starting $service_name automation for .localhost projects..."
 
-    # Step 1: Scan for .local projects
+    # Step 1: Scan for .localhost projects
     if ! discover_projects; then
         log_info "$service_name automation completed (no projects found)"
         echo ""

@@ -7,7 +7,7 @@
 
 **What you get:**
 
-- **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
+- **Multi-project support** — create `*.localhost` folders, auto-configuration handles the rest
 - **Project-based automation** — automatic scanning and configuration based on your `.env` files
 - **HTTPS between microservices** — containers communicate securely out of the box
 - **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer and other
@@ -31,14 +31,14 @@
 
 ### Understanding the Structure
 
-DockerKit scans the **parent directory** for `.local` projects:
+DockerKit scans the **parent directory** for `.localhost` projects:
 
 ```text
 /Users/<user>/PhpstormProjects/
 ├── dockerkit/         # This repository
-├── myapp.local/       # Detected: Laravel project
-├── api.local/         # Detected: Symfony project
-├── blog.local/        # Detected: WordPress project
+├── myapp.localhost/   # Detected: Laravel project
+├── api.localhost/     # Detected: Symfony project
+├── blog.localhost/    # Detected: WordPress project
 ├── backup-files/      # Ignored
 └── docs/              # Ignored
 ```
@@ -84,7 +84,7 @@ make setup
 This will automatically:
 
 - Create `.env` file from `.env.example`
-- Detect your `.local` projects
+- Detect your `.localhost` projects
 - Generate `SSL certificates`
 - Create `nginx configurations`
 - Set up `hosts file` entries
@@ -111,7 +111,7 @@ This command:
 
 - Checks network aliases configuration
 - Starts all enabled services in detached mode
-- Uses `docker-compose.aliases.yml` for `.local` domain routing
+- Uses `docker-compose.aliases.yml` for `.localhost` domain routing
 - Shows startup status for each container
 
 ### Optional: Install Quick Access Tool
@@ -122,16 +122,18 @@ For even faster development workflow, install the `dk` command for instant works
 make dk-install     # Install dk command system-wide
 ```
 
-Now you can quickly access workspace from any `.local` project:
+Now you can quickly access workspace from any `.localhost` project:
 
 ```bash
-cd myapp.local      # Navigate to any .local project
+cd myapp.localhost  # Navigate to any .localhost project
 dk                  # Instant access to workspace container
 ```
 
 ## Advanced Configuration
 
 ### Composer Configuration
+
+// TODO: composer config --global repositories.abordage composer https://repo.abordage.dev 
 
 For private repositories, edit `workspace/auth.json` file:
 
@@ -170,7 +172,7 @@ Create crontab files in `workspace/crontab/`:
 
 ```bash
 # workspace/crontab/scheduler
-* * * * * /usr/local/bin/php /var/www/myapp.local/artisan schedule:run >> /var/log/cron/scheduler.log 2>&1
+* * * * * /usr/local/bin/php /var/www/myapp.localhost/artisan schedule:run >> /var/log/cron/scheduler.log 2>&1
 ```
 
 ##### Database Backup
@@ -288,20 +290,14 @@ DockerKit automatically detects and configures existing projects based on intell
 - **HTTPS-enabled nginx configs** when certificates are available
 - **Container CA installation** for internal HTTPS communication
 
-#### 9. **Host File Management**
-
-- **Automatic `.local` domain addition** to system hosts file using hostctl
-- **Clean management** with profile-based organization
-- **Cross-platform support** for macOS, Linux, and WSL2
-
-#### 10. **Network Configuration**
+#### 9. **Network Configuration**
 
 - **Docker Compose aliases generation** for microservice communication
 - **Internal DNS resolution** for `.local` domains within Docker network
 - **Service discovery** enabling containers to communicate via project domains
 - **Network isolation** with secure inter-container communication
 
-#### 11. **Development Environment Setup**
+#### 10. **Development Environment Setup**
 
 - **Configuration file creation** from examples (`.env`, auth.json, php.ini)
 - **Directory structure preparation** for logs, certificates, configurations
@@ -691,7 +687,6 @@ make reset         # Clean project resources
 | **Project Discovery**      | ✅ Automatic scanning and detection                             | ❌ Manual configuration          |
 | **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                         | ❌ Manual SSL setup              |
 | **Nginx Configuration**    | ✅ Auto-generated configs                                       | ❌ Manual nginx configuration    |
-| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl             | ❌ Manual hosts file editing     |
 | **MinIO Management**       | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
 | **Database Creation**      | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
 | **Container Optimization** | ✅ Multi-stage builds, smaller images, caching                  | ⚠️ Traditional Docker approach  |

@@ -32,30 +32,30 @@ input_project_name_safe() {
 
     while true; do
         echo >&2
-        printf '%b' "$(yellow "Enter project name (must end with .local): ")" >&2
+        printf '%b' "$(yellow "Enter project name (must end with .localhost): ")" >&2
         read -r project_name
 
         # 1. Check if empty
         if [ -z "$project_name" ]; then
-            echo "  ✗ Project name cannot be empty" >&2
+            echo " ✗ Project name cannot be empty" >&2
             continue
         fi
 
         # 2. Check valid characters (letters, numbers, hyphens, underscores, dots)
         if [[ ! "$project_name" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
-            echo "  ✗ Invalid characters. Use only letters, numbers, hyphens, underscores, and dots" >&2
+            echo " ✗ Invalid characters. Use only letters, numbers, hyphens, underscores, and dots" >&2
             continue
         fi
 
         # 3. Check starts with letter or number
         if [[ ! "$project_name" =~ ^[a-zA-Z0-9] ]]; then
-            echo "  ✗ Project name must start with a letter or number" >&2
+            echo " ✗ Project name must start with a letter or number" >&2
             continue
         fi
 
-        # 4. Check ends with .local
-        if [[ ! "$project_name" =~ \.local$ ]]; then
-            echo "  ✗ Project name must end with '.local'" >&2
+        # 4. Check ends with .localhost
+        if [[ ! "$project_name" =~ \.localhost$ ]]; then
+            echo " ✗ Project name must end with '.localhost'" >&2
             continue
         fi
 
@@ -74,7 +74,7 @@ input_project_name() {
 
     while true; do
         echo >&2
-        printf '%b' "$(yellow "Enter project name (must end with .local): ")" >&2
+        printf '%b' "$(yellow "Enter project name (must end with .localhost): ")" >&2
         read -r project_name
 
         if validate_project_name "$project_name"; then
@@ -82,7 +82,7 @@ input_project_name() {
             return 0
         else
             print_error "Invalid project name: $project_name"
-            print_tip "Project name must end with '.local' and use only letters, numbers, hyphens and underscores"
+            print_tip "Project name must end with '.localhost' and use only letters, numbers, hyphens and underscores"
         fi
     done
 }
@@ -113,9 +113,9 @@ validate_project_name() {
         return 1
     fi
 
-    # Check if name ends with .local
-    if [[ ! "$project_name" =~ \.local$ ]]; then
-        print_error "Project name must end with '.local'"
+    # Check if name ends with .localhost
+    if [[ ! "$project_name" =~ \.localhost$ ]]; then
+        print_error "Project name must end with '.localhost'"
         return 1
     fi
 

@@ -272,8 +272,8 @@ check_ssl_certificates() {
 
     # Count site certificates in nginx/ssl directory
     local site_certs_count=0
-    if [ -d "$ssl_dir" ] && compgen -G "$ssl_dir/*.local.crt" > /dev/null 2>&1; then
-        site_certs_count=$(find "$ssl_dir" -name "*.local.crt" | wc -l | tr -d ' ')
+    if [ -d "$ssl_dir" ] && compgen -G "$ssl_dir/*.localhost.crt" > /dev/null 2>&1; then
+        site_certs_count=$(find "$ssl_dir" -name "*.localhost.crt" | wc -l | tr -d ' ')
     fi
 
     # Only show site certificates if they exist

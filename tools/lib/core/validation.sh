@@ -29,7 +29,7 @@ readonly DOCKERKIT_VALIDATION_LOADED="true"
 # =============================================================================
 
 if [ -z "${PATTERN_LOCAL_DOMAIN:-}" ]; then
-    readonly PATTERN_LOCAL_DOMAIN='^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.local$'
+    readonly PATTERN_LOCAL_DOMAIN='^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.localhost$'
 fi
 
 # =============================================================================

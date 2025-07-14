@@ -3,7 +3,7 @@
 # ============================================================================
 # REDIS ACL SETUP SCRIPT
 # ============================================================================
-# Scans .local projects and configures Redis ACL for discovered passwords
+# Scans .localhost projects and configures Redis ACL for discovered passwords
 # ============================================================================
 set -euo pipefail
 
@@ -165,7 +165,7 @@ main() {
         return 0
     fi
 
-    # Process .local projects for Redis configurations
+    # Process .localhost projects for Redis configurations
     run_project_automation "Redis ACL" "process_redis_project"
     return 0
 }

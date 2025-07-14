@@ -13,4 +13,4 @@ your-domain\.com
 yourdomain\.com
 
 # Exclude authentication-required URLs
-.*\.local
+.*\.localhost
