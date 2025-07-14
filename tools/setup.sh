@@ -26,7 +26,6 @@ source "$SCRIPT_DIR/lib/core/input.sh"
 # Load service libraries
 source "$SCRIPT_DIR/lib/services/packages.sh"
 source "$SCRIPT_DIR/lib/services/ssl.sh"
-source "$SCRIPT_DIR/lib/services/hosts.sh"
 source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"

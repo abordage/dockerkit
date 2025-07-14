@@ -2,6 +2,7 @@
 example\.com
 example\.org
 example\.net
+private-repo\.example\.com
 
 # Exclude localhost and local IPs
 localhost
