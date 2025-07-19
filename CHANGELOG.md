@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/abordage/dockerkit/compare/v1.13.0...v2.0.0) (2025-07-19)
+
+
+### Code Refactoring
+
+* **project:** replace `.local` domain usage with `.localhost` across tools and configs ([c1488e3](https://github.com/abordage/dockerkit/commit/c1488e33dee62f7055ee5738a20200b78faafe95))
+
+
+### BREAKING CHANGES
+
+* **project:** *.local domains are no longer supported.
+
 # [1.13.0](https://github.com/abordage/dockerkit/compare/v1.12.0...v1.13.0) (2025-07-11)
 
 
