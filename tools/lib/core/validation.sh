@@ -85,14 +85,41 @@ validate_template_syntax() {
         return "$EXIT_INVALID_CONFIG"
     fi
 
-    # Check for listen directive
-    if ! grep -q "listen " "$template_path"; then
+    # Check for HTTP server block (listen 80)
+    if ! grep -q "listen 80" "$template_path"; then
         return "$EXIT_INVALID_CONFIG"
     fi
 
     # Check for server_name directive
     if ! grep -q "server_name " "$template_path"; then
         return "$EXIT_INVALID_CONFIG"
+    fi
+
+    # Validate HTTPS block markers (if present)
+    local has_https_start has_https_end
+    has_https_start=$(grep -c "# HTTPS_BLOCK_START" "$template_path")
+    has_https_end=$(grep -c "# HTTPS_BLOCK_END" "$template_path")
+
+    # If HTTPS markers exist, validate them
+    if [ "$has_https_start" -gt 0 ] || [ "$has_https_end" -gt 0 ]; then
+        # Both markers must be present and match
+        if [ "$has_https_start" -ne 1 ] || [ "$has_https_end" -ne 1 ]; then
+            return "$EXIT_INVALID_CONFIG"
+        fi
+
+        # Check for HTTPS server block (listen 443 ssl)
+        if ! grep -q "listen 443 ssl" "$template_path"; then
+            return "$EXIT_INVALID_CONFIG"
+        fi
+
+        # Check for SSL certificate configuration
+        if ! grep -q "ssl_certificate " "$template_path"; then
+            return "$EXIT_INVALID_CONFIG"
+        fi
+
+        if ! grep -q "ssl_certificate_key " "$template_path"; then
+            return "$EXIT_INVALID_CONFIG"
+        fi
     fi
 
     return "$EXIT_SUCCESS"
