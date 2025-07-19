@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/abordage/dockerkit/compare/v2.0.0...v2.1.0) (2025-07-19)
+
+
+### Features
+
+* **project:** add smart document root detection for PHP projects ([c800d87](https://github.com/abordage/dockerkit/commit/c800d876e6301b79055ec7a65c185f73042e9444))
+
 # [2.0.0](https://github.com/abordage/dockerkit/compare/v1.13.0...v2.0.0) (2025-07-19)
 
 
