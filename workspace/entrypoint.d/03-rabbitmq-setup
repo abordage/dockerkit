@@ -314,10 +314,8 @@ process_rabbitmq_project() {
         return 0
     fi
 
-    # Detect project type for informational purposes
-    local project_type
-    project_type=$(get_project_type "$project_name")
-    log_info "Processing $project_name (type: $project_type)"
+    # Process project for RabbitMQ configuration
+    log_info "Processing $project_name"
 
     # Parse environment files for RabbitMQ configuration
     parse_env_files "$project_path"

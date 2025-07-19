@@ -47,6 +47,22 @@ scan_local_projects() {
     printf '%s\n' "${projects[@]}"
 }
 
+detect_php_document_root() {
+    local project_path="$1"
+
+    if [ -f "$project_path/index.php" ]; then
+        echo ""  # root
+    elif [ -f "$project_path/public/index.php" ]; then
+        echo "/public"
+    elif [ -f "$project_path/web/index.php" ]; then
+        echo "/web"
+    elif [ -f "$project_path/www/index.php" ]; then
+        echo "/www"
+    else
+        return 1  # not found
+    fi
+}
+
 detect_project_type() {
     local project_path="$1"
 
@@ -97,23 +113,14 @@ detect_project_type() {
         return "$EXIT_SUCCESS"
     fi
 
-    # Static HTML detection - has index.html but no PHP
-    if [ -f "$project_path/index.html" ] && [ ! -f "$project_path/index.php" ]; then
-        # Check if it's really static (no server-side processing)
-        if [ ! -f "$project_path/composer.json" ] && [ ! -f "$project_path/package.json" ]; then
-            echo "static"
-            return "$EXIT_SUCCESS"
-        fi
-    fi
-
-    # Simple PHP detection - has PHP files but no framework
-    if find "$project_path" -name "*.php" -type f | head -1 | grep -q "\.php$"; then
-        echo "simple"
+    # PHP project detection (has index.php somewhere)
+    if detect_php_document_root "$project_path" >/dev/null; then
+        echo "php"
         return "$EXIT_SUCCESS"
     fi
 
-    # Default fallback
-    echo "simple"
+    # Default fallback to static for everything else
+    echo "static"
     return "$EXIT_SUCCESS"
 }
 
@@ -125,7 +132,15 @@ get_document_root() {
         satis|laravel|symfony)
             echo "/var/www/${project_name}/public"
             ;;
-        wordpress|static|simple|*)
+        php)
+            # Dynamic root detection for PHP projects
+            local project_path
+            project_path=$(get_project_path "$project_name")
+            local php_root
+            php_root=$(detect_php_document_root "$project_path")
+            echo "/var/www/${project_name}${php_root}"
+            ;;
+        wordpress|static|*)
             echo "/var/www/${project_name}"
             ;;
     esac
