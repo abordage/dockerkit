@@ -11,7 +11,6 @@ DockerKit is a modern development environment enabling you to run, configure, an
 
 ![dockerkit-setup.gif](.github/images/dockerkit-setup.gif)
 
-
 ## Features
 
 ### Zero-Configuration Discovery
