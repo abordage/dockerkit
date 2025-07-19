@@ -72,8 +72,6 @@ ensure_project_directory() {
     if [ ! -d "$DOCKERKIT_DIR/$dir_path" ]; then
         mkdir -p "$DOCKERKIT_DIR/$dir_path"
         print_success "Created directory: $dir_path"
-    else
-        print_success "Directory already exists: $dir_path"
     fi
 }
 
