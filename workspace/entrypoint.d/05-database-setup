@@ -3,7 +3,7 @@
 # ============================================================================
 # DATABASE SETUP SCRIPT
 # ============================================================================
-# Automatically creates databases and users for detected .local projects
+# Automatically creates databases and users for detected .localhost projects
 # Supports Laravel and Symfony projects with .env configuration
 # ============================================================================
 set -euo pipefail

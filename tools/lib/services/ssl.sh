@@ -131,7 +131,7 @@ generate_certificate_for_site() {
     local site_name="$1"
     local ssl_dir="$2"
 
-    # Skip non-.local domains silently
+    # Skip non-.localhost domains silently
     if ! is_valid_local_domain "$site_name"; then
         return "$EXIT_SUCCESS"
     fi
@@ -198,19 +198,19 @@ cleanup_ssl_certificates() {
         return 0
     fi
 
-    # Find all .local.crt files
+    # Find all .localhost.crt files
     local existing_certs=()
     while IFS= read -r -d '' cert_file; do
-        if [[ "$(basename "$cert_file")" == *.local.crt ]]; then
+        if [[ "$(basename "$cert_file")" == *.localhost.crt ]]; then
             existing_certs+=("$cert_file")
         fi
-    done < <(find "$ssl_dir" -name "*.local.crt" -print0 2>/dev/null)
+    done < <(find "$ssl_dir" -name "*.localhost.crt" -print0 2>/dev/null)
 
     # Check each certificate only if there are any
     if [ ${#existing_certs[@]} -gt 0 ]; then
         for cert_file in "${existing_certs[@]}"; do
             local cert_name
-            cert_name=$(basename "$cert_file" .crt)  # project.local
+            cert_name=$(basename "$cert_file" .crt)
 
             # Check if project exists
             if ! ssl_project_exists_in_list "$cert_name" "${current_projects[@]}"; then

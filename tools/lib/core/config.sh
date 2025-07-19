@@ -47,17 +47,11 @@ readonly REQUIRED_MAKEFILE_TARGETS=(
 # Required nginx templates
 readonly REQUIRED_NGINX_TEMPLATES=(
     "simple.conf"
-    "simple-ssl.conf"
     "satis.conf"
-    "satis-ssl.conf"
     "laravel.conf"
-    "laravel-ssl.conf"
     "symfony.conf"
-    "symfony-ssl.conf"
     "static.conf"
-    "static-ssl.conf"
     "wordpress.conf"
-    "wordpress-ssl.conf"
 )
 
 # Tool version requirements

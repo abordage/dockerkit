@@ -122,9 +122,6 @@ get_command_version() {
         brew)
             brew --version | head -1 | tr -s ' ' | cut -d' ' -f2 | cut -d'-' -f1
             ;;
-        hostctl)
-            hostctl --version 2>/dev/null | tr -s ' ' | cut -d' ' -f3 || echo "unknown"
-            ;;
         mkcert)
             if command_exists brew; then
                 brew list --versions mkcert 2>/dev/null | tr -s ' ' | cut -d' ' -f2 || echo "unknown"
@@ -134,39 +131,6 @@ get_command_version() {
             ;;
         *)
             $command_name "$version_flag" 2>/dev/null | head -1 || echo "unknown"
-            ;;
-    esac
-}
-
-request_sudo() {
-    local os_type
-    os_type=$(detect_os)
-
-    case "$os_type" in
-        macos)
-            if ! sudo -n true 2>/dev/null; then
-                sudo -v || {
-                    print_error "Failed to obtain administrator privileges"
-                    return "$EXIT_GENERAL_ERROR"
-                }
-            else
-                print_success "Administrator privileges cached"
-            fi
-            ;;
-        linux)
-            if ! sudo -n true 2>/dev/null; then
-                print_info "Root privileges required"
-                sudo -v || {
-                    print_error "Failed to obtain root privileges"
-                    return "$EXIT_GENERAL_ERROR"
-                }
-            else
-                print_success "Root privileges cached"
-            fi
-            ;;
-        *)
-            print_warning "Unsupported operating system for sudo operations"
-            return "$EXIT_GENERAL_ERROR"
             ;;
     esac
 }

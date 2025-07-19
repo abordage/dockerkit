@@ -3,7 +3,7 @@
 # =============================================================================
 # SITE STATUS CHECKER
 # =============================================================================
-# Functions to check status and response times of .local sites
+# Functions to check status and response times of .localhost sites
 # Usage: source this file and call check_site_status
 # =============================================================================
 

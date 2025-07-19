@@ -150,20 +150,6 @@ check_curl_version() {
     fi
 }
 
-check_hostctl_tool() {
-    local version
-    version=$(get_command_version "hostctl")
-
-    if [ "$version" = "not_installed" ]; then
-        print_error "hostctl: Not installed"
-        MISSING_TOOLS+=("hostctl")
-    elif [ "$version" = "unknown" ]; then
-        print_success "hostctl: Available"
-    else
-        print_success "hostctl: v$version"
-    fi
-}
-
 check_mkcert_tool() {
     local version
     version=$(get_command_version "mkcert")
@@ -219,14 +205,10 @@ show_upgrade_recommendations() {
 
     local counter=1
 
-    # Show missing critical tools first (mkcert, hostctl, dk)
+    # Show missing critical tools first (mkcert, dk)
     if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
         for tool in "${MISSING_TOOLS[@]}"; do
             case "$tool" in
-                hostctl)
-                    echo -e " $(cyan "${counter}.") Install hostctl $(yellow '(required)')"
-                    counter=$((counter + 1))
-                    ;;
                 mkcert)
                     echo -e " $(cyan "${counter}.") Install mkcert $(yellow '(required)')"
                     counter=$((counter + 1))
@@ -301,7 +283,6 @@ show_upgrade_recommendations() {
 check_development_tools() {
     print_section "Development Tools"
 
-    check_hostctl_tool
     check_mkcert_tool
     check_dk_tool
 }
@@ -311,10 +292,6 @@ check_critical_tools() {
     local missing_critical=()
 
     # Check for critical tools
-    if ! command_exists "hostctl"; then
-        missing_critical+=("hostctl")
-    fi
-
     if ! command_exists "mkcert"; then
         missing_critical+=("mkcert")
     fi

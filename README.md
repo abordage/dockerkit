@@ -1,370 +1,242 @@
+<!--suppress HtmlDeprecatedAttribute, HtmlUnknownAnchorTarget -->
+
 # 🚀 Modern Docker Stack for Local Development
 
-![GitHub Release](https://img.shields.io/github/v/release/abordage/dockerkit)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
-![GitHub License](https://img.shields.io/github/license/abordage/dockerkit)
+![Release](https://img.shields.io/github/v/release/abordage/dockerkit)
+![Hadolint Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/hadolint.yml?label=hadolint)
+![Shellcheck Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
+![License](https://img.shields.io/github/license/abordage/dockerkit)
 
-**What you get:**
+DockerKit is a modern development environment enabling you to run, configure, and manage multiple Laravel/Symfony (and more) projects in Docker with minimal effort and maximum automation.
 
-- **Multi-project support** — create `*.local` folders, auto-configuration handles the rest
-- **Project-based automation** — automatic scanning and configuration based on your `.env` files
-- **HTTPS between microservices** — containers communicate securely out of the box
-- **Pre-installed dev tools** — OpenAPI Generator, Vacuum, Composer normalizer and other
-- **Streamlined workflow** — `make setup`, `make project`, `make dump` covers everything
+![dockerkit-setup.gif](.github/images/dockerkit-setup.gif)
 
- **It simply works.** No kidding.
+## Features
+
+### Zero-Configuration Discovery
+
+- **Automatic project scanning** for `.localhost` projects in parent directory
+- **Framework detection** based on project structure
+- **SSL certificate generation** using mkcert for secure HTTPS development
+- **Nginx configuration** auto-generated from project-specific templates
+
+### Service Auto-Configuration
+
+- **Multi-project .env scanning** across all `.localhost` directories
+- **Database auto-creation** for PostgreSQL and MySQL with user management
+- **Redis ACL setup** with multi-password configuration per project
+- **RabbitMQ management** with user, virtual host, and permission setup
+- **MinIO bucket creation** with user management and policy configuration
+
+### Developer Productivity Tools
+
+- **Interactive project creation** for Laravel and Symfony frameworks
+- **Database backup/restore** with step-by-step workflow and compression support
+- **Enhanced workspace** with modern terminal, fuzzy search, and smart autocompletion
+- **Docker network aliases** for seamless microservice communication
 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Advanced Configuration](#advanced-configuration)
-3. [Project Management](#project-management)
-4. [Web Interfaces](#web-interfaces)
+2. [Configuration](#configuration)
+3. [Usage](#usage)
+4. [Web Consoles](#web-consoles)
 5. [Development Tools](#development-tools)
-6. [Comparison](#comparison)
-7. [FAQ](#faq)
-8. [Roadmap](#roadmap)
-9. [Contributing](#contributing)
 
 ## Quick Start
 
-### Understanding the Structure
+### Prerequisites
 
-DockerKit scans the **parent directory** for `.local` projects:
+- **Docker & Docker Compose** for container orchestration
+- **[mkcert](https://github.com/FiloSottile/mkcert)** for automatic HTTPS certificate generation (recommended)
+
+### Installation
+
+```bash
+# 1. Clone repository to your projects directory
+cd /path/to/your/projects
+git clone https://github.com/abordage/dockerkit.git
+
+# 2. Navigate to DockerKit directory
+cd dockerkit
+
+# 3. Run automatic environment setup
+make setup
+
+# 4. Start all services
+make start
+
+# 5. Install the `dk` command for instant workspace access from any project dir
+make dk-install
+```
+
+### Project Structure
+
+DockerKit automatically discovers projects in the parent directory:
 
 ```text
-/Users/<user>/PhpstormProjects/
-├── dockerkit/         # This repository
-├── myapp.local/       # Detected: Laravel project
-├── api.local/         # Detected: Symfony project
-├── blog.local/        # Detected: WordPress project
-├── backup-files/      # Ignored
-└── docs/              # Ignored
+/your/projects/directory/
+├── dockerkit/              # This repository  
+├── myapp.localhost/        # Detected: Laravel project
+├── api.localhost/          # Detected: Symfony project  
+├── blog.localhost/         # Detected: WordPress project
+├── docs/                   # Ignored: no .localhost suffix
+└── backup-files/           # Ignored: no .localhost suffix
 ```
 
-### 1. Install Dependencies (recommended)
+Modern browsers automatically resolve `.localhost` domains to `127.0.0.1` according to RFC standards:
 
-`hostctl` and `mkcert` are **optional but highly recommended** for the best development experience. DockerKit will work without them, but with limitations:
+- [RFC 2606](https://datatracker.ietf.org/doc/html/rfc2606) — Reserved Top Level DNS Names: Defines `.localhost` as a reserved domain
+- [RFC 6761](https://datatracker.ietf.org/doc/html/rfc6761) — Special-Use Top Level Domains: `.localhost` should resolve to loopback addresses
+- [RFC 6762](https://datatracker.ietf.org/doc/html/rfc6762) — Multicast DNS: Confirms `.localhost` special handling in modern systems
 
-- **without hostctl**: You'll need to manually edit your `/etc/hosts` file to add local domain entries
-- **without mkcert**: SSL certificates won't be generated, so only HTTP (not HTTPS) will be available
+This eliminates the need for hosts file modifications or DNS configuration.
+
+### Create New Project
 
 ```bash
-# macOS: using Homebrew
-brew install guumaster/tap/hostctl
-brew install mkcert && mkcert -install
+# Create new project interactively
+make project
 
-# Windows: using Chocolatey
-choco install hostctl
-choco install mkcert && mkcert -install
-
-# Linux: download binary from
-https://github.com/guumaster/hostctl/releases
-https://github.com/FiloSottile/mkcert/releases
+# Choose project type (Laravel/Symfony)
+# Enter project name (e.g., myapp.localhost)
+# Project will be available at https://myapp.localhost
 ```
 
-### 2. Clone Repository
+### Deploy Existing Projects
 
 ```bash
-# Navigate to your projects directory
-cd /path/to/your/projects
+# 1. Clone your existing projects to the parent directory
+cd /path/to/your/projects  # Same level as dockerkit/
+git clone https://github.com/yourorg/myapp.git myapp.localhost
+git clone https://github.com/yourorg/api.git api.localhost
 
-# Clone DockerKit
-git clone https://github.com/abordage/dockerkit dockerkit
+# 2. Reconfigure DockerKit to detect new projects
 cd dockerkit
-```
-
-### 3. Run Setup
-
-```bash
 make setup
+
+# 3. Your projects are now available:
+# https://myapp.localhost
+# https://api.localhost
 ```
 
-This will automatically:
+## Configuration
 
-- Create `.env` file from `.env.example`
-- Detect your `.local` projects
-- Generate `SSL certificates`
-- Create `nginx configurations`
-- Set up `hosts file` entries
+### Dockerkit Configuration
 
-### 4. Review Configuration
-
-Review and customize your `.env` file for your specific needs:
+Customize enabled services in `.env`:
 
 ```bash
 # Choose which services to start (comma-separated)
-ENABLE_SERVICES="nginx php-fpm workspace postgres mysql redis rabbitmq elasticsearch elasticvue minio mailpit"
+ENABLE_SERVICES="nginx,php-fpm,workspace,postgres,mysql,redis,rabbitmq,minio"
 
-# Customize PHP extensions for your projects
-DEPENDENCY_PHP_EXTENSIONS="amqp ast bcmath bz2 decimal exif gd gmp imagick intl opcache pcntl pcov pdo_mysql pdo_pgsql redis soap sockets sodium xdebug xlswriter yaml zip"
+# Customize PHP extensions
+DEPENDENCY_PHP_EXTENSIONS="gd,imagick,redis,xdebug,opcache"
 ```
 
-### 5. Start Services
+### Composer Authentication
 
-```bash
-make start
-```
-
-This command:
-
-- Checks network aliases configuration
-- Starts all enabled services in detached mode
-- Uses `docker-compose.aliases.yml` for `.local` domain routing
-- Shows startup status for each container
-
-### Optional: Install Quick Access Tool
-
-For even faster development workflow, install the `dk` command for instant workspace access:
-
-```bash
-make dk-install     # Install dk command system-wide
-```
-
-Now you can quickly access workspace from any `.local` project:
-
-```bash
-cd myapp.local      # Navigate to any .local project
-dk                  # Instant access to workspace container
-```
-
-## Advanced Configuration
-
-### Composer Configuration
-
-For private repositories, edit `workspace/auth.json` file:
+For private repositories, configure `workspace/auth.json`:
 
 ```json
 {
-   "http-basic": {
-      "private.repo.com": {
-         "username": "your-username",
-         "password": "your-password"
-      }
-   },
-   "github-oauth": {
-      "github.com": "ghp_your_personal_access_token"
-   },
-   "gitlab-token": {
-      "gitlab.com": "glpat-your_project_access_token"
-   },
-   "bitbucket-oauth": {
-      "bitbucket.org": {
-         "consumer-key": "your-key",
-         "consumer-secret": "your-secret"
-      }
-   }
+  "github-oauth": {
+    "github.com": "ghp_your_personal_access_token"
+  },
+  "gitlab-token": {
+    "gitlab.com": "glpat-your_project_access_token"
+  }
 }
 ```
 
-### Scheduled Tasks (cron)
-
-Cron is enabled by default and reads jobs from `workspace/crontab/` directory:
-
-#### Add Scheduled Tasks
-
-Create crontab files in `workspace/crontab/`:
-
-##### Laravel Scheduler
+Or configure directly in workspace container:
 
 ```bash
-# workspace/crontab/scheduler
-* * * * * /usr/local/bin/php /var/www/myapp.local/artisan schedule:run >> /var/log/cron/scheduler.log 2>&1
+dk  # Access workspace container
+composer config --global repositories.repo-name composer https://packages.example.com
+# See: https://getcomposer.org/doc/05-repositories.md
 ```
 
-##### Database Backup
+### SSH Configuration
 
-```bash  
-# workspace/crontab/backup
-0 2 * * * /usr/bin/pg_dump -h postgres -U dockerkit -d default > /var/www/backup_$(date +\%Y\%m\%d).sql 2>> /var/log/cron/backup.log
-```
-
-##### Log Cleanup
+Mount SSH keys for deployment and git operations:
 
 ```bash
-# workspace/crontab/cleanup
-0 0 * * 0 find /var/www/*/storage/logs -name "*.log" -mtime +30 -delete 2>> /var/log/cron/cleanup.log
+# Option 1: Copy keys to workspace/ssh/
+cp ~/.ssh/* workspace/ssh/
+
+# Option 2: Mount system SSH (in .env)
+HOST_SSH_PATH=~/.ssh
+
+make restart  # Apply changes
 ```
 
-**Apply changes:** `make restart`
+## Usage
 
-## Project Management
-
-DockerKit provides comprehensive project management from creation to configuration through intelligent automation that works seamlessly across your entire development environment.
-
-### New Project
-
-Create new projects interactively with `make project`:
-
-- **Supported frameworks**: Laravel, Symfony  
-- **Workflow**: Choose framework → Enter name (*.local) → Auto-scaffold → Optional setup
-- **Integration**: Automatic Docker configuration and HTTPS setup
-
-**Example:**
+DockerKit provides a comprehensive set of Make targets for streamlined development:
 
 ```bash
-make project
-# Select: Laravel
-# Enter: myapp.local  
-# ✓ Created and available at https://myapp.local
+# Environment Management
+make setup         # Complete environment setup (run once)
+make start         # Start selected services with network aliases
+make stop          # Stop all services
+make restart       # Restart selected services
+make status        # Show current system status
+
+# Project Management  
+make project       # Create new project (Laravel/Symfony)
+make dump          # Interactive database backup/restore tool
+
+# Development Tools
+make dk-install    # Install dk command for quick workspace access
+make dk-uninstall  # Remove dk command from system
+
+# Maintenance
+make reset         # Reset project to initial state
+make lint          # Run all quality checks (Dockerfiles, bash scripts)
 ```
 
-### Project Auto-Configuration
+The workspace container provides an enhanced terminal experience:
 
-DockerKit automatically detects and configures existing projects based on intelligent project detection and environment file analysis.
+### Interactive Navigation
 
-**Supported Project Types:**
+- **`Ctrl+T`** — Interactive file finder (fzf)
+- **`Ctrl+R`** — Fuzzy command history search
+- **Modern prompt** — Starship with project context and git status
 
-| Type            | Detection Method                                      | Document Root |
-|-----------------|-------------------------------------------------------|---------------|
-| **Laravel**     | `artisan` file + `laravel/framework` in composer.json | `/public`     |
-| **Symfony**     | `bin/console` + symfony packages in composer.json     | `/public`     |
-| **Satis**       | `composer/satis` in composer.json                     | `/public`     |
-| **WordPress**   | `wp-config.php` or WordPress directory structure      | `/`           |
-| **Static HTML** | `index.html` without server-side processing           | `/`           |
-| **Simple PHP**  | PHP files without framework                           | `/`           |
+### Smart Autocompletion
 
-**Detection Features:**
+Bash completion available for all development tools:
 
-- **Discovery**: Scans parent directory for `*.local` projects
-- **Real-time detection**: During setup and container startup  
-- **Smart configuration**: Automatic document root, nginx templates, SSL certificates
+- **Composer** commands and packages
+- **npm** and Node.js tools
+- **Git** branches and commands
+- **Laravel Artisan** commands
+- **Symfony Console** commands
 
-### Automated Features
+### Useful Aliases
 
-#### 1. **Project Discovery**
+Pre-configured shortcuts for common tasks:
 
-- **Automatic scanning** for `.local` projects in parent directory
-- **Real-time detection** during setup and container startup
-- **Project type identification** based on framework-specific files and structure
-- **Support for multiple frameworks**: Laravel, Symfony, WordPress, Static HTML, Simple PHP
+```bash
+# Laravel/PHP shortcuts
+artisan         # php artisan
+fresh           # php artisan migrate:fresh
+seed            # php artisan db:seed
 
-#### 2. **Project Type Detection**
+# Development tools
+pint            # ./vendor/bin/pint
+pest            # ./vendor/bin/pest
+phpstan         # ./vendor/bin/phpstan
 
-- **Laravel**: Detected via `artisan` file and `laravel/framework` in composer.json
-- **Symfony**: Identified by `bin/console`, `symfony.lock`, or Symfony packages in composer.json
-- **WordPress**: Recognized through `wp-config.php`, `wp-content/`, or `wp-includes/` structure
-- **Static HTML**: Projects with `index.html` but no server-side processing
-- **Simple PHP**: Fallback for any project containing PHP files
+# File operations
+ll              # ls -alF --color=auto
+tree            # tree -I vendor -C
+```
 
-#### 3. **Database Management**
+## Web Consoles
 
-- **Automatic database creation** for PostgreSQL and MySQL based on project `.env` files
-- **User management** with appropriate permissions per project
-- **Environment-specific configurations** (`.env`, `.env.testing`)
-- **Legacy user support** for existing project compatibility
-
-#### 4. **Object Storage (MinIO)**
-
-- **Automatic bucket creation** based on `AWS_BUCKET` or `MINIO_BUCKET` in project `.env`
-- **User management** using `AWS_ACCESS_KEY_ID`/`MINIO_ACCESS_KEY` credentials
-- **Policy configuration** with public/private bucket support
-- **Multiple project isolation** with dedicated access controls
-
-#### 5. **Redis Cache Configuration**
-
-- **Multi-password ACL support** for Redis default user configuration
-- **Project-based scanning** for `REDIS_PASSWORD` in `.env` files
-- **Deduplication logic** to avoid duplicate password configurations
-
-#### 6. **RabbitMQ Queue Management**
-
-- **User and virtual host creation** via Management API
-- **Comprehensive permission setup** (configure, write, read)
-- **Environment variable scanning** for `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
-
-#### 7. **Web Server Configuration**
-
-- **Nginx configuration generation** from project-specific templates
-- **Framework-optimized configs** with modern/legacy PHP-FPM routing
-- **Security headers and rules** tailored per project type
-- **Performance optimizations** built into generated configurations
-
-#### 8. **SSL Certificate Management**
-
-- **Automatic SSL certificate generation** using mkcert for all `.local` domains
-- **Certificate validation and renewal** as needed
-- **HTTPS-enabled nginx configs** when certificates are available
-- **Container CA installation** for internal HTTPS communication
-
-#### 9. **Host File Management**
-
-- **Automatic `.local` domain addition** to system hosts file using hostctl
-- **Clean management** with profile-based organization
-- **Cross-platform support** for macOS, Linux, and WSL2
-
-#### 10. **Network Configuration**
-
-- **Docker Compose aliases generation** for microservice communication
-- **Internal DNS resolution** for `.local` domains within Docker network
-- **Service discovery** enabling containers to communicate via project domains
-- **Network isolation** with secure inter-container communication
-
-#### 11. **Development Environment Setup**
-
-- **Configuration file creation** from examples (`.env`, auth.json, php.ini)
-- **Directory structure preparation** for logs, certificates, configurations
-- **Permission management** ensuring proper file access across containers
-
-### Automation Scripts
-
-DockerKit's automation is powered by initialization scripts that run during container startup, ensuring your development environment is always properly configured.
-
-#### Workspace Container (`workspace/entrypoint.d/`)
-
-**`01-ca-certificates`**
-
-- Installs mkcert CA certificates for HTTPS development
-- Enables secure communication between containers
-- Updates system certificate store automatically
-
-**`02-redis-setup`**
-
-- Configures Redis ACLs with multiple password support
-- Scans Laravel/Symfony projects for `REDIS_PASSWORD` in `.env` files
-- Ensures secure access while maintaining development flexibility
-
-**`03-rabbitmq-setup`**
-
-- Creates RabbitMQ users, virtual hosts, and permissions
-- Scans all project types for RabbitMQ configuration
-- Uses Management API for comprehensive setup
-- Supports `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` variables
-
-**`04-minio-setup`**
-
-- Scans all `.local` projects for MinIO/AWS configuration
-- Creates users and buckets based on project `.env` files
-- Sets up appropriate bucket policies (public/private)
-- Handles credential management and access control
-
-**`05-database-setup`**
-
-- Analyzes project `.env` files for database configuration
-- Creates PostgreSQL/MySQL databases and users automatically
-- Applies proper permissions and access controls
-- Supports multiple environment files per project
-
-#### PHP-FPM Container (`php-fpm/entrypoint.d/`)
-
-**`01-ca-certificates`**
-
-- Installs CA certificates for secure HTTPS requests from PHP applications
-- Enables verification of SSL certificates in development environment
-
-### Automation Workflow
-
-1. **Project Scan**: DockerKit automatically discovers all `.local` projects in the parent directory
-2. **Type Detection**: Each project is analyzed to determine its framework/type
-3. **Environment Analysis**: Project `.env` files are parsed for service configurations
-4. **Resource Creation**: Databases, storage buckets, users, and certificates are created
-5. **Configuration Generation**: Nginx configs, network aliases, and host entries are generated
-6. **Service Integration**: All services are configured to work together seamlessly
-
-This comprehensive automation means you can simply create a new `.local` project folder, add your code, run `make setup`, and everything else is handled automatically.
-
-## Web Interfaces
+Access management interfaces for development services:
 
 | Service           | URL                      | Credentials           | Purpose           |
 |-------------------|--------------------------|-----------------------|-------------------|
@@ -376,311 +248,29 @@ This comprehensive automation means you can simply create a new `.local` project
 
 ## Development Tools
 
-The workspace container includes a comprehensive set of pre-installed development tools for modern web development.
-
 ### API Development Tools
 
-#### OpenAPI Generator CLI
+- **OpenAPI Generator CLI** — Generate client libraries and server stubs from OpenAPI specs
+- **Vacuum** — OpenAPI specification linter and quality checker
 
-Generate client libraries, server stubs, and API documentation from OpenAPI specifications:
+### PHP Development Tools  
 
-```bash
-# Generate TypeScript client from OpenAPI spec
-openapi-generator-cli generate -g typescript-fetch \
-  -i https://petstore.swagger.io/v2/swagger.json \
-  -o ./generated/typescript-client
+- **Composer** with global packages (normalize, changelogs)
+- **Deployer** — Modern deployment tool with zero-downtime deployments
+- **Laravel Installer** — Quick Laravel project scaffolding
+- **Symfony CLI** — Official Symfony command-line tool
 
-# Generate PHP client
-openapi-generator-cli generate -g php \
-  -i ./api/openapi.yaml \
-  -o ./generated/php-client
+### Database Clients
 
-# List available generators
-openapi-generator-cli list
-```
+- **PostgreSQL client** (`psql`)
+- **MySQL client** (`mysql`)
+- **Redis tools** (`redis-cli`)
 
-#### Vacuum OpenAPI Linter
+### Modern Terminal Experience
 
-OpenAPI specification linter and quality checker:
-
-```bash
-# Lint OpenAPI specification
-vacuum lint ./api/openapi.yaml
-
-# Generate detailed report
-vacuum lint ./api/openapi.yaml --details
-
-# Check specific rules
-vacuum lint ./api/openapi.yaml --functions=owasp
-
-# Output formats
-vacuum lint ./api/openapi.yaml --format=json
-vacuum lint ./api/openapi.yaml --format=html > report.html
-```
-
-### Composer Global Tools
-
-#### ergebnis/composer-normalize
-
-Normalizes `composer.json` files according to a defined schema:
-
-```bash
-# Normalize current project
-composer normalize
-
-# Preview changes without applying
-composer normalize --dry-run
-
-# Normalize specific file
-composer normalize path/to/composer.json
-```
-
-#### pyrech/composer-changelogs
-
-Displays changelogs when updating packages:
-
-```bash
-# Automatically shows changelogs during updates
-composer update
-
-# Shows changelogs for all dependencies
-composer update --with-all-dependencies
-```
-
-### Deployment Tools
-
-#### Deployer
-
-Modern deployment tool for PHP applications with zero-downtime deployments:
-
-```bash
-# Initialize deployer in your project
-dep init
-
-# Deploy to staging
-dep deploy staging
-
-# Deploy to production
-dep deploy production
-
-# Rollback if something goes wrong
-dep rollback
-
-# List available tasks
-dep list
-```
-
-**Key Features:**
-
-- **Zero-downtime deployments** with automatic rollback support
-- **Multi-server deployments** with parallel execution
-- **Framework recipes** for Laravel, Symfony, WordPress, and more
-- **Server provisioning** with automatic PHP, MySQL, and HTTPS setup
-
-**Documentation:** [deployer.org](https://deployer.org)
-
-#### SSH Configuration for Deployment
-
-Deployer requires SSH access to remote servers. Configure SSH keys using the `HOST_SSH_PATH` environment variable:
-
-```bash
-# Option 1: Use your system SSH keys (recommended)
-HOST_SSH_PATH=~/.ssh
-
-# Option 2: Use workspace SSH directory (secure)
-HOST_SSH_PATH=./workspace/ssh
-
-# Option 3: Leave empty to use default workspace/ssh
-HOST_SSH_PATH=
-```
-
-**Using system SSH keys:**
-
-- Automatically inherits all your configured SSH keys
-- Supports SSH config files and known_hosts
-- Keys are securely copied into a container with proper permissions
-- Original keys remain read-only on host system
-
-**Using workspace SSH directory:**
-
-- Copy your deployment keys to `workspace/ssh/`
-- Isolated from system SSH configuration
-- Version control friendly (git ignores keys)
-- Automatic permission fixing (600 for private keys, 644 for public keys)
-
-### Database Tools
-
-#### PostgreSQL Client
-
-Direct database access and operations:
-
-```bash
-# Connect to PostgreSQL
-psql -h postgres -U dockerkit -d default
-
-# Export database
-pg_dump -h postgres -U dockerkit -d default > backup.sql
-
-# Import database
-psql -h postgres -U dockerkit -d default < backup.sql
-```
-
-#### MySQL Client
-
-```bash
-# Connect to MySQL
-mysql -h mysql -u dockerkit -p
-
-# Export database
-mysqldump -h mysql -u dockerkit -p default > backup.sql
-```
-
-### Database Dump Management
-
-DockerKit includes a comprehensive database dump management system with support for MySQL and PostgreSQL.
-
-#### Features
-
-- **Interactive workflow** with step-by-step database and operation selection
-- **MySQL and PostgreSQL support** with automatic driver detection  
-- **Compression support** with optional gzip compression for smaller files
-
-#### Usage
-
-```bash
-# Start interactive dump manager
-make dump
-
-# Follow the prompts:
-# 1. Select database type (MySQL/PostgreSQL)
-# 2. Select operation (Backup database/Restore database)
-# 3. Complete the workflow based on your choice
-```
-
-#### Manual File Placement
-
-You can also manually place dump files in the appropriate directories:
-
-```bash
-# Copy external dumps to DockerKit
-cp /path/to/external.sql dumps/mysql/
-cp /path/to/backup.sql.gz dumps/postgres/
-
-# Then use 'make dump' to restore them
-```
-
-### Object Storage Tools
-
-#### MinIO Client (mc)
-
-MinIO Client provides command-line interface for object storage operations and bucket management:
-
-```bash
-# List all buckets
-mc ls minio
-
-# Create new bucket
-mc mb minio/my-new-bucket
-
-# Set bucket policy (public, upload, download, private)
-mc anonymous set public minio/documents
-mc anonymous set upload minio/uploads
-mc anonymous set download minio/media
-
-# Copy files to bucket
-mc cp ./file.txt minio/documents/
-
-# Sync directory with bucket
-mc mirror ./assets/ minio/assets/
-
-# Enable versioning
-mc version enable minio/backups
-
-# Get bucket info
-mc stat minio/documents
-```
-
-**Automatic Project Integration:** DockerKit automatically creates users/buckets based on project `.env` configurations during container startup.
-
-### Terminal Navigation Tools
-
-#### fzf (Fuzzy Finder)
-
-fzf is a fast, interactive command-line fuzzy finder that enhances file navigation and command history searching.
-
-#### Key Features
-
-- **Interactive file search** with fuzzy matching
-- **Command history search** with instant filtering  
-- **Directory navigation** with preview support
-- **Git integration** for branches, commits, and files
-- **Customizable preview** for files and directories
-
-#### Keyboard Shortcuts
-
-| Shortcut | Function       | Description                                |
-|----------|----------------|--------------------------------------------|
-| `Ctrl+T` | File finder    | Find files/directories in current path     |
-| `Ctrl+R` | History search | Search command history with fuzzy matching |
-
-## Common Commands
-
-### Essential Commands
-
-```bash
-make setup         # Initial setup (run once)
-make start         # Start all services  
-make stop          # Stop all services
-make restart       # Restart all services
-make status        # Check system status
-```
-
-### Database Management
-
-```bash
-make dump          # Interactive database backup/restore tool
-```
-
-### Create Project
-
-```bash
-make project       # Create new project (Laravel/Symfony)
-```
-
-### Quick Access Tool
-
-Install `dk` command for instant workspace access from any `.local` project:
-
-```bash
-make dk-install    # Install dk command system-wide
-make dk-uninstall  # Remove dk command from system
-```
-
-**Usage:**
-
-```bash
-# Navigate to any .local project and run:
-cd myapp.local
-dk                 # Quick connect to workspace
-
-# Show version and help
-dk --version       # Show dk version
-dk --help          # Show help information
-```
-
-**Features:**
-
-- **Auto-discovery:** Detects available DockerKit instances automatically
-- **Smart routing:** Connects to the appropriate workspace based on current project
-- **Cross-platform:** Works on macOS, Linux, and WSL2
-- **Shell integration:** Adds to PATH and creates shell function automatically
-
-### Maintenance
-
-```bash
-make build         # Rebuild containers
-make reset         # Clean project resources
-```
+- **fzf** — Interactive fuzzy finder for file search and command history
+- **Starship** — Modern shell prompt with project context
+- **yq** — YAML processor for configuration management
 
 ## Comparison
 
@@ -691,7 +281,6 @@ make reset         # Clean project resources
 | **Project Discovery**      | ✅ Automatic scanning and detection                             | ❌ Manual configuration          |
 | **SSL Certificates**       | ✅ Automatic SSL generation with mkcert                         | ❌ Manual SSL setup              |
 | **Nginx Configuration**    | ✅ Auto-generated configs                                       | ❌ Manual nginx configuration    |
-| **Hosts Management**       | ✅ Automatic `.local` domains addition with hostctl             | ❌ Manual hosts file editing     |
 | **MinIO Management**       | ✅ Automatic user/bucket creation based on project .env files   | ❌ Manual bucket setup           |
 | **Database Creation**      | ✅ Automatic database/user creation based on project .env files | ❌ Manual database setup         |
 | **Container Optimization** | ✅ Multi-stage builds, smaller images, caching                  | ⚠️ Traditional Docker approach  |
@@ -711,46 +300,18 @@ make reset         # Clean project resources
 - **Proven stability** and mature codebase
 - **Large community** support and resources
 
-## FAQ
-
-### Can I use this with existing projects?
-
-Yes! Just rename your project folder to `myproject.local` and run `make setup`.
-
-### Does it work on Windows?
-
-Yes, through WSL2. Install Docker Desktop with WSL2 backend.
-
-### Can I add custom services?
-
-Yes! Edit `docker-compose.yml` to add any Docker service you need.
-
 ## Roadmap
 
-- [x] Add MinIO Client integration with automatic bucket management
-- [x] Implement project-based MinIO automation (automatic user/bucket creation from .env files)
-- [x] Add Composer configuration for private repositories (GitLab, GitHub, etc)
-- [x] Add flexible service management with environment variables (ENABLE_* flags)
-- [x] Implement container startup automation system
-- [x] Add CA certificate installation for HTTPS development
-- [x] Add automatic hosts file generation for local projects
-- [x] Add Service Discovery system for inter-project communication (DNS aliases, network routing)
-- [x] Add a quick access tool (dk command) for instant workspace connection from any .local project
-- [x] Add comprehensive database dump management system with MySQL/PostgreSQL support
-- [x] **Project creation tool (make project) for Laravel and Symfony**
-- [x] **Automatic cleanup system for obsolete configurations**
-- [x] **Container management and restart automation**
-- [ ] Configure supervisor for process management
-- [ ] Add Xdebug configuration documentation with IDE setup examples
-- [x] Implement automatic database and user creation for detected projects
-- [ ] Add support for Python project type detection (requirements.txt, pyproject.toml)
-- [ ] Add support for Node.js project type detection (package.json, next.config.js)
-- [ ] Add MongoDB database support with automatic collection setup
-- [ ] Add RoadRunner support as an alternative to PHP-FPM
-- [ ] Add FrankenPHP support for modern PHP applications
-- [ ] Add Laravel Horizon support for queue monitoring
-- [ ] Add pgBadger support for PostgreSQL log analysis
-- [ ] Migrate Portainer to secure HTTPS port 9443* (currently using HTTP on 9010)
+DockerKit is actively developed with exciting features planned for future releases:
+
+- [ ] **Improve documentation** — Comprehensive documentation with examples and clear structure
+- [ ] **Configure supervisor for process management** — Advanced process monitoring and management
+- [ ] **Add RoadRunner support** — High-performance PHP application server as alternative to PHP-FPM
+- [ ] **Add FrankenPHP support** — Modern PHP runtime built on top of Caddy web server
+- [ ] **Add Laravel Horizon support** — Queue monitoring and management dashboard
+- [ ] **Add support for Node.js projects** — Automatic detection and configuration for Node.js applications
+- [ ] **Add MongoDB database support** — Automatic collection setup with user management
+- [ ] **Add pgBadger support** — PostgreSQL log analysis and performance insights
 
 ## Contributing
 

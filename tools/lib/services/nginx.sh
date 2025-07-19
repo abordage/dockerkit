@@ -66,7 +66,7 @@ process_project_config() {
     document_root=$(get_document_root "$project_type" "$project_name")
 
     local template_file
-    template_file=$(select_template "$project_type" "$project_name")
+    template_file=$(select_template "$project_type")
 
     if [ ! -f "$template_file" ]; then
         print_error "Template not found: $(basename "$template_file")"
@@ -84,16 +84,10 @@ process_project_config() {
 
 select_template() {
     local project_type="$1"
-    local project_name="$2"
     local templates_dir="$DOCKERKIT_DIR/$NGINX_TEMPLATES_DIR"
-    local ssl_cert="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${project_name}.crt"
-    local ssl_key="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${project_name}.key"
 
-    if [ -f "$ssl_cert" ] && [ -f "$ssl_key" ]; then
-        echo "$templates_dir/${project_type}-ssl.conf"
-    else
-        echo "$templates_dir/${project_type}.conf"
-    fi
+    # Always use unified template (contains both HTTP and HTTPS server blocks)
+    echo "$templates_dir/${project_type}.conf"
 }
 
 generate_from_template() {
@@ -107,9 +101,22 @@ generate_from_template() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
-    if sed -e "s|{{SITE_NAME}}|$site_name|g" \
-           -e "s|{{DOCUMENT_ROOT}}|$document_root|g" \
-           "$template_file" > "$config_file"; then
+    local ssl_cert="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${site_name}.crt"
+    local ssl_key="$DOCKERKIT_DIR/$NGINX_SSL_DIR/${site_name}.key"
+
+    # Read template and replace variables
+    local content
+    content=$(sed -e "s|{{SITE_NAME}}|$site_name|g" \
+                  -e "s|{{DOCUMENT_ROOT}}|$document_root|g" \
+                  "$template_file")
+
+    # Remove HTTPS block if SSL certificates don't exist
+    if [ ! -f "$ssl_cert" ] || [ ! -f "$ssl_key" ]; then
+        content=$(echo "$content" | sed '/# HTTPS_BLOCK_START/,/# HTTPS_BLOCK_END/d')
+    fi
+
+    # Write result to config file
+    if echo "$content" > "$config_file"; then
         return "$EXIT_SUCCESS"
     else
         return "$EXIT_GENERAL_ERROR"
@@ -126,19 +133,19 @@ cleanup_nginx_configs() {
         return 0
     fi
 
-    # Get all .local.conf files
+    # Get all .localhost.conf files
     local existing_configs=()
     while IFS= read -r -d '' config_file; do
-        if [[ "$(basename "$config_file")" == *.local.conf ]]; then
+        if [[ "$(basename "$config_file")" == *.localhost.conf ]]; then
             existing_configs+=("$config_file")
         fi
-    done < <(find "$configs_dir" -name "*.local.conf" -print0 2>/dev/null)
+    done < <(find "$configs_dir" -name "*.localhost.conf" -print0 2>/dev/null)
 
     # Check each configuration only if there are any
     if [ ${#existing_configs[@]} -gt 0 ]; then
         for config_file in "${existing_configs[@]}"; do
             local config_name
-            config_name=$(basename "$config_file" .conf)  # project.local
+            config_name=$(basename "$config_file" .conf)
 
             # Check if project exists
             if ! project_exists_in_list "$config_name" "${current_projects[@]}"; then

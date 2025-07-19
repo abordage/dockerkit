@@ -26,7 +26,6 @@ source "$SCRIPT_DIR/lib/core/input.sh"
 # Load service libraries
 source "$SCRIPT_DIR/lib/services/packages.sh"
 source "$SCRIPT_DIR/lib/services/ssl.sh"
-source "$SCRIPT_DIR/lib/services/hosts.sh"
 source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
@@ -53,7 +52,7 @@ USAGE:
     Complete setup of DockerKit development environment including:
     • System dependencies check (with installation instructions)
     • Git configuration generation
-    • Project detection and analysis (.local domains only)
+    • Project detection and analysis (.localhost domains only)
     • Network aliases generation for Docker Compose
     • Hosts file management
     • SSL certificate generation
@@ -66,18 +65,13 @@ EXAMPLES:
     ./setup.sh                  # Full environment setup
 
     PROCESS:
-    1. Check system dependencies (homebrew, hostctl, mkcert)
-    2. Scan for .local projects in parent directory
+    1. Check system dependencies
+    2. Scan for .localhost projects in parent directory
     3. Generate Docker Compose network aliases
     4. Set up hosts file entries for discovered projects
     5. Generate SSL certificates for HTTPS support
     6. Generate nginx configurations based on project types
     7. Validate all generated configurations
-
-REQUIREMENTS:
-    • macOS: homebrew, hostctl, mkcert
-    • Linux: hostctl, mkcert
-    • All projects must have .local suffix in directory names
 
 EOF
 }
@@ -99,8 +93,9 @@ main() {
     # Step 3: Scan for projects
     local projects
     if ! projects=$(scan_local_projects 2>/dev/null); then
-        print_warning "No .local projects found"
-        print_tip "Create directories with .local suffix to get started"
+        print ""
+        print_warning "No .localhost projects found"
+        print_tip "Create directories with .localhost suffix to get started"
         exit "$EXIT_SUCCESS"
     fi
 
@@ -137,19 +132,7 @@ main() {
     print_section "Generating network aliases"
     setup_network_aliases "${projects_array[@]}" || print_warning " ◆ Skipped step: Network aliases generation"
 
-    # Step 8: Set up hosts entries
-    # Request sudo privileges first with user warning
-    echo ""
-    print_warning "Administrator password required for hosts file modification"
-    if ! request_sudo; then
-        print_error "Failed to obtain administrator privileges"
-        exit "$EXIT_PERMISSION_DENIED"
-    fi
-
-    # print_section "Setting up hosts entries"
-    setup_hosts_entries "${projects_array[@]}" || print_warning " ◆ Skipped step: Hosts setup"
-
-    # Step 9: Show summary
+    # Step 8: Show summary
     show_setup_summary "${projects_array[@]}"
 }
 

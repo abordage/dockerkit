@@ -3,7 +3,7 @@
 # ============================================================================
 # RABBITMQ SETUP SCRIPT
 # ============================================================================
-# Scans .local projects and creates RabbitMQ users, vhosts and permissions
+# Scans .localhost projects and creates RabbitMQ users, vhosts and permissions
 # ============================================================================
 set -euo pipefail
 
@@ -357,10 +357,10 @@ main() {
         return 0
     fi
 
-    # Process .local projects for RabbitMQ configurations
-    log_info "Starting RabbitMQ automation for .local projects..."
+    # Process .localhost projects for RabbitMQ configurations
+    log_info "Starting RabbitMQ automation for .localhost projects..."
 
-    # Step 1: Scan for .local projects
+    # Step 1: Scan for .localhost projects
     if ! discover_projects; then
         log_info "RabbitMQ automation completed (no projects found)"
         echo ""

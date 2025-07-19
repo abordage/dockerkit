@@ -3,7 +3,7 @@
 # =============================================================================
 # DOCKERKIT QUICK CONNECT - SYSTEM-WIDE INSTALLATION
 # =============================================================================
-# Quick connect to DockerKit workspace container from any .local project
+# Quick connect to DockerKit workspace container from any .localhost project
 # Compatible: macOS, Linux, WSL2
 # Usage: dk [--help|--version]
 # =============================================================================
@@ -14,7 +14,7 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
-readonly DK_VERSION="1.4.0"
+readonly DK_VERSION="1.5.0"
 
 # =============================================================================
 # STANDARD EXIT CODES
@@ -72,7 +72,7 @@ detect_os() {
 validate_project_name() {
     case "$1" in
         *[^a-zA-Z0-9._-]*) return 1 ;;
-        *.local) return 0 ;;
+        *.localhost) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -103,7 +103,7 @@ USAGE:
     dk [OPTIONS]
 
 DESCRIPTION:
-    Quick connect to DockerKit workspace container from any .local project.
+    Quick connect to DockerKit workspace container from any .localhost project.
     Automatically detects current project and available DockerKit instances.
 
 OPTIONS:
@@ -115,7 +115,7 @@ EXAMPLES:
     dk --version            # Show version number
 
 REQUIREMENTS:
-    • Must be run from a .local project directory
+    • Must be run from a .localhost project directory
     • At least one DockerKit instance must be available
     • Docker and docker compose must be installed
 
@@ -145,8 +145,8 @@ detect_current_project() {
     project_name="$(safe_basename "${current_dir}")"
 
     if ! validate_project_name "${project_name}"; then
-        print_warning "Current directory is not a .local project: ${project_name}"
-        print_info "Navigate to a project directory ending with .local"
+        print_warning "Current directory is not a .localhost project: ${project_name}"
+        print_info "Navigate to a project directory ending with .localhost"
         return "${EXIT_INVALID_CONFIG}"
     fi
 
