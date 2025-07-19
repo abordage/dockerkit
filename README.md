@@ -7,87 +7,45 @@
 ![Shellcheck Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
 ![License](https://img.shields.io/github/license/abordage/dockerkit)
 
-<p style="text-align: center;" align="center">
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#configuration">Configuration</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#development-tools">Tools</a>
-</p>
+DockerKit is a modern development environment enabling you to run, configure, and manage multiple Laravel/Symfony (and more) projects in Docker with minimal effort and maximum automation. **Everything just works out of the box.**
 
 ![dockerkit-setup.gif](.github/images/dockerkit-setup.gif)
-
-DockerKit is a modern development environment enabling you to run, configure, and manage multiple Laravel/Symfony (and more) projects in Docker with minimal effort and maximum automation. **Everything just works out of the box.**
 
 ---
 
 ## Features
 
-### **Automatic Infrastructure**
+### 🔍 Zero-Configuration Discovery
 
-#### **Project Discovery**
+- **Automatic project scanning** for `.localhost` projects in parent directory
+- **Framework detection** based on project structure
+- **SSL certificate generation** using mkcert for secure HTTPS development
+- **Nginx configuration** auto-generated from project-specific templates
 
-- **Automatic scanning** for `.localhost` projects in parent directory
-- **Project type identification** based on framework-specific files and structure
-- **Support for multiple frameworks / CMS**: Laravel, Symfony, WordPress, Static HTML, Simple PHP
+### ⚙️ Service Auto-Configuration
 
-#### **Web Server Configuration**
+- **Multi-project .env scanning** across all `.localhost` directories
+- **Database auto-creation** for PostgreSQL and MySQL with user management
+- **Redis ACL setup** with multi-password configuration per project
+- **RabbitMQ management** with user, virtual host, and permission setup
+- **MinIO bucket creation** with user management and policy configuration
 
-- **Automatic SSL certificate generation** using mkcert for all `.localhost` domains
-- **Nginx configuration generation** from project-specific templates
-- **Security headers and rules** tailored per project type
-
-#### **Network Configuration**
-
-- **Docker Compose aliases generation** for microservice communication
-- **Internal DNS resolution** for `.localhost` domains within Docker network
-- **Container CA installation** for internal HTTPS communication
-
-### **Automatic Service Configuration**
-
-#### **Environment Scanning**
-
-- **Project .env file detection** across all `.localhost` directories
-- **Multi-environment support** for `.env` and `.env.testing` configurations
-- **Service configuration mapping** from environment variables to service settings
-
-#### **Database Configuration**
-
-- **Database creation** for PostgreSQL and MySQL based on `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
-- **User management** with appropriate permissions per project
-- **Legacy user support** for existing project compatibility
-
-#### **Redis Configuration**
-
-- **Multi-password ACL setup** based on `REDIS_PASSWORD`
-- **Project isolation** with dedicated Redis configurations
-
-#### **RabbitMQ Configuration**
-
-- **User and virtual host creation** based on `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
-- **Permission setup** (configure, write, read) per project
-
-#### **MinIO Configuration**
-
-- **Bucket creation** based on `AWS_BUCKET` or `MINIO_BUCKET`
-- **User management** based on `AWS_ACCESS_KEY_ID`/`MINIO_ACCESS_KEY`
-- **Policy configuration** with public/private bucket support
-
-### **Development Tools**
-
-#### **Project Creation**
+### 🛠️ Developer Productivity Tools
 
 - **Interactive project creation** for Laravel and Symfony frameworks
-- **Environment configuration** with .env file generation
-- **Instant HTTPS setup** for newly created projects
-
-#### **Database Management**
-
-- **Interactive backup/restore tool** with step-by-step workflow
-- **Multi-database support** for PostgreSQL and MySQL
-- **Compression support** with optional gzip compression
+- **Database backup/restore** with step-by-step workflow and compression support
+- **Enhanced workspace** with modern terminal, fuzzy search, and smart autocompletion
+- **Docker network aliases** for seamless microservice communication
 
 ---
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [Configuration](#configuration)
+3. [Usage](#usage)
+4. [Web Consoles](#web-consoles)
+5. [Development Tools](#development-tools)
 
 ## Quick Start
 
