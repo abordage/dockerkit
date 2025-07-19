@@ -7,22 +7,21 @@
 ![Shellcheck Status](https://img.shields.io/github/actions/workflow/status/abordage/dockerkit/shellcheck.yml?label=shellcheck)
 ![License](https://img.shields.io/github/license/abordage/dockerkit)
 
-DockerKit is a modern development environment enabling you to run, configure, and manage multiple Laravel/Symfony (and more) projects in Docker with minimal effort and maximum automation. **Everything just works out of the box.**
+DockerKit is a modern development environment enabling you to run, configure, and manage multiple Laravel/Symfony (and more) projects in Docker with minimal effort and maximum automation.
 
 ![dockerkit-setup.gif](.github/images/dockerkit-setup.gif)
 
----
 
 ## Features
 
-### 🔍 Zero-Configuration Discovery
+### Zero-Configuration Discovery
 
 - **Automatic project scanning** for `.localhost` projects in parent directory
 - **Framework detection** based on project structure
 - **SSL certificate generation** using mkcert for secure HTTPS development
 - **Nginx configuration** auto-generated from project-specific templates
 
-### ⚙️ Service Auto-Configuration
+### Service Auto-Configuration
 
 - **Multi-project .env scanning** across all `.localhost` directories
 - **Database auto-creation** for PostgreSQL and MySQL with user management
@@ -30,14 +29,12 @@ DockerKit is a modern development environment enabling you to run, configure, an
 - **RabbitMQ management** with user, virtual host, and permission setup
 - **MinIO bucket creation** with user management and policy configuration
 
-### 🛠️ Developer Productivity Tools
+### Developer Productivity Tools
 
 - **Interactive project creation** for Laravel and Symfony frameworks
 - **Database backup/restore** with step-by-step workflow and compression support
 - **Enhanced workspace** with modern terminal, fuzzy search, and smart autocompletion
 - **Docker network aliases** for seamless microservice communication
-
----
 
 ## Table of Contents
 
@@ -91,7 +88,7 @@ DockerKit automatically discovers projects in the parent directory:
 Modern browsers automatically resolve `.localhost` domains to `127.0.0.1` according to RFC standards:
 
 - [RFC 2606](https://datatracker.ietf.org/doc/html/rfc2606) — Reserved Top Level DNS Names: Defines `.localhost` as a reserved domain
-- [RFC 6761](https://datatracker.ietf.org/doc/html/rfc6761) — Special-Use Top Level Domains: Specifies that `.localhost` should resolve to loopback addresses
+- [RFC 6761](https://datatracker.ietf.org/doc/html/rfc6761) — Special-Use Top Level Domains: `.localhost` should resolve to loopback addresses
 - [RFC 6762](https://datatracker.ietf.org/doc/html/rfc6762) — Multicast DNS: Confirms `.localhost` special handling in modern systems
 
 This eliminates the need for hosts file modifications or DNS configuration.
