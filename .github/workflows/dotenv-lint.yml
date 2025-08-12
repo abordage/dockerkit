@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run dotenv-linter
         uses: dotenv-linter/action-dotenv-linter@v2
