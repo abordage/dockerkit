@@ -10,7 +10,7 @@ set -euo pipefail
 # Source common functions
 source /entrypoint.d/00-base
 
-readonly SSH_SOURCE="/ssh-keys"
+readonly SSH_SOURCE="${SSH_SOURCE:-}"
 readonly SSH_TARGET="/home/${APP_USER}/.ssh"
 
 # ============================================================================
@@ -19,6 +19,12 @@ readonly SSH_TARGET="/home/${APP_USER}/.ssh"
 
 check_prerequisites() {
     log_info "Checking prerequisites for SSH keys setup..."
+
+    # Skip if SSH source is not set
+    if [[ -z "$SSH_SOURCE" ]]; then
+        log_skip "SSH source is not set"
+        return 1
+    fi
 
     # Check if source directory exists
     if [[ ! -d "$SSH_SOURCE" ]]; then
@@ -44,7 +50,10 @@ copy_ssh_keys() {
     log_info "Copying SSH keys from $SSH_SOURCE to $SSH_TARGET..."
 
     # Create target directory with proper ownership
-    mkdir -p "$SSH_TARGET"
+    mkdir -p "$SSH_TARGET" || {
+        log_error "Failed to create target directory"
+        return 1
+    }
     chown "${APP_USER}:${APP_USER}" "$SSH_TARGET" 2>/dev/null || true
 
     # Copy all files from source to target
@@ -140,16 +149,16 @@ main() {
 
     # Copy SSH keys from mounted volume
     if ! copy_ssh_keys; then
-        log_error "SSH keys setup failed (copy failed)"
+        log_warn "SSH keys setup failed (copy failed)"
         echo ""
-        return 1
+        return 0
     fi
 
     # Set proper permissions
     if ! fix_ssh_permissions; then
-        log_error "SSH keys setup failed (permissions failed)"
+        log_warn "SSH keys setup failed (permissions failed)"
         echo ""
-        return 1
+        return 0
     fi
 
     # Validate setup
