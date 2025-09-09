@@ -1,3 +1,11 @@
+# [2.3.0](https://github.com/abordage/dockerkit/compare/v2.2.0...v2.3.0) (2025-09-09)
+
+
+### Features
+
+* **workspace:** add tmp-clean target to Makefile for clearing /tmp directory ([9a88f36](https://github.com/abordage/dockerkit/commit/9a88f3682a56ba66cc3f0b6021e8621e17d301be))
+* **workspace:** ensure proper permissions for /opt directory ([89d0adb](https://github.com/abordage/dockerkit/commit/89d0adb016f9631f25473c3e7ce890d048816acf))
+
 # [2.2.0](https://github.com/abordage/dockerkit/compare/v2.1.0...v2.2.0) (2025-09-09)
 
 
