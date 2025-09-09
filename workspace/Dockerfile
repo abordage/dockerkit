@@ -375,6 +375,11 @@ USER root
 # Copy entrypoint scripts
 COPY --chmod=0755 entrypoint.sh /usr/local/bin/
 
+# Ensure proper permissions for /opt where IDE stores helpers/coverage
+RUN mkdir -p /opt \
+ && chown ${APP_UID}:${APP_GID} /opt \
+ && chmod 2775 /opt
+
 # Add healthcheck for container monitoring
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD php --version > /dev/null || exit 1

@@ -220,7 +220,7 @@ Pre-configured shortcuts for common tasks:
 
 ```bash
 # Laravel/PHP shortcuts
-artisan         # php artisan
+art             # php artisan
 fresh           # php artisan migrate:fresh
 seed            # php artisan db:seed
 
