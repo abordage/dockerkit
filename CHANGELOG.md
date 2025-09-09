@@ -1,3 +1,11 @@
+# [2.2.0](https://github.com/abordage/dockerkit/compare/v2.1.0...v2.2.0) (2025-09-09)
+
+
+### Features
+
+* **docker:** enable id field data in Elasticsearch configuration ([1151e99](https://github.com/abordage/dockerkit/commit/1151e99d12f23109337fe76faa176a903d0a55fd))
+* **workspace:** add global full-access policy for MinIO users ([ca4b043](https://github.com/abordage/dockerkit/commit/ca4b043412b49b375a1682e86cadd59d6ada8b51))
+
 # [2.1.0](https://github.com/abordage/dockerkit/compare/v2.0.0...v2.1.0) (2025-07-19)
 
 
