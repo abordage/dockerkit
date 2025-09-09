@@ -17,7 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status setup start stop restart reset \
-		dk-install dk-uninstall project dump lint
+		dk-install dk-uninstall project dump lint tmp-clean
 
 # Colors for output
 RED := \033[0;31m
@@ -105,6 +105,9 @@ dk-uninstall: ## Remove dk command from system
 
 reset: ## Reset project to initial state (clean containers, volumes, configs)
 	@tools/reset.sh
+
+tmp-clean: ## Clean /tmp inside workspace container (dangerous, removes all)
+	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) exec -u root workspace bash -lc 'rm -rf -- /tmp/* /tmp/.[!.]* /tmp/..?*'
 
 # =============================================================================
 # QUALITY ASSURANCE
