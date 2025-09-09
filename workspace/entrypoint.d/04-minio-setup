@@ -29,6 +29,7 @@ readonly MINIO_KEY_SECRET_KEY="MINIO_SECRET_KEY"
 # MinIO policies
 readonly POLICY_PUBLIC="public"
 readonly POLICY_PRIVATE="private"
+readonly POLICY_GLOBAL_NAME="global-full-access"
 
 # Global arrays for discovered data
 declare -a discovered_minio_configs=()
@@ -214,21 +215,22 @@ create_minio_user() {
     fi
 }
 
-# Generate user policy for bucket access
-generate_user_policy() {
-    local bucket_name="$1"
-    local policy_name="${bucket_name}-policy"
-
-    # Create policy JSON for full bucket access
+# Generate global policy content providing full access to all buckets
+generate_global_policy() {
     local policy_content="{
     \"Version\": \"2012-10-17\",
     \"Statement\": [
         {
             \"Effect\": \"Allow\",
+            \"Action\": [\"s3:ListAllMyBuckets\"],
+            \"Resource\": \"*\"
+        },
+        {
+            \"Effect\": \"Allow\",
             \"Action\": [\"s3:*\"],
             \"Resource\": [
-                \"arn:aws:s3:::${bucket_name}\",
-                \"arn:aws:s3:::${bucket_name}/*\"
+                \"arn:aws:s3:::*\",
+                \"arn:aws:s3:::*/*\"
             ]
         }
     ]
@@ -237,31 +239,41 @@ generate_user_policy() {
     echo "$policy_content"
 }
 
-# Create and attach policy to user
-attach_user_policy() {
-    local user_name="$1"
-    local bucket_name="$2"
-    local policy_name="${user_name}-${bucket_name}-policy"
+# Ensure global policy exists in MinIO (idempotent)
+ensure_global_policy() {
+    log_info "Ensuring global policy '$POLICY_GLOBAL_NAME' exists..."
 
-    # Generate policy content
-    local policy_content
-    policy_content=$(generate_user_policy "$bucket_name")
-
-    # Create temporary policy file
-    local temp_policy="/tmp/${policy_name}.json"
-    echo "$policy_content" > "$temp_policy"
-
-    # Add policy to MinIO
-    if mc admin policy create "$MINIO_ALIAS" "$policy_name" "$temp_policy" >/dev/null 2>&1; then
-        # Attach policy to user
-        if mc admin policy attach "$MINIO_ALIAS" "$policy_name" --user "$user_name" >/dev/null 2>&1; then
-            rm -f "$temp_policy"
-            return 0
-        fi
+    if mc admin policy info "$MINIO_ALIAS" "$POLICY_GLOBAL_NAME" >/dev/null 2>&1; then
+        log_skip "Global policy '$POLICY_GLOBAL_NAME' already exists"
+        return 0
     fi
 
-    rm -f "$temp_policy"
-    return 1
+    local policy_content
+    policy_content=$(generate_global_policy)
+
+    local temp_policy="/tmp/${POLICY_GLOBAL_NAME}.json"
+    echo "$policy_content" > "$temp_policy"
+
+    if mc admin policy create "$MINIO_ALIAS" "$POLICY_GLOBAL_NAME" "$temp_policy" >/dev/null 2>&1; then
+        log_ok "Global policy '$POLICY_GLOBAL_NAME' created"
+        rm -f "$temp_policy"
+        return 0
+    else
+        log_warn "Failed to create global policy '$POLICY_GLOBAL_NAME'"
+        rm -f "$temp_policy"
+        return 1
+    fi
+}
+
+# Attach global policy to a user
+attach_global_policy_to_user() {
+    local user_name="$1"
+
+    if mc admin policy attach "$MINIO_ALIAS" "$POLICY_GLOBAL_NAME" --user "$user_name" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # ============================================================================
@@ -412,12 +424,12 @@ process_minio_config() {
         fi
     fi
 
-    # Step 4: Attach user policy for bucket access
-    log_info "Attaching bucket policy to user '$access_key': $context"
-    if attach_user_policy "$access_key" "$bucket_name"; then
-        log_ok "Bucket policy attached to user '$access_key': $context"
+    # Step 4: Attach global policy to user for full access
+    log_info "Attaching global policy '$POLICY_GLOBAL_NAME' to user '$access_key': $context"
+    if attach_global_policy_to_user "$access_key"; then
+        log_ok "Global policy attached to user '$access_key': $context"
     else
-        log_warn "Failed to attach bucket policy to user '$access_key': $context"
+        log_warn "Failed to attach global policy to user '$access_key': $context"
     fi
 
     return 0
@@ -449,6 +461,11 @@ main() {
         log_error "MinIO client configuration failed"
         echo ""
         return 1
+    fi
+
+    # Ensure global full-access policy exists
+    if ! ensure_global_policy; then
+        log_warn "Proceeding without ensuring global policy; subsequent attaches may fail"
     fi
 
     # Process .localhost projects for AWS/MinIO configurations
