@@ -292,6 +292,7 @@ services:
       - cluster.routing.allocation.disk.threshold_enabled=false
       - cluster.routing.allocation.node_concurrent_recoveries=2
       - indices.recovery.max_bytes_per_sec=100mb
+      - indices.id_field_data.enabled=true
 
       # Security settings (disabled for development)
       - xpack.security.enabled=false
