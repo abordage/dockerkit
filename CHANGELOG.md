@@ -1,3 +1,12 @@
+# [2.4.0](https://github.com/abordage/dockerkit/compare/v2.3.0...v2.4.0) (2025-09-10)
+
+
+### Features
+
+* add rebuild target for workspace and php-fpm images ([faae410](https://github.com/abordage/dockerkit/commit/faae41069fd38661734bf4b783c2f79ccaeac6dd))
+* **php-fpm:** build custom cURL to disable RFC 6761 .localhost hardcoding ([efeddfd](https://github.com/abordage/dockerkit/commit/efeddfd1578b1c392e45cb15e913200601d050e4))
+* **workspace:** build custom cURL to disable RFC 6761 .localhost hardcoding ([8dfb365](https://github.com/abordage/dockerkit/commit/8dfb365e291206734a1bb10836902db4ff6a3b90))
+
 # [2.3.0](https://github.com/abordage/dockerkit/compare/v2.2.0...v2.3.0) (2025-09-09)
 
 
