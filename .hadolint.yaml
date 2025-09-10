@@ -1,9 +1,10 @@
 ignored:
+  - DL3003  # Use WORKDIR to switch to a directory - subshell (cd && cmd) is acceptable pattern
   - DL3008  # Pin versions in apt get install - ignored for dev environment flexibility
   - DL3016  # Pin versions in npm - ignored for dev environment flexibility
+  - DL3059  # Multiple consecutive RUN instructions - acceptable for readability
   - SC2015  # A && B || C is not if-then-else - known shell pattern
   - SC2086  # Double quote to prevent globbing - word splitting needed for package lists
-  - DL3059  # Multiple consecutive RUN instructions - acceptable for readability
 
 # Set warning threshold to catch all issues
 failure-threshold: warning
