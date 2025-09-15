@@ -1,3 +1,11 @@
+# [2.5.0](https://github.com/abordage/dockerkit/compare/v2.4.0...v2.5.0) (2025-09-15)
+
+
+### Features
+
+* **postgres:** increase max_connections to 300 ([367ec12](https://github.com/abordage/dockerkit/commit/367ec124c8376d9776721cf5536db5f0bb069833))
+* **workspace:** add xsl to default PHP extensions list ([24f3bf5](https://github.com/abordage/dockerkit/commit/24f3bf54fa543438ffb1ddba652c52056c7444e7))
+
 # [2.4.0](https://github.com/abordage/dockerkit/compare/v2.3.0...v2.4.0) (2025-09-10)
 
 
