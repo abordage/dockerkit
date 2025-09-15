@@ -147,7 +147,7 @@ ask_container_restart() {
     local containers_restarted=false
 
     if confirm "Restart containers to apply new configuration?" "y"; then
-        if manage_containers "smart"; then
+        if manage_containers "start"; then
             print_success "Containers restarted successfully"
             containers_restarted=true
             # Show available sites after successful restart

@@ -26,7 +26,7 @@ source "$CONTAINERS_SCRIPT_DIR/../core/docker.sh"
 # =============================================================================
 
 manage_containers() {
-    local action="${1:-smart}"  # smart, start, restart, stop
+    local action="${1:-start}"  # start, restart, stop
 
     # Ensure Docker is available
     if ! ensure_docker_available; then
@@ -37,37 +37,8 @@ manage_containers() {
     # Load environment variables
     load_env_variables
 
-    # Determine action based on container state
-    if [ "$action" = "smart" ]; then
-        if containers_are_running; then
-            action="restart"
-        else
-            action="start"
-        fi
-    fi
-
     # Execute Docker Compose command
     execute_docker_compose "$action"
-}
-
-containers_are_running() {
-    # Check if docker-compose.yml exists
-    if [ ! -f "docker-compose.yml" ]; then
-        return 1
-    fi
-
-    # Get running containers count safely
-    local running_count=0
-    if docker compose ps --format "{{.State}}" 2>/dev/null | grep -q "running"; then
-        running_count=$(docker compose ps --format "{{.State}}" 2>/dev/null | grep -c "running" 2>/dev/null || echo "0")
-    fi
-
-    # Ensure running_count is a valid number and greater than 0
-    if [[ "$running_count" =~ ^[0-9]+$ ]] && [ "$running_count" -gt 0 ]; then
-        return 0
-    else
-        return 1
-    fi
 }
 
 load_env_variables() {
@@ -94,15 +65,9 @@ execute_docker_compose() {
     fi
 
     case "$action" in
-        start)
+        start|restart)
             if ! docker compose $compose_files up -d $ENABLE_SERVICES; then
-                print_error "Failed to start containers"
-                return "$EXIT_GENERAL_ERROR"
-            fi
-            ;;
-        restart)
-            if ! docker compose $compose_files restart $ENABLE_SERVICES; then
-                print_error "Failed to restart containers"
+                print_error "Failed to ${action} containers"
                 return "$EXIT_GENERAL_ERROR"
             fi
             ;;
