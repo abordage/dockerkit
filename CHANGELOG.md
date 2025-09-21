@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/abordage/dockerkit/compare/v2.5.0...v2.6.0) (2025-09-21)
+
+
+### Features
+
+* **tools:** add support for wsl2 in package management script ([8cbe095](https://github.com/abordage/dockerkit/commit/8cbe095c134f26b59ed3cc495c8f90218e340c6c))
+
 # [2.5.0](https://github.com/abordage/dockerkit/compare/v2.4.0...v2.5.0) (2025-09-15)
 
 
