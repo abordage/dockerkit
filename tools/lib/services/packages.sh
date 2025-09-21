@@ -25,7 +25,7 @@ check_system_dependencies() {
     os_type=$(detect_os)
 
     case "$os_type" in
-        macos|linux)
+        macos|linux|wsl2)
             check_required_tools
             ;;
         *)
