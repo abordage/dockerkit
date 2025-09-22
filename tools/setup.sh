@@ -24,6 +24,7 @@ source "$SCRIPT_DIR/lib/core/files.sh"
 source "$SCRIPT_DIR/lib/core/input.sh"
 
 # Load service libraries
+source "$SCRIPT_DIR/lib/services/permissions.sh"
 source "$SCRIPT_DIR/lib/services/packages.sh"
 source "$SCRIPT_DIR/lib/services/ssl.sh"
 source "$SCRIPT_DIR/lib/services/projects.sh"
@@ -31,6 +32,7 @@ source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
 source "$SCRIPT_DIR/lib/services/containers.sh"
+source "$SCRIPT_DIR/lib/services/windows.sh"
 
 # Load system libraries
 source "$SCRIPT_DIR/lib/status/tools-status.sh"
@@ -83,14 +85,26 @@ main() {
     # Step 1: Create configuration files and directories
     create_managed_files
 
-    # Step 2: Check system dependencies
+    # Step 2: Setup user permissions for better development experience
+    if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then
+        print_section "User Permissions Setup"
+        setup_user_permissions
+    fi
+
+    # Step 3: Check system dependencies
     check_system_dependencies || {
         print_error "Missing required dependencies"
         print_tip "Please install the missing dependencies and run again"
         exit "$EXIT_MISSING_DEPENDENCY"
     }
 
-    # Step 3: Scan for projects
+    # Step 4: Setup Windows integrations (WSL2 only)
+    if [ "$(detect_os)" = "wsl2" ]; then
+        print_section "Windows Integration"
+        setup_windows_integrations
+    fi
+
+    # Step 5: Scan for projects
     local projects
     if ! projects=$(scan_local_projects 2>/dev/null); then
         print ""
@@ -105,14 +119,14 @@ main() {
         projects_array+=("$project")
     done <<< "$projects"
 
-    # Step 4: Generate SSL certificates
+    # Step 6: Generate SSL certificates
     print_section "Generating SSL certificates"
 
     initialize_ssl_environment || print_warning " ◆ Skipped step: SSL initialization"
     cleanup_ssl_certificates "${projects_array[@]}"
     generate_ssl_certificates "${projects_array[@]}" || print_warning " ◆ Skipped step: SSL generation"
 
-    # Step 5: Generate nginx configurations
+    # Step 7: Generate nginx configurations
     print_section "Generating nginx configurations"
 
     # Validate templates (only show if there are issues)
@@ -125,11 +139,11 @@ main() {
     cleanup_nginx_configs "${projects_array[@]}"
     generate_nginx_configs "${projects_array[@]}" || true
 
-    # Step 6: Generate network aliases
+    # Step 8: Generate network aliases
     print_section "Generating network aliases"
     setup_network_aliases "${projects_array[@]}" || print_warning " ◆ Skipped step: Network aliases generation"
 
-    # Step 7: Show summary
+    # Step 9: Show summary
     show_setup_summary "${projects_array[@]}"
 }
 
@@ -185,6 +199,12 @@ show_next_steps() {
     print_section "Next steps:"
     echo -e " $(cyan "${step_num}.") Review $(green '.env') configuration"
     ((step_num++))
+
+    # Show WSL2 certificate installation tip
+    if [ "$(detect_os)" = "wsl2" ] && [ -f "/mnt/c/mkcert/install-cert.bat" ]; then
+        echo -e " $(cyan "${step_num}.") Install certificate in Windows: $(green 'C:\\mkcert\\install-cert.bat')"
+        ((step_num++))
+    fi
 
     # Show restart instruction only if containers were not restarted
     if [ "$containers_restarted" = "false" ]; then

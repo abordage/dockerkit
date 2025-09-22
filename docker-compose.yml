@@ -268,8 +268,9 @@ services:
       - node.name=${ELASTICSEARCH_NODE_NAME:-dockerkit-node}
 
       # Memory and performance settings
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:UseSVE=0"
-      - "CLI_JAVA_OPTS=-XX:UseSVE=0"
+#      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:UseSVE=0"
+#      - "CLI_JAVA_OPTS=-XX:UseSVE=0"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
 
       # Logging (reduce noise)
       - logger.level=${ELASTICSEARCH_LOG_LEVEL}
