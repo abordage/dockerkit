@@ -1,3 +1,15 @@
+# [2.7.0](https://github.com/abordage/dockerkit/compare/v2.6.0...v2.7.0) (2025-09-22)
+
+
+### Features
+
+* **docker:** adjust elasticsearch java opts for simplified configuration ([a2238cc](https://github.com/abordage/dockerkit/commit/a2238cccfc81e1cd821f8fb0c0d7df1a25424412))
+* **docker:** enforce lf line endings for entrypoint scripts ([24f7469](https://github.com/abordage/dockerkit/commit/24f74699741b23b6c3cd58b2f219900b70faa0df))
+* **tools:** add automatic mkcert installation support ([f1f2dd3](https://github.com/abordage/dockerkit/commit/f1f2dd3653accdd7f2607d13c7d70f5e847e3a16))
+* **tools:** add support for colors library in manager script ([bf3392e](https://github.com/abordage/dockerkit/commit/bf3392e1a1ef26f675e60448ffefa4f0888bbf42))
+* **tools:** add user permissions setup for better development experience ([48b7f42](https://github.com/abordage/dockerkit/commit/48b7f42caaec4d8716d9081ab2f1b836999f5d12))
+* **tools:** enhance windows integration and update wsl2 support ([ece032f](https://github.com/abordage/dockerkit/commit/ece032fb7728071ae9117b44f5ceeb4a440f59ac))
+
 # [2.6.0](https://github.com/abordage/dockerkit/compare/v2.5.0...v2.6.0) (2025-09-21)
 
 
