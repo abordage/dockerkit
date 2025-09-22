@@ -69,11 +69,9 @@ sync_mkcert_to_windows() {
 
     # Check if sync is needed
     if ! needs_windows_sync "$ca_root/rootCA.pem" "$windows_cert_dir/dockerkit-ca.crt"; then
-        print_info "Windows certificate is up to date"
+        print_success "Windows certificate is up to date"
         return "$EXIT_SUCCESS"
     fi
-
-    print_info "Syncing mkcert certificate to Windows..."
 
     # Create Windows certificate directory
     mkdir -p "$windows_cert_dir" || {
