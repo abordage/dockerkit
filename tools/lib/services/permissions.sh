@@ -82,7 +82,6 @@ setup_sudo_nopasswd() {
     fi
 
     print_success "sudo NOPASSWD configured for user $user"
-    print_info "You can now run sudo commands without password"
 }
 
 setup_docker_group() {
