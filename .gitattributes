@@ -4,6 +4,9 @@
 # Force LF for shell scripts (critical for Docker)
 *.sh text eol=lf
 
+# Force LF for entrypoint scripts (files without extensions in entrypoint.d directories)
+*/entrypoint.d/* text eol=lf
+
 # Force LF for Docker files
 Dockerfile text eol=lf
 docker-compose.yml text eol=lf
