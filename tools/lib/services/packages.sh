@@ -57,7 +57,7 @@ check_required_tools() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
-    # WSL2 integration: sync mkcert to Windows if needed
+    # WSL2: sync mkcert to Windows
     if [ "$(detect_os)" = "wsl2" ] && command_exists "mkcert"; then
         sync_mkcert_to_windows
     fi
