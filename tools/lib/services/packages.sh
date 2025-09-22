@@ -57,10 +57,6 @@ check_required_tools() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
-    # WSL2: sync mkcert to Windows
-    if [ "$(detect_os)" = "wsl2" ] && command_exists "mkcert"; then
-        sync_mkcert_to_windows
-    fi
 
     return "$EXIT_SUCCESS"
 }
@@ -170,111 +166,5 @@ check_sudo_access() {
     fi
 }
 
-sync_mkcert_to_windows() {
-    local windows_drive="/mnt/c"
-    local windows_cert_dir="$windows_drive/mkcert"
-    local ca_root
-    local batch_file="$windows_cert_dir/install-cert.bat"
-
-    # Check if Windows drive is accessible
-    if [ ! -d "$windows_drive" ]; then
-        print_warning "Windows drive not accessible at $windows_drive"
-        print_info "Skipping Windows integration"
-        return "$EXIT_SUCCESS"  # Don't fail, just skip
-    fi
-
-    # Get mkcert CA root directory
-    ca_root=$(mkcert -CAROOT 2>/dev/null)
-    if [ -z "$ca_root" ] || [ ! -f "$ca_root/rootCA.pem" ]; then
-        print_warning "mkcert CA certificate not found"
-        print_info "Run 'mkcert -install' first"
-        return "$EXIT_SUCCESS"  # Don't fail, just skip
-    fi
-
-    # Check if sync is needed
-    if ! needs_windows_sync "$ca_root/rootCA.pem" "$windows_cert_dir/dockerkit-ca.crt"; then
-        print_info "Windows certificate is up to date"
-        return "$EXIT_SUCCESS"
-    fi
-
-    print_info "Syncing mkcert certificate to Windows..."
-
-    # Create Windows certificate directory
-    mkdir -p "$windows_cert_dir" || {
-        print_warning "Failed to create Windows certificate directory"
-        return "$EXIT_SUCCESS"  # Don't fail
-    }
-
-    # Copy CA certificate to Windows
-    cp "$ca_root/rootCA.pem" "$windows_cert_dir/dockerkit-ca.crt" || {
-        print_warning "Failed to copy CA certificate to Windows"
-        return "$EXIT_SUCCESS"  # Don't fail
-    }
-
-    # Create batch file for certificate installation
-    create_windows_install_batch "$batch_file"
-
-    # Show success message
-    print_success "CA certificate synced to Windows"
-    print_info "Location: C:\\mkcert\\dockerkit-ca.crt"
-    print_tip "Run C:\\mkcert\\install-cert.bat to install certificate in Windows"
-
-    return "$EXIT_SUCCESS"
-}
-
-needs_windows_sync() {
-    local source_cert="$1"
-    local target_cert="$2"
-
-    # If target doesn't exist, sync is needed
-    if [ ! -f "$target_cert" ]; then
-        return 0  # true - sync needed
-    fi
-
-    # Compare file sizes (quick check)
-    local source_size target_size
-    source_size=$(stat -f%z "$source_cert" 2>/dev/null || stat -c%s "$source_cert" 2>/dev/null)
-    target_size=$(stat -f%z "$target_cert" 2>/dev/null || stat -c%s "$target_cert" 2>/dev/null)
-
-    if [ "$source_size" != "$target_size" ]; then
-        return 0  # true - sync needed
-    fi
-
-    # Files appear to be the same
-    return 1  # false - sync not needed
-}
-
-create_windows_install_batch() {
-    local batch_file="$1"
-
-    cat > "$batch_file" << 'EOF'
-@echo off
-echo Installing DockerKit CA certificate...
-echo.
-
-certutil -addstore -user "Root" "%~dp0dockerkit-ca.crt" >nul 2>&1
-
-if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] Certificate installed successfully!
-    echo.
-    echo DockerKit HTTPS sites will now work without security warnings.
-) else (
-    echo [ERROR] Failed to install certificate.
-    echo.
-    echo Try running this batch file as Administrator, or install manually:
-    echo 1. Double-click dockerkit-ca.crt
-    echo 2. Click "Install Certificate"
-    echo 3. Select "Current User" and click "Next"
-    echo 4. Select "Place all certificates in the following store"
-    echo 5. Click "Browse" and select "Trusted Root Certification Authorities"
-    echo 6. Click "Next" and "Finish"
-)
-
-echo.
-pause
-EOF
-
-    return "$EXIT_SUCCESS"
-}
 
 

@@ -39,7 +39,6 @@ setup_user_permissions() {
 }
 
 setup_wsl2_user_permissions() {
-    print_section "WSL2 User Permissions Setup"
     setup_sudo_nopasswd
     setup_docker_group
 }
