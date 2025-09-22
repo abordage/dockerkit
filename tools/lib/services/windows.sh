@@ -67,12 +67,6 @@ sync_mkcert_to_windows() {
         return "$EXIT_SUCCESS"  # Don't fail, just skip
     fi
 
-    # Check if sync is needed
-    if ! needs_windows_sync "$ca_root/rootCA.pem" "$windows_cert_dir/dockerkit-ca.crt"; then
-        print_success "Windows certificate is up to date"
-        return "$EXIT_SUCCESS"
-    fi
-
     # Create Windows certificate directory
     mkdir -p "$windows_cert_dir" || {
         print_warning "Failed to create Windows certificate directory"
@@ -94,27 +88,6 @@ sync_mkcert_to_windows() {
     return "$EXIT_SUCCESS"
 }
 
-needs_windows_sync() {
-    local source_cert="$1"
-    local target_cert="$2"
-
-    # If target doesn't exist, sync is needed
-    if [ ! -f "$target_cert" ]; then
-        return 0  # true - sync needed
-    fi
-
-    # Compare file sizes (quick check)
-    local source_size target_size
-    source_size=$(stat -f%z "$source_cert" 2>/dev/null || stat -c%s "$source_cert" 2>/dev/null)
-    target_size=$(stat -f%z "$target_cert" 2>/dev/null || stat -c%s "$target_cert" 2>/dev/null)
-
-    if [ "$source_size" != "$target_size" ]; then
-        return 0  # true - sync needed
-    fi
-
-    # Files appear to be the same
-    return 1  # false - sync not needed
-}
 
 create_windows_install_batch() {
     local batch_file="$1"
