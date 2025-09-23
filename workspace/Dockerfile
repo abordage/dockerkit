@@ -13,6 +13,9 @@ ARG DEPENDENCY_PHP_EXTENSIONS
 # Node.js
 ARG NODE_VERSION=22
 
+# PostgreSQL Configuration
+ARG POSTGRES_VERSION=17
+
 # cURL Configuration
 ARG CURL_VERSION=curl-8_16_0
 
@@ -114,14 +117,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PostgreSQL 17 client
+# Install PostgreSQL client
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eux; \
+    # Extract major version from POSTGRES_VERSION (e.g., 13.22 -> 13, 15.14-trixie -> 15) \
+    POSTGRES_MAJOR=$(echo "${POSTGRES_VERSION}" | cut -d'.' -f1 | cut -d'-' -f1) && \
+    echo "PostgreSQL version mapping: ${POSTGRES_VERSION} -> postgresql-client-${POSTGRES_MAJOR}" && \
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends postgresql-client-17 && \
+    apt-get install -y --no-install-recommends postgresql-client-${POSTGRES_MAJOR} && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Symfony CLI from official repository
