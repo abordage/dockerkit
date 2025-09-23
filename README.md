@@ -76,12 +76,22 @@ DockerKit automatically discovers projects in the parent directory:
 
 ```text
 /your/projects/directory/
-├── dockerkit/              # This repository  
-├── myapp.localhost/        # Detected: Laravel project
-├── api.localhost/          # Detected: Symfony project  
-├── blog.localhost/         # Detected: WordPress project
-├── docs/                   # Ignored: no .localhost suffix
-└── backup-files/           # Ignored: no .localhost suffix
+├── dockerkit/             # This repository  
+├── myapp.localhost/       # Laravel project
+│   ├── artisan            #   ← Laravel indicator
+│   ├── composer.json      #   ← Contains "laravel/framework"
+│   └── public/index.php   #   ← Standard Laravel structure
+├── api.localhost/         # Symfony project  
+│   ├── bin/console        #   ← Symfony indicator
+│   ├── composer.json      #   ← Contains "symfony/framework-bundle"
+│   └── public/index.php   #   ← Standard Symfony structure
+├── blog.localhost/        # WordPress project
+│   ├── wp-config.php      #   ← WordPress indicator
+│   └── wp-content/        #   ← WordPress structure
+├── legacy.localhost/      # PHP project
+│   └── index.php          #   ← Basic PHP project
+├── docs/                  # Ignored: no .localhost suffix
+└── backup-files/          # Ignored: no .localhost suffix
 ```
 
 Modern browsers automatically resolve `.localhost` domains to `127.0.0.1` according to RFC standards:
@@ -193,7 +203,9 @@ make dk-uninstall  # Remove dk command from system
 
 # Maintenance
 make reset         # Reset project to initial state
+make rebuild       # Rebuild workspace and php-fpm images
 make lint          # Run all quality checks (Dockerfiles, bash scripts)
+make tmp-clean     # Clean /tmp inside workspace container
 ```
 
 The workspace container provides an enhanced terminal experience:
