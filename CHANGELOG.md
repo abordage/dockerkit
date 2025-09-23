@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/abordage/dockerkit/compare/v2.7.0...v2.8.0) (2025-09-23)
+
+
+### Features
+
+* **workspace:** add support for configurable PostgreSQL client version ([28cefa6](https://github.com/abordage/dockerkit/commit/28cefa6a1d6d400991c8b97493f98f3369e30820))
+
 # [2.7.0](https://github.com/abordage/dockerkit/compare/v2.6.0...v2.7.0) (2025-09-22)
 
 
