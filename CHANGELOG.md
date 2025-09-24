@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/abordage/dockerkit/compare/v2.8.0...v2.8.1) (2025-09-24)
+
+
+### Bug Fixes
+
+* **workspace:** add ARG for PostgreSQL version in Dockerfile ([ac3e3b8](https://github.com/abordage/dockerkit/commit/ac3e3b8bba871fb39c76bbacb18ca89fbe383fac))
+
 # [2.8.0](https://github.com/abordage/dockerkit/compare/v2.7.0...v2.8.0) (2025-09-23)
 
 
