@@ -58,6 +58,8 @@ RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
 # ============================================================================
 FROM base AS dependencies
 
+ARG POSTGRES_VERSION=17
+
 USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
