@@ -82,29 +82,35 @@ EOF
 main() {
     print_header "DOCKERKIT ENVIRONMENT SETUP"
 
-    # Step 1: Create configuration files and directories
-    create_managed_files
-
-    # Step 2: Setup user permissions for better development experience
-    if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then
-        print_section "User Permissions Setup"
-        setup_user_permissions
-    fi
-
-    # Step 3: Check system dependencies
-    check_system_dependencies || {
+    # Step 1: Install required tools (essential for DockerKit functionality)
+    print_section "Installing Required Tools"
+    install_required_tools || {
         print_error "Missing required dependencies"
         print_tip "Please install the missing dependencies and run again"
         exit "$EXIT_MISSING_DEPENDENCY"
     }
 
-    # Step 4: Setup Windows integrations (WSL2 only)
+    # Step 2: Install development tools (optional but recommended)
+    print_section "Installing Development Tools"
+    install_dk_command_if_needed
+
+    # Step 3: Create configuration files and directories
+    print_section "Creating configuration files"
+    create_managed_files
+
+    # Step 4: Setup user permissions for better development experience
+    if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then
+        print_section "User Permissions Setup"
+        setup_user_permissions
+    fi
+
+    # Step 5: Setup Windows integrations (WSL2 only)
     if [ "$(detect_os)" = "wsl2" ]; then
         print_section "Windows Integration"
         setup_windows_integrations
     fi
 
-    # Step 5: Scan for projects
+    # Step 6: Scan for projects
     local projects
     if ! projects=$(scan_local_projects 2>/dev/null); then
         print ""
@@ -119,14 +125,14 @@ main() {
         projects_array+=("$project")
     done <<< "$projects"
 
-    # Step 6: Generate SSL certificates
+    # Step 7: Generate SSL certificates
     print_section "Generating SSL certificates"
 
     initialize_ssl_environment || print_warning " ◆ Skipped step: SSL initialization"
     cleanup_ssl_certificates "${projects_array[@]}"
     generate_ssl_certificates "${projects_array[@]}" || print_warning " ◆ Skipped step: SSL generation"
 
-    # Step 7: Generate nginx configurations
+    # Step 8: Generate nginx configurations
     print_section "Generating nginx configurations"
 
     # Validate templates (only show if there are issues)
@@ -139,11 +145,11 @@ main() {
     cleanup_nginx_configs "${projects_array[@]}"
     generate_nginx_configs "${projects_array[@]}" || true
 
-    # Step 8: Generate network aliases
+    # Step 9: Generate network aliases
     print_section "Generating network aliases"
     setup_network_aliases "${projects_array[@]}" || print_warning " ◆ Skipped step: Network aliases generation"
 
-    # Step 9: Show summary
+    # Step 10: Show summary
     show_setup_summary "${projects_array[@]}"
 }
 
@@ -189,6 +195,34 @@ show_available_sites() {
             print_success "http://$project"
         fi
     done
+}
+
+# Install dk command for quick workspace access
+install_dk_command_if_needed() {
+    # Check if dk command is already installed and up to date
+    local dk_install_path="$HOME/.dockerkit/bin/dk"
+    local current_dk_script="$SCRIPT_DIR/dk/dk.sh"
+
+    if [ -f "$dk_install_path" ] && [ -f "$current_dk_script" ]; then
+        # Compare modification times to see if update needed
+        if [ "$current_dk_script" -nt "$dk_install_path" ]; then
+            if "$SCRIPT_DIR/dk/manager.sh" install; then
+                print_success "dk command updated successfully"
+            else
+                print_warning "Failed to update dk command"
+            fi
+        else
+            print_success "dk: already installed"
+        fi
+    else
+        # Fresh installation
+        if "$SCRIPT_DIR/dk/manager.sh" install; then
+            print_success "dk: installed successfully"
+        else
+            print_warning "Failed to install dk command"
+            print_tip "You can manually install it later by running setup again"
+        fi
+    fi
 }
 
 # Show next steps
