@@ -45,8 +45,6 @@ create_file_from_example() {
 
 # Create all setup files from examples
 create_managed_files() {
-    print_section "Creating configuration files"
-
     local created_count=0
     local total_count=${#SETUP_FILES[@]}
 
