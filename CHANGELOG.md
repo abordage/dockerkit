@@ -1,3 +1,10 @@
+## [2.9.1](https://github.com/abordage/dockerkit/compare/v2.9.0...v2.9.1) (2025-09-25)
+
+
+### Bug Fixes
+
+* **tools:** remove redundant 'v' from update message output ([378d5a5](https://github.com/abordage/dockerkit/commit/378d5a59b784548ba0e16bc08c84dca6da560266))
+
 # [2.9.0](https://github.com/abordage/dockerkit/compare/v2.8.1...v2.9.0) (2025-09-25)
 
 
