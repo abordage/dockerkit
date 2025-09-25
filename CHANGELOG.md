@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/abordage/dockerkit/compare/v2.9.1...v2.10.0) (2025-09-25)
+
+
+### Features
+
+* **tools:** enhance automated tool installation during setup ([694d3a5](https://github.com/abordage/dockerkit/commit/694d3a5d0e98788b46d74616b428cb7b0922e2e8))
+
 ## [2.9.1](https://github.com/abordage/dockerkit/compare/v2.9.0...v2.9.1) (2025-09-25)
 
 
