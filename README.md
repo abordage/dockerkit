@@ -202,8 +202,8 @@ make dk-install    # Install dk command for quick workspace access
 make dk-uninstall  # Remove dk command from system
 
 # Maintenance
+make update        # Update DockerKit, reinstall dk command, and rebuild containers
 make reset         # Reset project to initial state
-make rebuild       # Rebuild workspace and php-fpm images
 make lint          # Run all quality checks (Dockerfiles, bash scripts)
 make tmp-clean     # Clean /tmp inside workspace container
 ```

@@ -61,10 +61,10 @@ fi
 # Auto-resize terminal for correct width detection
 if [[ $- == *i* ]] && [[ -t 1 ]] && command -v resize >/dev/null 2>&1; then
     # Initial resize on shell start
-    eval $(resize 2>/dev/null)
-
+    eval "$(resize 2>/dev/null)"
+    
     # Auto-update on terminal window resize
-    trap 'eval $(resize 2>/dev/null)' WINCH
+    trap 'eval "$(resize 2>/dev/null)"' WINCH
 fi
 
 # Laravel artisan completion - static implementation

@@ -16,7 +16,7 @@ ifneq (,$(wildcard $(ENV_FILE)))
 endif
 
 # Declare all targets as phony (they don't create files)
-.PHONY: help status setup start stop restart reset rebuild \
+.PHONY: help status setup start stop restart reset rebuild update \
 		dk-install dk-uninstall project dump lint tmp-clean
 
 # Colors for output
@@ -89,23 +89,13 @@ restart: ## Restart selected services with network aliases
 	@$(call show_aliases_status)
 	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) restart $(shell echo $(ENABLE_SERVICES))
 
-rebuild: ## Rebuild workspace and php-fpm images and restart services
-	@echo "$(BLUE)Rebuilding workspace and php-fpm images...$(NC)"
-	@echo "$(YELLOW)Step 1: Stopping containers...$(NC)"
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) stop workspace php-fpm
-	@echo "$(YELLOW)Step 2: Removing containers...$(NC)"
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) rm -f workspace php-fpm
-	@echo "$(YELLOW)Step 3: Removing existing images...$(NC)"
-	@PROJECT_NAME=$$(grep '^PROJECT_NAME=' $(ENV_FILE) | cut -d'=' -f2) && \
-	PROJECT_SUFFIX=$$(grep '^PROJECT_SUFFIX=' $(ENV_FILE) | cut -d'=' -f2) && \
-	COMPOSE_PROJECT_NAME="$$PROJECT_NAME-$$PROJECT_SUFFIX" && \
-	docker rmi "$$COMPOSE_PROJECT_NAME-workspace:latest" 2>/dev/null || echo "$(GREEN)No workspace image to remove$(NC)" && \
-	docker rmi "$$COMPOSE_PROJECT_NAME-php-fpm:latest" 2>/dev/null || echo "$(GREEN)No php-fpm image to remove$(NC)"
-	@echo "$(YELLOW)Step 4: Building images with no cache...$(NC)"
-	@$(DOCKER_COMPOSE) $(COMPOSE_FILES) build --no-cache workspace php-fpm
-	@echo "$(YELLOW)Step 5: Starting services...$(NC)"
-	@$(MAKE) start
-	@echo "$(GREEN)✓ Rebuild completed successfully!$(NC)"
+rebuild: ## [DEPRECATED] Use 'make update' instead
+	@echo "$(YELLOW)Please use 'make update' instead$(NC)"
+	@echo ""
+	@$(MAKE) update
+
+update: ## Update DockerKit, reinstall dk command, and rebuild containers (with cache)
+	@tools/update.sh
 
 # =============================================================================
 # DK COMMAND MANAGEMENT
