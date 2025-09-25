@@ -30,35 +30,12 @@ readonly DK_INSTALL_PATH="$HOME/.dockerkit/bin/dk"
 # DK COMMAND FUNCTIONS
 # =============================================================================
 
-# Function get_dk_current_version() moved to utils.sh as get_project_version() for reuse
-
-# Get installed dk version
-get_dk_installed_version() {
-    if test -f "$DK_INSTALL_PATH"; then
-        local version
-        version=$(grep "readonly DK_VERSION=" "$DK_INSTALL_PATH" 2>/dev/null | \
-        sed 's/.*DK_VERSION="\([^"]*\)".*/\1/' | \
-        head -n 1)
-        echo "${version#v}"
+# Check if dk is installed
+get_dk_installed_status() {
+    if test -f "$DK_INSTALL_PATH" && test -x "$DK_INSTALL_PATH"; then
+        echo "installed"
     else
         echo "not_installed"
-    fi
-}
-
-# Compare dk versions (simplified)
-compare_dk_versions() {
-    local version1="$1" version2="$2"
-
-    # Remove 'v' prefix if present
-    version1="${version1#v}"
-    version2="${version2#v}"
-
-    if test "$version1" = "$version2"; then
-        echo "equal"
-    elif test "$version1" \< "$version2"; then
-        echo "older"
-    else
-        echo "newer"
     fi
 }
 
@@ -165,24 +142,15 @@ check_mkcert_tool() {
 }
 
 check_dk_tool() {
-    local current_version installed_version version_comparison
+    local installed_status
 
-    current_version="$(get_project_version)"
-    installed_version="$(get_dk_installed_version)"
+    installed_status="$(get_dk_installed_status)"
 
-    if [ "$installed_version" = "not_installed" ]; then
+    if [ "$installed_status" = "not_installed" ]; then
         print_error "dk: Not installed"
         MISSING_TOOLS+=("dk")
     else
-        print_success "dk: v$installed_version"
-
-        # Check if version is outdated
-        version_comparison="$(compare_dk_versions "$installed_version" "$current_version")"
-        case "$version_comparison" in
-            "older")
-                OUTDATED_TOOLS+=("dk:$installed_version:$current_version")
-                ;;
-        esac
+        print_success "dk: installed"
     fi
 }
 
@@ -214,7 +182,7 @@ show_upgrade_recommendations() {
                     counter=$((counter + 1))
                     ;;
                 dk)
-                    echo -e " $(cyan "${counter}.") Install dk command: $(green 'make dk-install')"
+                    echo -e " $(cyan "${counter}.") Install dk command: $(green 'make setup') (auto-installs dk)"
                     counter=$((counter + 1))
                     ;;
             esac
@@ -241,7 +209,7 @@ show_upgrade_recommendations() {
                     counter=$((counter + 1))
                     ;;
                 dk)
-                    echo -e " $(cyan "${counter}.") Update dk command: $(green "v${current_version}") → $(green "v${min_version}") $(yellow 'make dk-install')"
+                    echo -e " $(cyan "${counter}.") Update dk command: $(yellow 'make setup') (auto-updates dk)"
                     counter=$((counter + 1))
                     ;;
             esac

@@ -62,12 +62,6 @@ cd dockerkit
 
 # 3. Run automatic environment setup
 make setup
-
-# 4. Start all services
-make start
-
-# 5. Install the `dk` command for instant workspace access from any project dir
-make dk-install
 ```
 
 ### Project Structure
@@ -124,10 +118,6 @@ git clone https://github.com/yourorg/api.git api.localhost
 # 2. Reconfigure DockerKit to detect new projects
 cd dockerkit
 make setup
-
-# 3. Your projects are now available:
-# https://myapp.localhost
-# https://api.localhost
 ```
 
 ## Configuration
@@ -197,12 +187,8 @@ make status        # Show current system status
 make project       # Create new project (Laravel/Symfony)
 make dump          # Interactive database backup/restore tool
 
-# Development Tools
-make dk-install    # Install dk command for quick workspace access
-make dk-uninstall  # Remove dk command from system
-
 # Maintenance
-make update        # Update DockerKit, reinstall dk command, and rebuild containers
+make update        # Update DockerKit and rebuild containers
 make reset         # Reset project to initial state
 make lint          # Run all quality checks (Dockerfiles, bash scripts)
 make tmp-clean     # Clean /tmp inside workspace container

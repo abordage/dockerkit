@@ -121,7 +121,7 @@ dk() {
         "\$HOME/.dockerkit/bin/dk" "\$@"
     else
         echo "dk command not installed."
-        echo "Run 'make dk-install' in your DockerKit directory."
+        echo "Run 'make setup' in your DockerKit directory (auto-installs dk)."
         return 1
     fi
 }
@@ -313,7 +313,7 @@ install_dk_command() {
     if cp "$DK_SOURCE_SCRIPT" "$DK_INSTALL_PATH"; then
         chmod +x "$DK_INSTALL_PATH"
         print_success "dk command installed successfully"
-        print_success "Location: $(purple "$DK_INSTALL_PATH")"
+        print_success "Location: $(gray "$DK_INSTALL_PATH")"
     else
         print_error "Failed to install dk command"
         return "$EXIT_GENERAL_ERROR"

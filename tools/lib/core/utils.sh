@@ -62,20 +62,6 @@ detect_os() {
     esac
 }
 
-get_project_version() {
-    local dk_script_path="$DOCKERKIT_DIR/tools/dk/dk.sh"
-
-    if [ -f "$dk_script_path" ]; then
-        local version
-        version=$(grep "readonly DK_VERSION=" "$dk_script_path" 2>/dev/null | \
-        sed 's/.*DK_VERSION="\([^"]*\)".*/\1/' | \
-        head -n 1)
-        echo "${version#v}"
-    else
-        echo "unknown"
-    fi
-}
-
 command_exists() {
     local command_name="$1"
 

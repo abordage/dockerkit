@@ -131,7 +131,7 @@ perform_git_update() {
 reinstall_dk_command() {
     print_info "Step 2: Reinstalling dk command..."
 
-    if make dk-install >/dev/null 2>&1; then
+    if "$SCRIPT_DIR/dk/manager.sh" install >/dev/null 2>&1; then
         print_success "dk command reinstalled"
         return "$EXIT_SUCCESS"
     else

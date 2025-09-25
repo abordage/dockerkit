@@ -71,6 +71,21 @@ WARNING:
 EOF
 }
 
+# Uninstall dk command if it exists
+uninstall_dk_command_if_needed() {
+    local dk_install_path="$HOME/.dockerkit/bin/dk"
+
+    if [ -f "$dk_install_path" ]; then
+        if "$SCRIPT_DIR/dk/manager.sh" uninstall; then
+            print_success "dk command removed successfully"
+        else
+            print_warning "Failed to remove dk command"
+            print_tip "You may need to manually remove: $dk_install_path"
+        fi
+    else
+        print_success "dk command was not installed (nothing to remove)"
+    fi
+}
 
 # Main reset function
 main() {
@@ -165,6 +180,10 @@ main() {
         print_section "Removing Docker build cache"
         remove_docker_cache
     fi
+
+    # Remove dk command
+    print_section "Removing dk command"
+    uninstall_dk_command_if_needed
 
     # Summary
     print_header "RESET COMPLETED SUCCESSFULLY!"

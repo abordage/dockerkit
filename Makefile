@@ -17,7 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status setup start stop restart reset rebuild update \
-		dk-install dk-uninstall project dump lint tmp-clean
+		project dump lint
 
 # Colors for output
 RED := \033[0;31m
@@ -96,16 +96,6 @@ rebuild: ## [DEPRECATED] Use 'make update' instead
 
 update: ## Update DockerKit, reinstall dk command, and rebuild containers (with cache)
 	@tools/update.sh
-
-# =============================================================================
-# DK COMMAND MANAGEMENT
-# =============================================================================
-
-dk-install: ## Install dk command for quick workspace access from any .localhost project
-	@tools/dk/manager.sh install
-
-dk-uninstall: ## Remove dk command from system
-	@tools/dk/manager.sh uninstall
 
 # =============================================================================
 # CLEANUP & MAINTENANCE

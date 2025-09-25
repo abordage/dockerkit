@@ -41,15 +41,15 @@ check_required_tools() {
 
     for tool in "${required_tools[@]}"; do
         if ! command_exists "$tool"; then
-            print_info "$tool: Not found, installing..."
+            print_info "$tool: not found, installing..."
             if ! install_missing_tool "$tool"; then
-                print_error "$tool: Installation failed"
+                print_error "$tool: installation failed"
                 all_ok=false
             else
-                print_success "$tool: Installed successfully"
+                print_success "$tool: installed successfully"
             fi
         else
-            print_success "$tool: Already installed"
+            print_success "$tool: already installed"
         fi
     done
 

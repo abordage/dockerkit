@@ -5,7 +5,7 @@
 # =============================================================================
 # Quick connect to DockerKit workspace container from any .localhost project
 # Compatible: macOS, Linux, WSL2
-# Usage: dk [--help|--version]
+# Usage: dk [--help]
 # =============================================================================
 
 set -euo pipefail
@@ -14,7 +14,6 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
-readonly DK_VERSION="1.5.1"
 
 # Update check constants
 readonly LAST_CHECK_FILE="$HOME/.dockerkit/last-update-check"
@@ -201,7 +200,7 @@ perform_daily_update_check() {
 # Show help message
 show_help() {
     cat << EOF
-DockerKit Quick Connect v${DK_VERSION}
+DockerKit Quick Connect
 
 USAGE:
     dk [OPTIONS]
@@ -212,11 +211,9 @@ DESCRIPTION:
 
 OPTIONS:
     --help          Show this help message
-    --version       Show version information
 
 EXAMPLES:
     dk                      # Connect to workspace or show available options
-    dk --version            # Show version number
 
 REQUIREMENTS:
     • Must be run from a .localhost project directory
@@ -224,8 +221,8 @@ REQUIREMENTS:
     • Docker and docker compose must be installed
 
 INSTALLATION:
-    Install:            make dk-install (from DockerKit directory)
-    Uninstall:          make dk-uninstall (from DockerKit directory)
+    dk command is automatically installed during 'make setup'
+    and removed during 'make reset' from DockerKit directory.
     Compatible:         macOS, Linux, WSL2
 
 MORE INFO:
@@ -234,13 +231,6 @@ MORE INFO:
 
 EOF
 }
-
-# Show version information
-show_version() {
-    echo "${DK_VERSION}"
-}
-
-
 
 # Detect current project name from directory
 detect_current_project() {
@@ -363,10 +353,6 @@ parse_arguments() {
         case "$1" in
             --help|-h)
                 show_help
-                exit "${EXIT_SUCCESS}"
-                ;;
-            --version|-v)
-                show_version
                 exit "${EXIT_SUCCESS}"
                 ;;
             -*)
