@@ -82,25 +82,27 @@ EOF
 main() {
     print_header "DOCKERKIT ENVIRONMENT SETUP"
 
-    # Step 1: Create configuration files and directories
-    create_managed_files
-
-    # Step 2: Install dk command for quick workspace access
-    print_section "Installing dk command"
-    install_dk_command_if_needed
-
-    # Step 3: Setup user permissions for better development experience
-    if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then
-        print_section "User Permissions Setup"
-        setup_user_permissions
-    fi
-
-    # Step 4: Check system dependencies
-    check_system_dependencies || {
+    # Step 1: Install required tools (essential for DockerKit functionality)
+    print_section "Installing Required Tools"
+    install_required_tools || {
         print_error "Missing required dependencies"
         print_tip "Please install the missing dependencies and run again"
         exit "$EXIT_MISSING_DEPENDENCY"
     }
+
+    # Step 2: Install development tools (optional but recommended)
+    print_section "Installing Development Tools"
+    install_dk_command_if_needed
+
+    # Step 3: Create configuration files and directories
+    print_section "Creating configuration files"
+    create_managed_files
+
+    # Step 4: Setup user permissions for better development experience
+    if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then
+        print_section "User Permissions Setup"
+        setup_user_permissions
+    fi
 
     # Step 5: Setup Windows integrations (WSL2 only)
     if [ "$(detect_os)" = "wsl2" ]; then
@@ -210,13 +212,12 @@ install_dk_command_if_needed() {
                 print_warning "Failed to update dk command"
             fi
         else
-            print_success "dk command already installed and up to date"
+            print_success "dk: already installed"
         fi
     else
         # Fresh installation
         if "$SCRIPT_DIR/dk/manager.sh" install; then
-            print_success "dk command installed successfully"
-            print_tip "You can now use 'dk' from any .localhost project directory"
+            print_success "dk: installed successfully"
         else
             print_warning "Failed to install dk command"
             print_tip "You can manually install it later by running setup again"

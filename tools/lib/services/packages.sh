@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # =============================================================================
-# PACKAGE MANAGER
+# REQUIRED TOOLS INSTALLER
 # =============================================================================
-# Functions for managing system packages and dependencies
-# Usage: source this file and call package management functions
+# Functions for installing essential tools required for DockerKit functionality
+# Usage: source this file and call install_required_tools()
 # =============================================================================
 
 set -euo pipefail
@@ -20,13 +20,13 @@ PKG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$PKG_SCRIPT_DIR/../core/utils.sh"
 source "$PKG_SCRIPT_DIR/../core/config.sh"
 
-check_system_dependencies() {
+install_required_tools() {
     local os_type
     os_type=$(detect_os)
 
     case "$os_type" in
         macos|linux|wsl2)
-            check_required_tools
+            install_required_dependencies
             ;;
         *)
             print_warning "Unsupported operating system: $os_type"
@@ -35,7 +35,7 @@ check_system_dependencies() {
     esac
 }
 
-check_required_tools() {
+install_required_dependencies() {
     local required_tools=("mkcert")
     local all_ok=true
 
@@ -85,7 +85,7 @@ install_mkcert_for_platform() {
             install_mkcert_linux
             ;;
         macos)
-            install_mkcert_macos_stub
+            install_mkcert_macos
             ;;
         *)
             print_error "Unsupported platform for mkcert installation: $os_type"
@@ -136,18 +136,54 @@ install_mkcert_linux() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
+    # Initialize CA after fresh installation
+    print_info "Setting up local Certificate Authority..."
+    if mkcert -install >/dev/null 2>&1; then
+        print_success "Certificate Authority installed successfully"
+    elif sudo mkcert -install >/dev/null 2>&1; then
+        print_success "Certificate Authority installed successfully"
+    else
+        print_warning "Certificate Authority setup failed (you may need to run 'mkcert -install' manually)"
+    fi
+
     # Clean up temporary files
     rm -rf "$temp_dir" 2>/dev/null || true
 
     return "$EXIT_SUCCESS"
 }
 
-install_mkcert_macos_stub() {
-    print_warning "Automatic mkcert installation for macOS not implemented yet"
-    print_tip "Please install mkcert manually:"
-    print_tip "  brew install mkcert"
+install_mkcert_macos() {
+    # Check if Homebrew is installed
+    if ! command_exists "brew"; then
+        print_error "mkcert installation requires Homebrew"
+        print_info "Homebrew is not installed. Please install it first:"
+        print_tip "Run this command in Terminal:"
+        print_tip "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        print_tip ""
+        print_tip "After Homebrew installation, run setup again:"
+        print_tip "  make setup"
 
-    return "$EXIT_MISSING_DEPENDENCY"
+        return "$EXIT_MISSING_DEPENDENCY"
+    fi
+
+    # Homebrew is available, check if mkcert is already installed
+    if command_exists "mkcert"; then
+        return "$EXIT_SUCCESS"
+    fi
+
+    # Install mkcert via Homebrew (suppress verbose output)
+    if brew install --quiet mkcert >/dev/null 2>&1; then
+        # Initialize CA after fresh installation
+        print_info "Setting up local Certificate Authority..."
+        if mkcert -install >/dev/null 2>&1; then
+            print_success "Certificate Authority installed successfully"
+        else
+            print_warning "Certificate Authority setup failed (you may need to run 'mkcert -install' manually)"
+        fi
+        return "$EXIT_SUCCESS"
+    else
+        return "$EXIT_GENERAL_ERROR"
+    fi
 }
 
 check_sudo_access() {

@@ -48,7 +48,7 @@ DockerKit is a modern development environment enabling you to run, configure, an
 ### Prerequisites
 
 - **Docker & Docker Compose** for container orchestration
-- **[mkcert](https://github.com/FiloSottile/mkcert)** for automatic HTTPS certificate generation (recommended)
+- **[Homebrew](https://brew.sh)** (macOS only) - required for automatic mkcert installation
 
 ### Installation
 
@@ -63,6 +63,18 @@ cd dockerkit
 # 3. Run automatic environment setup
 make setup
 ```
+
+### Automatic Tool Installation
+
+DockerKit automatically installs required development tools during setup:
+
+- **mkcert** - for trusted SSL certificates (installed automatically)
+  - On macOS: via Homebrew (`brew install mkcert`)
+  - On Linux/WSL2: from GitHub releases
+  - Certificate Authority is configured automatically
+- **dk command** - for quick workspace access from any project directory
+
+No manual installation required - everything is handled by `make setup`.
 
 ### Project Structure
 
