@@ -14,7 +14,11 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
-readonly DK_VERSION="1.5.0"
+readonly DK_VERSION="1.5.1"
+
+# Update check constants
+readonly LAST_CHECK_FILE="$HOME/.dockerkit/last-update-check"
+readonly GITHUB_API_URL="https://api.github.com/repos/abordage/dockerkit/releases/latest"
 
 # =============================================================================
 # STANDARD EXIT CODES
@@ -32,6 +36,7 @@ readonly EXIT_PERMISSION_DENIED=4
 readonly _RED='\033[0;31m'
 readonly _GREEN='\033[0;32m'
 readonly _YELLOW='\033[1;33m'
+readonly _GRAY='\033[2;37m'
 readonly _RESET='\033[0m'
 
 # =============================================================================
@@ -88,6 +93,105 @@ safe_dirname() {
         */*) printf '%s\n' "${1%/*}" ;;
         *) printf '.\n' ;;
     esac
+}
+
+# =============================================================================
+# UPDATE CHECK FUNCTIONS
+# =============================================================================
+
+# Get today's date in YYYY-MM-DD format
+get_today_date() {
+    date +%Y-%m-%d
+}
+
+# Check if we need to check for updates today
+should_check_today() {
+    local today last_check_date
+    today=$(get_today_date)
+    last_check_date=""
+
+    # Create directory if it doesn't exist
+    mkdir -p "$(dirname "$LAST_CHECK_FILE")" 2>/dev/null
+
+    if [ -f "$LAST_CHECK_FILE" ]; then
+        last_check_date=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo "")
+    fi
+
+    # Check if date is different
+    [ "$today" != "$last_check_date" ]
+}
+
+# Mark that we checked today
+mark_check_completed() {
+    mkdir -p "$(dirname "$LAST_CHECK_FILE")" 2>/dev/null
+    get_today_date > "$LAST_CHECK_FILE"
+}
+
+# Get current DockerKit version from git tags
+get_current_dockerkit_version() {
+    # Find DockerKit directory by looking for update.sh script
+    local dockerkit_dir current_dir projects_dir
+    current_dir="$(pwd)"
+    projects_dir="$(safe_dirname "$current_dir")"
+
+    # Look for DockerKit in parent directory
+    for dir in "$projects_dir"/*; do
+        if [ -f "$dir/tools/update.sh" ]; then
+            dockerkit_dir="$dir"
+            break
+        fi
+    done
+
+    if [ -n "$dockerkit_dir" ] && [ -d "$dockerkit_dir" ]; then
+        (cd "$dockerkit_dir" && git describe --tags --abbrev=0 2>/dev/null) || echo "unknown"
+    else
+        echo "unknown"
+    fi
+}
+
+# Get latest version from GitHub API
+get_latest_version_from_api() {
+    local api_response
+    api_response=$(curl -s --connect-timeout 3 --max-time 5 "$GITHUB_API_URL" 2>/dev/null)
+
+    if [ -n "$api_response" ]; then
+        echo "$api_response" | grep '"tag_name"' | cut -d'"' -f4
+    fi
+}
+
+# Show colored update notification
+show_update_notification() {
+    local current="$1"
+    local latest="$2"
+
+    printf '\n%b\n' "${_YELLOW}⚡ DockerKit v${latest} available! Current: v${current}${_RESET}"
+    printf '%b\n\n' "${_GRAY}   Run 'make update' in DockerKit directory to upgrade${_RESET}"
+}
+
+# Main update check function
+perform_daily_update_check() {
+    # Check if update check is disabled
+    if [ "${DOCKERKIT_DISABLE_UPDATE_CHECK:-0}" = "1" ]; then
+        return 0
+    fi
+
+    # Check only once per day
+    if ! should_check_today; then
+        return 0
+    fi
+
+    # Get current and latest versions
+    local current_version latest_version
+    current_version=$(get_current_dockerkit_version)
+
+    if latest_version=$(get_latest_version_from_api); then
+        if [ -n "$latest_version" ] && [ "$current_version" != "$latest_version" ]; then
+            show_update_notification "$current_version" "$latest_version"
+        fi
+    fi
+
+    # Mark that we checked today (regardless of result)
+    mark_check_completed
 }
 
 # =============================================================================
@@ -250,7 +354,7 @@ connect_to_workspace() {
         return "${EXIT_PERMISSION_DENIED}"
     }
 
-    exec docker compose exec --workdir="${workdir}" workspace bash
+    exec docker compose exec -it --workdir="${workdir}" workspace bash
 }
 
 # Parse command line arguments
@@ -285,6 +389,9 @@ parse_arguments() {
 
 main() {
     local os_type project_name running_dockerkits running_count
+
+    # Perform daily update check (non-blocking)
+    perform_daily_update_check
 
     # Check OS compatibility
     os_type="$(detect_os)"

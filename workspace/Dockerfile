@@ -116,7 +116,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     redis-tools \
     rsync \
     sqlite3 \
-    wget && \
+    wget \
+    xterm && \
     rm -rf /var/lib/apt/lists/*
 
 # Install PostgreSQL client
