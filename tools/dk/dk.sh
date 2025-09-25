@@ -14,7 +14,7 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
-readonly DK_VERSION="1.5.0"
+readonly DK_VERSION="1.5.1"
 
 # =============================================================================
 # STANDARD EXIT CODES
@@ -250,7 +250,7 @@ connect_to_workspace() {
         return "${EXIT_PERMISSION_DENIED}"
     }
 
-    exec docker compose exec --workdir="${workdir}" workspace bash
+    exec docker compose exec -it --workdir="${workdir}" workspace bash
 }
 
 # Parse command line arguments
