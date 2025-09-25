@@ -1,3 +1,17 @@
+# [2.9.0](https://github.com/abordage/dockerkit/compare/v2.8.1...v2.9.0) (2025-09-25)
+
+
+### Bug Fixes
+
+* **tools:** add interactive flag for docker exec ([38224f2](https://github.com/abordage/dockerkit/commit/38224f28a82d32e776eaaa25cef2510df36c03ba))
+
+
+### Features
+
+* **tools:** add daily update check for DockerKit ([fd9461d](https://github.com/abordage/dockerkit/commit/fd9461d9cd8ea763731c27d550ac51538f11fc22))
+* **tools:** add update manager and integrate `make update` workflow ([e79e81b](https://github.com/abordage/dockerkit/commit/e79e81bab2fddfd4d4d898c755665b5803221453))
+* **workspace:** add xterm and terminal auto-resize support ([4bffef1](https://github.com/abordage/dockerkit/commit/4bffef1f454a410ed12097920a9b660e5dad3da0))
+
 ## [2.8.1](https://github.com/abordage/dockerkit/compare/v2.8.0...v2.8.1) (2025-09-24)
 
 
