@@ -164,7 +164,7 @@ show_update_notification() {
     local current="$1"
     local latest="$2"
 
-    printf '\n%b\n' "${_YELLOW}⚡ DockerKit v${latest} available! Current: v${current}${_RESET}"
+    printf '\n%b\n' "${_YELLOW}⚡ DockerKit ${latest} available! Current: ${current}${_RESET}"
     printf '%b\n\n' "${_GRAY}   Run 'make update' in DockerKit directory to upgrade${_RESET}"
 }
 
