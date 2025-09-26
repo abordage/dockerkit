@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/abordage/dockerkit/compare/v2.10.0...v2.11.0) (2025-09-26)
+
+
+### Features
+
+* **workspace:** preload composer public keys for signature verification ([58b91cb](https://github.com/abordage/dockerkit/commit/58b91cb20174d5945ca7b5d0877c56e0aa9e47e1))
+
 # [2.10.0](https://github.com/abordage/dockerkit/compare/v2.9.1...v2.10.0) (2025-09-25)
 
 
