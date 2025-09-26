@@ -357,10 +357,15 @@ FROM php-extensions AS composer-install
 USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ENV COMPOSER_NO_INTERACTION=1 \
-    COMPOSER_DISABLE_XDEBUG_WARN=1
+ENV COMPOSER_DISABLE_XDEBUG_WARN=1
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+# Preload Composer public keys for root to enable signature verification during build
+RUN set -eux; \
+    install -d -m 0755 /root/.composer; \
+    curl -fsSL https://composer.github.io/snapshots.pub -o /root/.composer/keys.dev.pub; \
+    curl -fsSL https://composer.github.io/releases.pub  -o /root/.composer/keys.tags.pub
 
 USER ${APP_UID}:${APP_GID}
 
@@ -491,6 +496,10 @@ ENV PATH="${COMPOSER_HOME}/vendor/bin:${NPM_CONFIG_PREFIX}/bin:${PATH}"
 
 # Install and configure user-specific tools
 RUN set -eux; \
+    # Ensure Composer public keys are present for the unprivileged user
+    install -d -m 0755 "/home/${APP_USER}/.composer"; \
+    curl -fsSL https://composer.github.io/snapshots.pub -o "/home/${APP_USER}/.composer/keys.dev.pub"; \
+    curl -fsSL https://composer.github.io/releases.pub  -o "/home/${APP_USER}/.composer/keys.tags.pub"; \
     # Configure composer \
     composer --version; \
     composer config --global allow-plugins.ergebnis/composer-normalize true; \
