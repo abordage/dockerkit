@@ -1,3 +1,10 @@
+## [2.11.1](https://github.com/abordage/dockerkit/compare/v2.11.0...v2.11.1) (2025-09-27)
+
+
+### Bug Fixes
+
+* **tools:** resolve mkcert download redirects and add version verification ([b0fcd06](https://github.com/abordage/dockerkit/commit/b0fcd063652f18dfd168196a3c1b8841062316d7))
+
 # [2.11.0](https://github.com/abordage/dockerkit/compare/v2.10.0...v2.11.0) (2025-09-26)
 
 
