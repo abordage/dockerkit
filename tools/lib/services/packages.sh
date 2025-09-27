@@ -35,6 +35,21 @@ install_required_tools() {
     esac
 }
 
+verify_mkcert_installation() {
+    local version
+    version=$(mkcert --version 2>/dev/null | head -1 | tr -d ' \t' | sed 's/^v//')
+
+    if [ -z "$version" ] || [ "$version" = "unknown" ]; then
+        print_error "mkcert installation verification failed"
+        print_error "mkcert --version did not return a valid version"
+        print_tip "Try reinstalling mkcert or check if it's properly installed"
+        return "$EXIT_GENERAL_ERROR"
+    fi
+
+    print_success "mkcert verified: v$version"
+    return "$EXIT_SUCCESS"
+}
+
 install_required_dependencies() {
     local required_tools=("mkcert")
     local all_ok=true
@@ -57,6 +72,10 @@ install_required_dependencies() {
         return "$EXIT_GENERAL_ERROR"
     fi
 
+    # Verify mkcert installation after installation/detection
+    if ! verify_mkcert_installation; then
+        return "$EXIT_GENERAL_ERROR"
+    fi
 
     return "$EXIT_SUCCESS"
 }
@@ -112,8 +131,16 @@ install_mkcert_linux() {
 
     # Download mkcert
     print_info "Downloading mkcert latest version..."
-    if ! curl "$mkcert_url" -o "$temp_dir/mkcert"; then
+    if ! curl -fsSL "$mkcert_url" -o "$temp_dir/mkcert"; then
         print_error "Failed to download mkcert"
+        rm -rf "$temp_dir" 2>/dev/null || true
+        return "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Verify downloaded file is a binary (not HTML redirect page)
+    if file "$temp_dir/mkcert" | grep -q "HTML\|text"; then
+        print_error "Downloaded file appears to be HTML/text, not a binary"
+        print_error "This usually means the download URL returned a redirect page"
         rm -rf "$temp_dir" 2>/dev/null || true
         return "$EXIT_GENERAL_ERROR"
     fi
@@ -131,7 +158,13 @@ install_mkcert_linux() {
 
     # Verify installation
     if ! command_exists "mkcert"; then
-        print_error "mkcert installation verification failed"
+        print_error "mkcert command not found after installation"
+        rm -rf "$temp_dir" 2>/dev/null || true
+        return "$EXIT_GENERAL_ERROR"
+    fi
+
+    # Verify mkcert responds correctly to --version
+    if ! verify_mkcert_installation; then
         rm -rf "$temp_dir" 2>/dev/null || true
         return "$EXIT_GENERAL_ERROR"
     fi
@@ -173,6 +206,11 @@ install_mkcert_macos() {
 
     # Install mkcert via Homebrew (suppress verbose output)
     if brew install --quiet mkcert >/dev/null 2>&1; then
+        # Verify mkcert responds correctly to --version
+        if ! verify_mkcert_installation; then
+            return "$EXIT_GENERAL_ERROR"
+        fi
+
         # Initialize CA after fresh installation
         print_info "Setting up local Certificate Authority..."
         if mkcert -install >/dev/null 2>&1; then

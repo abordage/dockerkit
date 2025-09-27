@@ -109,11 +109,7 @@ get_command_version() {
             brew --version | head -1 | tr -s ' ' | cut -d' ' -f2 | cut -d'-' -f1
             ;;
         mkcert)
-            if command_exists brew; then
-                brew list --versions mkcert 2>/dev/null | tr -s ' ' | cut -d' ' -f2 || echo "unknown"
-            else
-                echo "unknown"
-            fi
+            mkcert --version 2>/dev/null | head -1 | tr -d ' \t' | sed 's/^v//' || echo "unknown"
             ;;
         *)
             $command_name "$version_flag" 2>/dev/null | head -1 || echo "unknown"
