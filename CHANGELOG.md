@@ -1,3 +1,13 @@
+# [2.12.0](https://github.com/abordage/dockerkit/compare/v2.11.1...v2.12.0) (2025-10-21)
+
+
+### Features
+
+* **docker:** add Elasticsearch setting to disable name requirement for destructive actions ([088bb84](https://github.com/abordage/dockerkit/commit/088bb84984e96fc5b51af1c9cf9573d83fedde27))
+* **docker:** add support for custom Debian mirrors in builds ([a96cce9](https://github.com/abordage/dockerkit/commit/a96cce97128863762a0d11f1d50836a7e52c6bf3))
+* **docker:** enhance rebuild process for workspace and php-fpm images ([21cbaf7](https://github.com/abordage/dockerkit/commit/21cbaf744b580001c16fa171f9afb72aeba67848))
+* **workspace:** add terminal width configuration support ([86b0eb9](https://github.com/abordage/dockerkit/commit/86b0eb9847c6e3f8eadd7ff94d3f4bb96e4da884))
+
 ## [2.11.1](https://github.com/abordage/dockerkit/compare/v2.11.0...v2.11.1) (2025-09-27)
 
 
