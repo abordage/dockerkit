@@ -36,6 +36,8 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - TZ
+      # Terminal configuration
+      - TERMINAL_MAX_COLUMNS
       # Container user configuration
       - APP_USER
       - APP_UID

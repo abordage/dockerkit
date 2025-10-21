@@ -21,6 +21,15 @@ shopt -s checkwinsize
 # Save history immediately after each command (prevents loss on container restart)
 PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}history -a"
 
+# Terminal width configuration
+TERMINAL_MAX_COLUMNS=${TERMINAL_MAX_COLUMNS:-120}
+
+# Cap terminal width before each command for better output formatting
+_cap_columns() {
+    [[ $COLUMNS -gt $TERMINAL_MAX_COLUMNS ]] && export COLUMNS=$TERMINAL_MAX_COLUMNS
+}
+PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}_cap_columns"
+
 # Enable bash completion
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
@@ -62,7 +71,7 @@ fi
 if [[ $- == *i* ]] && [[ -t 1 ]] && command -v resize >/dev/null 2>&1; then
     # Initial resize on shell start
     eval "$(resize 2>/dev/null)"
-    
+
     # Auto-update on terminal window resize
     trap 'eval "$(resize 2>/dev/null)"' WINCH
 fi
