@@ -17,6 +17,8 @@ services:
         - NODE_VERSION
         # PostgreSQL
         - POSTGRES_VERSION
+        # Build configuration
+        - DEBIAN_MIRROR
     restart: on-failure:3
     depends_on:
       postgres:
@@ -34,6 +36,8 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - TZ
+      # Terminal configuration
+      - TERMINAL_MAX_COLUMNS
       # Container user configuration
       - APP_USER
       - APP_UID
@@ -91,6 +95,8 @@ services:
         - APP_GID
         # PHP Extensions
         - DEPENDENCY_PHP_EXTENSIONS
+        # Build configuration
+        - DEBIAN_MIRROR
     restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -291,6 +297,7 @@ services:
 
       # Development optimizations
       - action.auto_create_index=true
+      - action.destructive_requires_name=false
       - bootstrap.memory_lock=false
       - cluster.routing.allocation.disk.threshold_enabled=false
       - cluster.routing.allocation.node_concurrent_recoveries=2

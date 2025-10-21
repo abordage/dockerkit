@@ -22,6 +22,9 @@ ARG CURL_VERSION=curl-8_16_0
 # Xdebug Configuration
 ARG PHP_XDEBUG_CLIENT_PORT=9003
 
+# Debian Mirror Configuration
+ARG DEBIAN_MIRROR=
+
 FROM php:${PHP_VERSION}-cli AS base
 
 # Import ARG values into this stage
@@ -59,6 +62,7 @@ RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
 FROM base AS dependencies
 
 ARG POSTGRES_VERSION=17
+ARG DEBIAN_MIRROR=
 
 USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -67,6 +71,14 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eux; \
+    # Configure Debian mirror \
+    MIRROR="${DEBIAN_MIRROR:-http://deb.debian.org/debian}" && \
+    if [ "${MIRROR}" != "http://deb.debian.org/debian" ]; then \
+        echo "Configuring Debian mirror: ${MIRROR}"; \
+        [ -f /etc/apt/sources.list.d/debian.sources ] && sed -i "s|http://deb.debian.org/debian|${MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+        [ -f /etc/apt/sources.list ] && sed -i "s|http://deb.debian.org/debian|${MIRROR}|g" /etc/apt/sources.list; \
+        echo "Debian mirror configured successfully"; \
+    fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     bash-completion \
@@ -106,7 +118,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eux; \
     # Add Debian Backports repository \
-    echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list && \
+    MIRROR="${DEBIAN_MIRROR:-http://deb.debian.org/debian}" && \
+    echo "deb ${MIRROR} bookworm-backports main" > /etc/apt/sources.list.d/backports.list && \
     apt-get update && \
     # Install latest versions from backports \
     apt-get install -y --no-install-recommends -t bookworm-backports \
