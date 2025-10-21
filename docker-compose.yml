@@ -17,6 +17,8 @@ services:
         - NODE_VERSION
         # PostgreSQL
         - POSTGRES_VERSION
+        # Build configuration
+        - DEBIAN_MIRROR
     restart: on-failure:3
     depends_on:
       postgres:
@@ -91,6 +93,8 @@ services:
         - APP_GID
         # PHP Extensions
         - DEPENDENCY_PHP_EXTENSIONS
+        # Build configuration
+        - DEBIAN_MIRROR
     restart: on-failure:3
     extra_hosts:
       - "host.docker.internal:host-gateway"

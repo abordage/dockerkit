@@ -13,6 +13,9 @@ ARG DEPENDENCY_PHP_EXTENSIONS
 # cURL Configuration
 ARG CURL_VERSION=curl-8_16_0
 
+# Debian Mirror Configuration
+ARG DEBIAN_MIRROR=
+
 FROM php:${PHP_VERSION}-fpm AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -58,11 +61,23 @@ RUN groupadd -g "${APP_GID}" "${APP_USER}" && \
 # ============================================================================
 FROM base AS dependencies
 
+ARG DEBIAN_MIRROR=
+
 USER root
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install minimal system tools for PHP-FPM operation
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    # Configure Debian mirror \
+    MIRROR="${DEBIAN_MIRROR:-http://deb.debian.org/debian}" && \
+    if [ "${MIRROR}" != "http://deb.debian.org/debian" ]; then \
+        echo "Configuring Debian mirror: ${MIRROR}"; \
+        [ -f /etc/apt/sources.list.d/debian.sources ] && sed -i "s|http://deb.debian.org/debian|${MIRROR}|g" /etc/apt/sources.list.d/debian.sources; \
+        [ -f /etc/apt/sources.list ] && sed -i "s|http://deb.debian.org/debian|${MIRROR}|g" /etc/apt/sources.list; \
+        echo "Debian mirror configured successfully"; \
+    fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
