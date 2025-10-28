@@ -107,7 +107,7 @@ rebuild: ## Rebuild workspace and php-fpm images and restart services
 	@$(MAKE) start
 	@echo "$(GREEN)✓ Rebuild completed successfully!$(NC)"
 
-update: ## Update DockerKit, reinstall dk command, and rebuild containers (with cache)
+update: ## Update DockerKit and reinstall dk command
 	@tools/update.sh
 
 # =============================================================================
