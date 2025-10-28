@@ -1,3 +1,10 @@
+# [2.13.0](https://github.com/abordage/dockerkit/compare/v2.12.0...v2.13.0) (2025-10-28)
+
+
+### Features
+
+* **tools:** improve dk.sh with DockerKit root detection and nested directory support ([505e74a](https://github.com/abordage/dockerkit/commit/505e74ad04d2d274545eeb9e0eee2c28d9050ace))
+
 # [2.12.0](https://github.com/abordage/dockerkit/compare/v2.11.1...v2.12.0) (2025-10-21)
 
 
