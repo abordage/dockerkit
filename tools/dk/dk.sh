@@ -3,7 +3,9 @@
 # =============================================================================
 # DOCKERKIT QUICK CONNECT - SYSTEM-WIDE INSTALLATION
 # =============================================================================
-# Quick connect to DockerKit workspace container from any .localhost project
+# Quick connect to DockerKit workspace container from any project directory
+# Projects can be located alongside DockerKit (sibling directories)
+# Supports nested project structures and automatic detection
 # Compatible: macOS, Linux, WSL2
 # Usage: dk [--help]
 # =============================================================================
@@ -14,6 +16,8 @@ set -euo pipefail
 # SCRIPT METADATA
 # =============================================================================
 
+# Cache for projects root directory (to avoid repeated searches)
+_CACHED_PROJECTS_ROOT=""
 
 # Update check constants
 readonly LAST_CHECK_FILE="$HOME/.dockerkit/last-update-check"
@@ -24,9 +28,7 @@ readonly GITHUB_API_URL="https://api.github.com/repos/abordage/dockerkit/release
 # =============================================================================
 
 readonly EXIT_SUCCESS=0
-readonly EXIT_GENERAL_ERROR=1
-readonly EXIT_INVALID_CONFIG=3
-readonly EXIT_PERMISSION_DENIED=4
+readonly EXIT_ERROR=1
 
 # =============================================================================
 # COLOR CONSTANTS
@@ -44,14 +46,23 @@ readonly _RESET='\033[0m'
 
 # Print colored messages (POSIX compatible)
 print_error() { printf '%b\n' "${_RED}$1${_RESET}" >&2; }
-print_success() { printf '%b\n' "${_GREEN} $1${_RESET}"; }
 print_warning() { printf '%b\n' "${_YELLOW}$1${_RESET}"; }
 print_info() { printf '%s\n' "$1"; }
 
+# Fail with error and optional hint (unified error handling)
+fail_with_hint() {
+    local error_msg="$1"
+    local hint_msg="${2:-}"
+
+    print_error "${error_msg}"
+    test -n "${hint_msg}" && print_info "${hint_msg}" >&2
+    return "${EXIT_ERROR}"
+}
+
 # Color wrapper functions for inline text coloring
 green() { printf '%b' "${_GREEN}$1${_RESET}"; }
-red() { printf '%b' "${_RED}$1${_RESET}"; }
 yellow() { printf '%b' "${_YELLOW}$1${_RESET}"; }
+gray() { printf '%b' "${_GRAY}$1${_RESET}"; }
 
 # Detect operating system (improved WSL2 detection)
 detect_os() {
@@ -74,74 +85,136 @@ detect_os() {
 
 # Validate project directory name
 validate_project_name() {
-    case "$1" in
-        *[^a-zA-Z0-9._-]*) return 1 ;;
-        *.localhost) return 0 ;;
-        *) return 1 ;;
+    local name="$1"
+
+    # Empty name is invalid
+    test -z "$name" && return 1
+
+    # Name must contain only safe characters
+    case "$name" in
+        *[^a-zA-Z0-9._/-]*) return 1 ;;
+        *) return 0 ;;
     esac
 }
 
-# Safe basename implementation
-safe_basename() {
-    printf '%s\n' "${1##*/}"
+# Check if directory is a DockerKit installation
+is_dockerkit_directory() {
+    local dir="$1"
+
+    # Must have docker-compose.yml with workspace service
+    test -f "${dir}/docker-compose.yml" || return 1
+    grep -q "workspace:" "${dir}/docker-compose.yml" 2>/dev/null || return 1
+
+    # Must have DockerKit-specific files
+    test -f "${dir}/tools/dk/dk.sh" || test -f "${dir}/tools/dk/manager.sh" || return 1
+
+    return 0
 }
 
-# Safe dirname implementation
-safe_dirname() {
-    case "$1" in
-        */*) printf '%s\n' "${1%/*}" ;;
-        *) printf '.\n' ;;
-    esac
+# Find projects root directory (parent directory where DockerKit and projects are located)
+find_projects_root() {
+    local current_dir="${1:-$(pwd)}"
+    local max_depth=10
+    local depth=0
+
+    while test "${depth}" -lt "${max_depth}"; do
+        # Check if current directory contains a DockerKit installation
+        if test -d "${current_dir}"; then
+            for dir in "${current_dir}"/*; do
+                if test -d "$dir" && is_dockerkit_directory "$dir"; then
+                    printf '%s\n' "${current_dir}"
+                    return 0
+                fi
+            done
+        fi
+
+        # Reached filesystem root
+        if test "${current_dir}" = "/" || test "${current_dir}" = "."; then
+            return 1
+        fi
+
+        # Move one level up (inline dirname implementation)
+        case "${current_dir}" in
+            */*) current_dir="${current_dir%/*}" ;;
+            *) current_dir="." ;;
+        esac
+        depth=$((depth + 1))
+    done
+
+    return 1
+}
+
+# Calculate relative path from projects root to current directory
+get_relative_path_from_projects_root() {
+    local projects_root="$1"
+    local current_dir
+    current_dir="$(pwd)"
+
+    # Remove projects root prefix and leading slash
+    local relative_path="${current_dir#"${projects_root}"}"
+    relative_path="${relative_path#/}"
+
+    printf '%s\n' "${relative_path}"
+}
+
+# Get projects root with caching (performance optimization)
+get_projects_root_cached() {
+    if test -z "${_CACHED_PROJECTS_ROOT}"; then
+        _CACHED_PROJECTS_ROOT="$(find_projects_root)" || return 1
+    fi
+    printf '%s\n' "${_CACHED_PROJECTS_ROOT}"
+}
+
+# Get projects root or fail with error (convenience wrapper)
+require_projects_root() {
+    get_projects_root_cached || {
+        print_error "Projects root not found"
+        return "${EXIT_ERROR}"
+    }
 }
 
 # =============================================================================
 # UPDATE CHECK FUNCTIONS
 # =============================================================================
 
-# Get today's date in YYYY-MM-DD format
-get_today_date() {
-    date +%Y-%m-%d
-}
-
 # Check if we need to check for updates today
 should_check_today() {
     local today last_check_date
-    today=$(get_today_date)
-    last_check_date=""
+    today=$(date +%Y-%m-%d)
 
     # Create directory if it doesn't exist
     mkdir -p "$(dirname "$LAST_CHECK_FILE")" 2>/dev/null
-
-    if [ -f "$LAST_CHECK_FILE" ]; then
-        last_check_date=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo "")
-    fi
+    last_check_date=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo "")
 
     # Check if date is different
-    [ "$today" != "$last_check_date" ]
+    test "$today" != "$last_check_date"
 }
 
 # Mark that we checked today
 mark_check_completed() {
     mkdir -p "$(dirname "$LAST_CHECK_FILE")" 2>/dev/null
-    get_today_date > "$LAST_CHECK_FILE"
+    date +%Y-%m-%d > "$LAST_CHECK_FILE"
 }
 
 # Get current DockerKit version from git tags
 get_current_dockerkit_version() {
-    # Find DockerKit directory by looking for update.sh script
-    local dockerkit_dir current_dir projects_dir
-    current_dir="$(pwd)"
-    projects_dir="$(safe_dirname "$current_dir")"
+    local projects_root dockerkit_dir
 
-    # Look for DockerKit in parent directory
-    for dir in "$projects_dir"/*; do
-        if [ -f "$dir/tools/update.sh" ]; then
+    # Find projects root directory
+    projects_root="$(require_projects_root)" || {
+        echo "unknown"
+        return 1
+    }
+
+    # Find first DockerKit directory
+    for dir in "${projects_root}"/*; do
+        if test -d "$dir" && is_dockerkit_directory "$dir"; then
             dockerkit_dir="$dir"
             break
         fi
     done
 
-    if [ -n "$dockerkit_dir" ] && [ -d "$dockerkit_dir" ]; then
+    if test -n "${dockerkit_dir}"; then
         (cd "$dockerkit_dir" && git describe --tags --abbrev=0 2>/dev/null) || echo "unknown"
     else
         echo "unknown"
@@ -150,12 +223,9 @@ get_current_dockerkit_version() {
 
 # Get latest version from GitHub API
 get_latest_version_from_api() {
-    local api_response
-    api_response=$(curl -s --connect-timeout 3 --max-time 5 "$GITHUB_API_URL" 2>/dev/null)
-
-    if [ -n "$api_response" ]; then
-        echo "$api_response" | grep '"tag_name"' | cut -d'"' -f4
-    fi
+    curl -s --connect-timeout 3 --max-time 5 "$GITHUB_API_URL" 2>/dev/null |
+        grep '"tag_name"' |
+        cut -d'"' -f4
 }
 
 # Show colored update notification
@@ -163,14 +233,16 @@ show_update_notification() {
     local current="$1"
     local latest="$2"
 
-    printf '\n%b\n' "${_YELLOW}⚡ DockerKit ${latest} available! Current: ${current}${_RESET}"
-    printf '%b\n\n' "${_GRAY}   Run 'make update' in DockerKit directory to upgrade${_RESET}"
+    echo ""
+    printf '%b\n' "⚡ DockerKit $(yellow "${latest}") available! Current: $(yellow "${current}")"
+    printf '%b\n' "   $(gray "Run 'make update' in DockerKit directory to upgrade")"
+    echo ""
 }
 
 # Main update check function
 perform_daily_update_check() {
     # Check if update check is disabled
-    if [ "${DOCKERKIT_DISABLE_UPDATE_CHECK:-0}" = "1" ]; then
+    if test "${DOCKERKIT_DISABLE_UPDATE_CHECK:-0}" = "1"; then
         return 0
     fi
 
@@ -179,12 +251,18 @@ perform_daily_update_check() {
         return 0
     fi
 
-    # Get current and latest versions
+    # Get current version
     local current_version latest_version
     current_version=$(get_current_dockerkit_version)
 
+    # Skip if version is unknown
+    if test "$current_version" = "unknown"; then
+        return 0
+    fi
+
+    # Get latest version and compare
     if latest_version=$(get_latest_version_from_api); then
-        if [ -n "$latest_version" ] && [ "$current_version" != "$latest_version" ]; then
+        if test -n "$latest_version" && test "$current_version" != "$latest_version"; then
             show_update_notification "$current_version" "$latest_version"
         fi
     fi
@@ -197,6 +275,27 @@ perform_daily_update_check() {
 # CORE FUNCTIONS
 # =============================================================================
 
+# Validate project location (not in root or DockerKit directory)
+validate_project_location() {
+    local projects_root="$1"
+    local relative_path="$2"
+
+    # Check not in projects root
+    if test -z "${relative_path}"; then
+        fail_with_hint "You are in projects root directory" \
+                       "Navigate to a project directory"
+    fi
+
+    # Check not inside DockerKit directory
+    local project_first_dir="${relative_path%%/*}"
+    if is_dockerkit_directory "${projects_root}/${project_first_dir}"; then
+        fail_with_hint "You are inside DockerKit directory" \
+                       "Navigate to a project directory (not DockerKit)"
+    fi
+
+    return 0
+}
+
 # Show help message
 show_help() {
     cat << EOF
@@ -206,18 +305,27 @@ USAGE:
     dk [OPTIONS]
 
 DESCRIPTION:
-    Quick connect to DockerKit workspace container from any .localhost project.
-    Automatically detects current project and available DockerKit instances.
+    Quick connect to DockerKit workspace container from any project directory.
+    Projects should be located alongside DockerKit (as sibling directories).
+    Automatically detects DockerKit instances and calculates correct workdir.
 
 OPTIONS:
     --help          Show this help message
 
 EXAMPLES:
-    dk                      # Connect to workspace or show available options
+    # Directory structure:
+    # /projects/
+    # ├── dockerkit-82/        ← DockerKit
+    # ├── project.localhost/   ← Your projects
+    # └── abordage/
+    #     └── project-2/
+
+    cd project.localhost && dk     # workdir: /var/www/project.localhost
+    cd abordage/project-2 && dk    # workdir: /var/www/abordage/project-2
 
 REQUIREMENTS:
-    • Must be run from a .localhost project directory
-    • At least one DockerKit instance must be available
+    • Must be run from a project directory (sibling of DockerKit folder)
+    • At least one DockerKit instance must be running
     • Docker and docker compose must be installed
 
 INSTALLATION:
@@ -232,76 +340,67 @@ MORE INFO:
 EOF
 }
 
-# Detect current project name from directory
+# Detect current project path relative to projects root
 detect_current_project() {
-    local current_dir project_name
-    current_dir="$(pwd)"
-    project_name="$(safe_basename "${current_dir}")"
+    local projects_root relative_path
 
-    if ! validate_project_name "${project_name}"; then
-        print_warning "Current directory is not a .localhost project: ${project_name}"
-        print_info "Navigate to a project directory ending with .localhost"
-        return "${EXIT_INVALID_CONFIG}"
+    # Find projects root directory
+    if ! projects_root="$(get_projects_root_cached)"; then
+        fail_with_hint "Projects root not found" \
+                       "Navigate to a project directory (sibling of DockerKit folder)"
     fi
 
-    printf '%s\n' "${project_name}"
+    # Get relative path from projects root
+    relative_path="$(get_relative_path_from_projects_root "${projects_root}")"
+
+    # Validate location (not in root or DockerKit)
+    validate_project_location "${projects_root}" "${relative_path}" || return "${EXIT_ERROR}"
+
+    # Validate path contains only safe characters
+    if ! validate_project_name "${relative_path}"; then
+        fail_with_hint "Invalid project path: ${relative_path}" \
+                       "Path contains invalid characters"
+    fi
+
+    printf '%s\n' "${relative_path}"
 }
 
-# Discover available DockerKit instances (improved cross-platform compatibility)
+# Discover available DockerKit instances
 discover_dockerkits() {
-    local projects_dir
-    projects_dir="$(safe_dirname "$(pwd)")"
+    local projects_root
 
-    if test ! -d "${projects_dir}"; then
-        return "${EXIT_INVALID_CONFIG}"
+    # Find projects root directory
+    projects_root="$(require_projects_root)" || return "${EXIT_ERROR}"
+
+    if test ! -d "${projects_root}"; then
+        return "${EXIT_ERROR}"
     fi
 
-    # Use more portable approach: try -maxdepth first, fallback to ls
-    if find "${projects_dir}" -maxdepth 1 -type d >/dev/null 2>&1; then
-        # GNU find or compatible
-        find "${projects_dir}" -maxdepth 1 -type d 2>/dev/null
-    else
-        # Fallback for older systems
-        for dir in "${projects_dir}"/*; do
-            test -d "$dir" && printf '%s\n' "$dir"
-        done 2>/dev/null
-    fi | while IFS= read -r dir; do
-        test -f "${dir}/docker-compose.yml" || continue
-        if grep -q "workspace:" "${dir}/docker-compose.yml" 2>/dev/null; then
-            safe_basename "${dir}"
+    # Find all DockerKit directories
+    for dir in "${projects_root}"/*; do
+        if test -d "$dir" && is_dockerkit_directory "$dir"; then
+            # Print basename (inline implementation)
+            printf '%s\n' "${dir##*/}"
         fi
     done | sort
 }
 
 # Check which DockerKit instances are running
 check_running_dockerkits() {
-    local projects_dir dockerkits_found
-    projects_dir="$(safe_dirname "$(pwd)")"
+    local projects_root dockerkits_found
+
+    # Find projects root directory
+    projects_root="$(require_projects_root)" || return "${EXIT_ERROR}"
 
     dockerkits_found="$(discover_dockerkits)"
-    test -n "${dockerkits_found}" || return "${EXIT_INVALID_CONFIG}"
+    test -n "${dockerkits_found}" || return "${EXIT_ERROR}"
 
     echo "${dockerkits_found}" | while IFS= read -r dockerkit; do
-        local dockerkit_path="${projects_dir}/${dockerkit}"
+        local dockerkit_path="${projects_root}/${dockerkit}"
         if docker compose -f "${dockerkit_path}/docker-compose.yml" ps --services --filter "status=running" 2>/dev/null | grep -q .; then
             printf '%s\n' "${dockerkit}"
         fi
     done
-}
-
-# Validate multiple running instances
-validate_multiple_running() {
-    local running_count
-    running_count="$1"
-
-    if test "${running_count}" -gt 1; then
-        print_warning "Multiple DockerKit instances are running!"
-        print_warning "This may cause port conflicts. Please stop unused instances."
-
-        return "${EXIT_GENERAL_ERROR}"
-    fi
-
-    return "${EXIT_SUCCESS}"
 }
 
 # Show available DockerKit options when nothing is running
@@ -310,9 +409,8 @@ show_available_options() {
     dockerkits_found="$(discover_dockerkits)"
 
     if test -z "${dockerkits_found}"; then
-        print_error "No DockerKit installations found"
-        print_info "Expected directories with docker-compose.yml containing workspace service"
-        return "${EXIT_INVALID_CONFIG}"
+        fail_with_hint "No DockerKit installations found" \
+                       "Expected directories with docker-compose.yml containing workspace service"
     fi
 
     print_warning "No DockerKit instances running."
@@ -322,26 +420,32 @@ show_available_options() {
 
 # Connect to running workspace container
 connect_to_workspace() {
-    local running_dockerkit project_name projects_dir dockerkit_path workdir
+    local running_dockerkit project_path projects_root dockerkit_path workdir
     running_dockerkit="$1"
-    project_name="$2"
-    projects_dir="$(safe_dirname "$(pwd)")"
-    dockerkit_path="${projects_dir}/${running_dockerkit}"
-    workdir="/var/www/${project_name}"
+    project_path="$2"
+
+    # Find projects root directory
+    projects_root="$(require_projects_root)" || return "${EXIT_ERROR}"
+
+    # Construct path to running dockerkit
+    dockerkit_path="${projects_root}/${running_dockerkit}"
+
+    # Construct workdir path - use relative path from projects root
+    workdir="/var/www/${project_path}"
 
     if test ! -d "${dockerkit_path}"; then
         print_error "DockerKit directory not found: ${dockerkit_path}"
-        return "${EXIT_INVALID_CONFIG}"
+        return "${EXIT_ERROR}"
     fi
 
-    print_info "Connecting to ${running_dockerkit} workspace container"
-    print_info "Project: ${project_name}"
-    print_info "Workdir: ${workdir}"
+    printf '%b\n' "Service: $(green "${running_dockerkit}") $(gray "workspace")"
+    printf '%b\n' "Project: $(gray "${project_path}")"
+    printf '%b\n' "Workdir: $(gray "${workdir}")"
 
     # Change to dockerkit directory and execute
     cd "${dockerkit_path}" || {
         print_error "Cannot access DockerKit directory: ${dockerkit_path}"
-        return "${EXIT_PERMISSION_DENIED}"
+        return "${EXIT_ERROR}"
     }
 
     exec docker compose exec -it --workdir="${workdir}" workspace bash
@@ -358,12 +462,12 @@ parse_arguments() {
             -*)
                 print_error "Unknown option: $1"
                 show_help
-                exit "${EXIT_GENERAL_ERROR}"
+                exit "${EXIT_ERROR}"
                 ;;
             *)
                 print_error "Unexpected argument: $1"
                 show_help
-                exit "${EXIT_GENERAL_ERROR}"
+                exit "${EXIT_ERROR}"
                 ;;
         esac
     done
@@ -373,50 +477,47 @@ parse_arguments() {
 # MAIN FUNCTION
 # =============================================================================
 
-main() {
-    local os_type project_name running_dockerkits running_count
-
-    # Perform daily update check (non-blocking)
+# Validate environment (OS compatibility and update check)
+validate_environment() {
     perform_daily_update_check
 
-    # Check OS compatibility
-    os_type="$(detect_os)"
+    local -r os_type="$(detect_os)"
     if test "${os_type}" = "windows"; then
         print_error "Windows is not supported. Use WSL2 instead."
-        exit "${EXIT_GENERAL_ERROR}"
+        exit "${EXIT_ERROR}"
     fi
+}
 
-    # Parse arguments
-    parse_arguments "$@"
-
-    # Detect current project
-    if ! project_name="$(detect_current_project)"; then
-        exit "${EXIT_INVALID_CONFIG}"
-    fi
-
-    # Check for running DockerKit instances
-    running_dockerkits="$(check_running_dockerkits)"
+# Find running DockerKit instance or exit with message
+find_running_instance() {
+    local -r running_dockerkits="$(check_running_dockerkits)"
 
     if test -z "${running_dockerkits}"; then
-        # No running instances - show available options
         show_available_options
         exit "${EXIT_SUCCESS}"
     fi
 
-    # Count running instances
-    running_count="$(echo "${running_dockerkits}" | wc -l | tr -d ' ')"
+    local -r running_count="$(echo "${running_dockerkits}" | wc -l | tr -d ' ')"
 
-    # Validate multiple running (but continue with first found)
-    if ! validate_multiple_running "${running_count}"; then
+    if test "${running_count}" -gt 1; then
+        print_warning "Multiple DockerKit instances are running!"
+        print_warning "This may cause port conflicts. Please stop unused instances."
         print_info "Connecting to first found instance"
     fi
 
-    # Get first running instance
-    local first_running
-    first_running="$(echo "${running_dockerkits}" | head -n 1)"
+    echo "${running_dockerkits}" | head -n 1
+}
 
-    # Connect to workspace
-    connect_to_workspace "${first_running}" "${project_name}"
+# Main entry point
+main() {
+    validate_environment
+    parse_arguments "$@"
+
+    local project_path first_running
+    project_path="$(detect_current_project)" || exit "${EXIT_ERROR}"
+    first_running="$(find_running_instance)"
+
+    connect_to_workspace "${first_running}" "${project_path}"
 }
 
 # =============================================================================
@@ -427,7 +528,7 @@ main() {
 if ! command -v docker >/dev/null 2>&1; then
     print_error "docker command not found"
     print_info "Please install Docker and ensure it's in your PATH"
-    exit "${EXIT_GENERAL_ERROR}"
+    exit "${EXIT_ERROR}"
 fi
 
 # Execute main function
