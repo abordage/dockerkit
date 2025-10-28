@@ -1,3 +1,10 @@
+## [2.13.1](https://github.com/abordage/dockerkit/compare/v2.13.0...v2.13.1) (2025-10-28)
+
+
+### Bug Fixes
+
+* **docs:** correct commit types release impact in contributing guide ([7c81f51](https://github.com/abordage/dockerkit/commit/7c81f5151ae4161b7eaa079e47401ad41b025fc8))
+
 # [2.13.0](https://github.com/abordage/dockerkit/compare/v2.12.0...v2.13.0) (2025-10-28)
 
 
