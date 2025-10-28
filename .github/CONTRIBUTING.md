@@ -22,8 +22,8 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for automate
 |------------|------------------------------|-------------------------------|
 | `feat`     | New features                 | Minor release (1.0.0 → 1.1.0) |
 | `fix`      | Bug fixes                    | Patch release (1.0.0 → 1.0.1) |
-| `perf`     | Performance improvements     | Patch release                 |
-| `refactor` | Code refactoring             | Patch release                 |
+| `perf`     | Performance improvements     | No release                    |
+| `refactor` | Code refactoring             | No release                    |
 | `docs`     | Documentation changes        | No release                    |
 | `style`    | Code style changes           | No release                    |
 | `test`     | Test additions/modifications | No release                    |
@@ -161,7 +161,7 @@ Our releases are fully automated using [semantic-release](https://github.com/sem
 
 ### Release Types
 
-- **Patch** (1.0.0 → 1.0.1): Only `fix`, `perf`, `refactor` commits
+- **Patch** (1.0.0 → 1.0.1): Only `fix` commits
 - **Minor** (1.0.0 → 1.1.0): Contains `feat` commits
 - **Major** (1.0.0 → 2.0.0): Contains breaking changes (`feat!`, `fix!`, or `BREAKING CHANGE:`)
 
