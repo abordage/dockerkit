@@ -1,3 +1,15 @@
+# [2.14.0](https://github.com/abordage/dockerkit/compare/v2.13.1...v2.14.0) (2026-02-01)
+
+
+### Bug Fixes
+
+* **tools:** add SSL bypass for MariaDB client in MySQL dump driver ([e12948a](https://github.com/abordage/dockerkit/commit/e12948ad8a5dbd22fb7aad3ae1c985954a9f120b))
+
+
+### Features
+
+* **docker:** add APCu configuration to php.ini examples ([31b7961](https://github.com/abordage/dockerkit/commit/31b79618cf326ce7b931adc473f21f04992d4b62))
+
 ## [2.13.1](https://github.com/abordage/dockerkit/compare/v2.13.0...v2.13.1) (2025-10-28)
 
 
