@@ -28,6 +28,11 @@ opcache.fast_shutdown = 1
 opcache.enable_file_override = 1
 opcache.huge_code_pages = 1
 
+; APCu Settings
+apc.enabled = 1
+apc.enable_cli = 1
+apc.shm_size = 128M
+
 ; Xdebug Configuration (if extension is loaded)
 xdebug.mode = debug
 xdebug.start_with_request = trigger
