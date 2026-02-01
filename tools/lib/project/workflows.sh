@@ -28,6 +28,14 @@ project_workflow() {
         return "$EXIT_MISSING_DEPENDENCY"
     fi
 
+    # Ask about updating installer before creating project
+    local update_function="${driver_name}_update_installer"
+    if type "$update_function" &>/dev/null; then
+        if confirm "Update $project_type installer before creating project?" "y"; then
+            "$update_function"
+        fi
+    fi
+
     local create_function="${driver_name}_create_project"
     if ! "$create_function" "$project_name"; then
         print_error "Project creation failed"

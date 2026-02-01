@@ -38,6 +38,15 @@ laravel_validate_environment() {
 }
 
 # =============================================================================
+# INSTALLER UPDATE
+# =============================================================================
+
+laravel_update_installer() {
+    debug_log "laravel" "Updating Laravel installer"
+    workspace_exec composer global update laravel/installer
+}
+
+# =============================================================================
 # PROJECT CREATION
 # =============================================================================
 
