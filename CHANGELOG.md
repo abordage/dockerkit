@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/abordage/dockerkit/compare/v2.14.0...v2.15.0) (2026-02-01)
+
+
+### Features
+
+* **tools:** add installer update prompt before project creation ([e6bfb67](https://github.com/abordage/dockerkit/commit/e6bfb6721a033a70779536411eb73a3d99a460ce))
+
 # [2.14.0](https://github.com/abordage/dockerkit/compare/v2.13.1...v2.14.0) (2026-02-01)
 
 
