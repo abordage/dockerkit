@@ -26,13 +26,14 @@ mysql_exec() {
     shift
 
     debug_log "mysql" "Executing MySQL command on database '$database' with args: $*"
-    debug_log "mysql" "Full command: mysql -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'***' -D'$database' $*"
+    debug_log "mysql" "Full command: mysql -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'***' -D'$database' --skip-ssl $*"
 
     workspace_exec mysql \
         -h"$MYSQL_HOST" \
         -u"$MYSQL_USER" \
         -p"$MYSQL_PASSWORD" \
         -D"$database" \
+        --skip-ssl \
         "$@" 2>/dev/null
 }
 
@@ -109,7 +110,7 @@ mysql_create_dump() {
     local compress="$3"
     local dump_path
     dump_path=$(mysql_dump_path "$dump_file")
-    local mysqldump_cmd="mysqldump -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'$MYSQL_PASSWORD' --single-transaction --routines --triggers '$db_name'"
+    local mysqldump_cmd="mysqldump -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'$MYSQL_PASSWORD' --skip-ssl --single-transaction --routines --triggers '$db_name'"
 
     # Ensure dumps directory exists
     mysql_bash_exec "mkdir -p '$MYSQL_DUMPS_PATH'"
@@ -142,7 +143,7 @@ mysql_restore_dump() {
     fi
 
     # Determine if file is compressed and prepare restore command
-    local mysql_cmd="mysql -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'$MYSQL_PASSWORD' '$target_db'"
+    local mysql_cmd="mysql -h'$MYSQL_HOST' -u'$MYSQL_USER' -p'$MYSQL_PASSWORD' --skip-ssl '$target_db'"
 
     if [[ "$dump_file" == *.gz ]]; then
         # Restore from compressed dump
