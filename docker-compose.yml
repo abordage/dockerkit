@@ -61,6 +61,8 @@ services:
       # RabbitMQ Management API credentials
       - RABBITMQ_DEFAULT_USER
       - RABBITMQ_DEFAULT_PASS
+      # WakaTime extension (reads WAKATIME_API_KEY when set)
+      - WAKATIME_API_KEY
     volumes:
       - ${HOST_APP_PATH}:/var/www
       - ${HOME}/.gitconfig:/home/${APP_USER}/.gitconfig:ro
