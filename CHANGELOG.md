@@ -1,3 +1,10 @@
+## [2.16.1](https://github.com/abordage/dockerkit/compare/v2.16.0...v2.16.1) (2026-02-09)
+
+
+### Bug Fixes
+
+* **docker:** use unless-stopped restart policy to prevent mixed containers on reboot ([eab7962](https://github.com/abordage/dockerkit/commit/eab7962983b60d8a1a16dcdd1aaacf3e74360953))
+
 # [2.16.0](https://github.com/abordage/dockerkit/compare/v2.15.0...v2.16.0) (2026-02-09)
 
 
