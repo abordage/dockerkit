@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/abordage/dockerkit/compare/v2.15.0...v2.16.0) (2026-02-09)
+
+
+### Features
+
+* **workspace:** add WakaTime API key support via environment variable ([8776950](https://github.com/abordage/dockerkit/commit/87769502305b1752d00436476755389b7aef1bc1))
+
 # [2.15.0](https://github.com/abordage/dockerkit/compare/v2.14.0...v2.15.0) (2026-02-01)
 
 
