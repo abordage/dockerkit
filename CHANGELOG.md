@@ -1,3 +1,10 @@
+## [2.16.2](https://github.com/abordage/dockerkit/compare/v2.16.1...v2.16.2) (2026-02-14)
+
+
+### Bug Fixes
+
+* **docker:** bind php-fpm to all interfaces instead of localhost ([d01521c](https://github.com/abordage/dockerkit/commit/d01521cc972ff2146d81ba0bccd1a53958ad0410))
+
 ## [2.16.1](https://github.com/abordage/dockerkit/compare/v2.16.0...v2.16.1) (2026-02-09)
 
 
