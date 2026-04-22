@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/abordage/dockerkit/compare/v2.16.3...v2.17.0) (2026-04-22)
+
+
+### Features
+
+* **docker:** add prometheus and grafana monitoring services ([1c258c1](https://github.com/abordage/dockerkit/commit/1c258c157abb7bbf72617b4eb87f51c5f994ef1b))
+
 ## [2.16.3](https://github.com/abordage/dockerkit/compare/v2.16.2...v2.16.3) (2026-04-22)
 
 
