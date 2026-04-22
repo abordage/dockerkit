@@ -179,6 +179,7 @@ ask_container_restart() {
             containers_restarted=true
             # Show available sites after successful restart
             show_available_sites "${projects[@]}"
+            show_available_panels
         else
             print_error "Failed to restart containers"
             exit "$EXIT_GENERAL_ERROR"
@@ -187,6 +188,41 @@ ask_container_restart() {
 
     # Always show next steps, but conditionally show restart instruction
     show_next_steps "$containers_restarted"
+}
+
+# Show available web UI panels for enabled services
+show_available_panels() {
+    local services="${ENABLE_SERVICES:-}"
+    [ -z "$services" ] && return 0
+
+    # service|label|port (port resolved from .env, with fallback)
+    local panel_map=(
+        "rabbitmq|RabbitMQ|${RABBITMQ_MANAGEMENT_HTTP_HOST_PORT:-15672}"
+        "elasticvue|Elasticvue|${ELASTICVUE_HTTP_PORT:-9210}"
+        "minio|MinIO Console|${MINIO_CONSOLE_PORT:-9001}"
+        "mailpit|Mailpit|${MAILPIT_HTTP_PORT:-8125}"
+        "portainer|Portainer|${PORTAINER_PORT:-9010}"
+        "prometheus|Prometheus|${PROMETHEUS_PORT:-9090}"
+        "grafana|Grafana|${GRAFANA_PORT:-3100}"
+    )
+
+    local output=()
+    for entry in "${panel_map[@]}"; do
+        local service="${entry%%|*}"
+        local rest="${entry#*|}"
+        local label="${rest%%|*}"
+        local port="${rest#*|}"
+        if echo "$services" | grep -qw "$service"; then
+            output+=("$(printf '%-20s %s' "$label" "http://localhost:${port}")")
+        fi
+    done
+
+    [ ${#output[@]} -eq 0 ] && return 0
+
+    print_section "Available panels"
+    for line in "${output[@]}"; do
+        print_success "$line"
+    done
 }
 
 # Show available sites

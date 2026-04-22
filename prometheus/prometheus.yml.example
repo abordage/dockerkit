@@ -1,0 +1,41 @@
+# =============================================================================
+# Prometheus Scrape Configuration
+# =============================================================================
+# Copy this file to prometheus.yml and configure your scrape targets.
+#
+# DockerKit assigns each .localhost project as a network alias of the nginx
+# container (see docker-compose.aliases.yml). Prometheus runs on the same Docker
+# network, so it can resolve project domains directly. The Host header is set
+# automatically from the target address, and nginx routes the request to the
+# correct PHP-FPM backend.
+#
+# Scrape target pattern for a .localhost project:
+#
+#   - job_name: '<service-name>'
+#     metrics_path: '/metrics'
+#     static_configs:
+#       - targets: ['<project>.localhost:80']
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Prometheus self-monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ---------------------------------------------------------------------------
+  # Your microservices
+  # ---------------------------------------------------------------------------
+  # Add one job per service that exposes a /metrics endpoint.
+  # Replace 'myapp' and 'myapp.localhost' with your actual service details.
+  #
+  # - job_name: 'myapp'
+  #   metrics_path: '/metrics'
+  #   static_configs:
+  #     - targets: ['myapp.localhost:80']

@@ -252,13 +252,17 @@ tree            # tree -I vendor -C
 
 Access management interfaces for development services:
 
-| Service           | URL                      | Credentials           | Purpose           |
-|-------------------|--------------------------|-----------------------|-------------------|
-| **Mailpit**       | <http://localhost:8125>  | -                     | Email testing     |
-| **MinIO Console** | <http://localhost:9001>  | dockerkit / dockerkit | File storage      |
-| **RabbitMQ**      | <http://localhost:15672> | dockerkit / dockerkit | Message queues    |
-| **Elasticvue**    | <http://localhost:9210>  | -                     | Elasticsearch UI  |
-| **Portainer**     | <http://localhost:9010>  | Setup on first visit  | Docker management |
+| Service           | URL                      | Credentials           | Purpose             |
+|-------------------|--------------------------|-----------------------|---------------------|
+| **Mailpit**       | <http://localhost:8125>  | -                     | Email testing       |
+| **MinIO Console** | <http://localhost:9001>  | dockerkit / dockerkit | File storage        |
+| **RabbitMQ**      | <http://localhost:15672> | dockerkit / dockerkit | Message queues      |
+| **Elasticvue**    | <http://localhost:9210>  | -                     | Elasticsearch UI    |
+| **Portainer**     | <http://localhost:9010>  | Setup on first visit  | Docker management   |
+| **Prometheus**    | <http://localhost:9090>  | -                     | Metrics collection  |
+| **Grafana**       | <http://localhost:3100>  | dockerkit / dockerkit | Metrics dashboards  |
+
+> Prometheus and Grafana are optional services. Add `prometheus grafana` to `ENABLE_SERVICES` in `.env` to start them.
 
 ## Development Tools
 

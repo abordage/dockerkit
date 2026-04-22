@@ -21,6 +21,7 @@ SETUP_FILES=(
     "php-fpm/www.conf.example:php-fpm/www.conf"
     "php-fpm/php.ini.example:php-fpm/php.ini"
     "workspace/php.ini.example:workspace/php.ini"
+    "prometheus/prometheus.yml.example:prometheus/prometheus.yml"
 )
 
 # Create file from example if it doesn't exist

@@ -22,6 +22,12 @@
 # Auto-generated network aliases
 docker-compose.aliases.yml
 
+# Prometheus scrape configuration (contains project-specific targets)
+/prometheus/prometheus.yml
+
+# Grafana dashboards (distributed out-of-band, not tracked by git)
+/grafana/dashboards/*.json
+
 # Ignore dump files but not directories
 dumps/mysql/*
 dumps/postgres/*
