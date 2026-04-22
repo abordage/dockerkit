@@ -1,3 +1,10 @@
+## [2.16.3](https://github.com/abordage/dockerkit/compare/v2.16.2...v2.16.3) (2026-04-22)
+
+
+### Bug Fixes
+
+* **tools:** validate host ~/.gitconfig before compose ([5a71b3b](https://github.com/abordage/dockerkit/commit/5a71b3bc223ac3f8e8b8d351062c6b69234095f6))
+
 ## [2.16.2](https://github.com/abordage/dockerkit/compare/v2.16.1...v2.16.2) (2026-02-14)
 
 
