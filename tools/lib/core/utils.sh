@@ -158,6 +158,31 @@ version_compare() {
 }
 
 # =============================================================================
+# HOST GIT CONFIG (user-facing; validate_host_gitconfig in validation.sh is silent)
+# =============================================================================
+
+# Prints messages for a failed validate_host_gitconfig; reads HOST_GITCONFIG_ERROR
+print_host_gitconfig_error() {
+    local path
+    path="${HOME}/.gitconfig"
+
+    case "${HOST_GITCONFIG_ERROR:-}" in
+        directory)
+            print_error "Invalid Git config: $path is a directory, not a file"
+            print_tip "If this was missing on first 'docker compose up', Docker can create a directory. If the directory is empty, run:  rmdir \"$path\"  then:  touch \"$path\""
+            ;;
+        missing)
+            print_error "Missing Git config file: $path"
+            print_tip "The workspace service expects a regular file at that path, e.g.:  touch \"$path\""
+            print_tip "or:  git config --global user.name \"...\"  and  git config --global user.email \"...\""
+            ;;
+        not_regular)
+            print_error "Invalid Git config: $path exists but is not a regular file"
+            ;;
+    esac
+}
+
+# =============================================================================
 # ARGUMENT PARSING
 # =============================================================================
 
