@@ -146,6 +146,10 @@ ENABLE_SERVICES="nginx,php-fpm,workspace,postgres,mysql,redis,rabbitmq,minio"
 DEPENDENCY_PHP_EXTENSIONS="gd,imagick,redis,xdebug,opcache"
 ```
 
+### Git configuration (host)
+
+The `workspace` service bind-mounts your host `~/.gitconfig` (see `docker-compose.yml`). That path must be a **regular file** (for example create it with `touch ~/.gitconfig` or set `user.name` / `user.email` with `git config --global`) **before** the first `docker compose up` that starts `workspace` if you skip `make setup`. If the file is missing, Docker can create a **directory** at the same path, which breaks Git. `make setup` checks this before continuing (including when it restarts containers at the end).
+
 ### Composer Authentication
 
 For private repositories, configure `workspace/auth.json`:

@@ -53,7 +53,7 @@ USAGE:
     DESCRIPTION:
     Complete setup of DockerKit development environment including:
     • System dependencies check (with installation instructions)
-    • Git configuration generation
+    • Host Git config check (~/.gitconfig must be a regular file for the workspace)
     • Project detection and analysis (.localhost domains only)
     • Network aliases generation for Docker Compose
     • Hosts file management
@@ -67,13 +67,14 @@ EXAMPLES:
     ./setup.sh                  # Full environment setup
 
     PROCESS:
-    1. Check system dependencies
-    2. Scan for .localhost projects in parent directory
-    3. Generate Docker Compose network aliases
-    4. Set up hosts file entries for discovered projects
-    5. Generate SSL certificates for HTTPS support
-    6. Generate nginx configurations based on project types
-    7. Validate all generated configurations
+    1. Validate host Git config (~/.gitconfig)
+    2. Check system dependencies
+    3. Scan for .localhost projects in parent directory
+    4. Generate Docker Compose network aliases
+    5. Set up hosts file entries for discovered projects
+    6. Generate SSL certificates for HTTPS support
+    7. Generate nginx configurations based on project types
+    8. Validate all generated configurations
 
 EOF
 }
@@ -81,6 +82,12 @@ EOF
 # Main setup function
 main() {
     print_header "DOCKERKIT ENVIRONMENT SETUP"
+
+    if ! validate_host_gitconfig; then
+        print_host_gitconfig_error
+        print_tip "Fix the issue above before continuing"
+        exit "$EXIT_INVALID_CONFIG"
+    fi
 
     # Step 1: Install required tools (essential for DockerKit functionality)
     print_section "Installing Required Tools"

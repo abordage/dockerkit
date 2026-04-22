@@ -124,3 +124,39 @@ validate_template_syntax() {
 
     return "$EXIT_SUCCESS"
 }
+
+# =============================================================================
+# HOST GIT CONFIG (for docker-compose bind mount of ~/.gitconfig)
+# =============================================================================
+# The workspace service mounts the host's ~/.gitconfig. If the path is missing
+# on first "docker compose up", Docker can create a directory in its place, which
+# breaks Git. Call this before any compose "up" that includes the workspace.
+#
+# On failure, sets HOST_GITCONFIG_ERROR to: directory | missing | not_regular
+# (read by print_host_gitconfig_error in utils.sh)
+
+validate_host_gitconfig() {
+    local path
+    path="${HOME}/.gitconfig"
+    HOST_GITCONFIG_ERROR=""
+
+    if [ -d "$path" ]; then
+        # shellcheck disable=SC2034
+        HOST_GITCONFIG_ERROR="directory"
+        return "$EXIT_INVALID_CONFIG"
+    fi
+
+    if [ ! -e "$path" ]; then
+        # shellcheck disable=SC2034
+        HOST_GITCONFIG_ERROR="missing"
+        return "$EXIT_INVALID_CONFIG"
+    fi
+
+    if [ ! -f "$path" ]; then
+        # shellcheck disable=SC2034
+        HOST_GITCONFIG_ERROR="not_regular"
+        return "$EXIT_INVALID_CONFIG"
+    fi
+
+    return "$EXIT_SUCCESS"
+}

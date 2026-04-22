@@ -19,6 +19,7 @@ CONTAINERS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$CONTAINERS_SCRIPT_DIR/../core/utils.sh"
 source "$CONTAINERS_SCRIPT_DIR/../core/config.sh"
+source "$CONTAINERS_SCRIPT_DIR/../core/validation.sh"
 source "$CONTAINERS_SCRIPT_DIR/../core/docker.sh"
 
 # =============================================================================
@@ -32,6 +33,14 @@ manage_containers() {
     if ! ensure_docker_available; then
         print_error "Docker is not available"
         return "$EXIT_MISSING_DEPENDENCY"
+    fi
+
+    # start/restart run compose with workspace; bind mount needs a valid file (see validation.sh)
+    if [[ "$action" == "start" || "$action" == "restart" ]]; then
+        if ! validate_host_gitconfig; then
+            print_host_gitconfig_error
+            return "$EXIT_INVALID_CONFIG"
+        fi
     fi
 
     # Load environment variables
