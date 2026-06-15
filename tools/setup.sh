@@ -31,6 +31,7 @@ source "$SCRIPT_DIR/lib/services/projects.sh"
 source "$SCRIPT_DIR/lib/services/nginx.sh"
 source "$SCRIPT_DIR/lib/services/templates.sh"
 source "$SCRIPT_DIR/lib/services/aliases.sh"
+source "$SCRIPT_DIR/lib/services/debezium.sh"
 source "$SCRIPT_DIR/lib/services/containers.sh"
 source "$SCRIPT_DIR/lib/services/windows.sh"
 
@@ -104,6 +105,10 @@ main() {
     # Step 3: Create configuration files and directories
     print_section "Creating configuration files"
     create_managed_files
+
+    # Step 3b: Generate Debezium instances compose file
+    print_section "Generating Debezium instances"
+    setup_debezium_compose || print_warning " ◆ Skipped step: Debezium compose generation"
 
     # Step 4: Setup user permissions for better development experience
     if [ "$(detect_os)" = "wsl2" ] || [ "$(detect_os)" = "linux" ]; then

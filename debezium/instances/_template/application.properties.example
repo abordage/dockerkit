@@ -1,0 +1,46 @@
+# Debezium Server — PostgreSQL CDC to RabbitMQ
+# Instance: __INSTANCE__
+# Copy via: make debezium-instance INSTANCE=__INSTANCE__ DATABASE=your_db
+
+# =============================================================================
+# Sink: RabbitMQ
+# =============================================================================
+debezium.sink.type=rabbitmq
+debezium.sink.rabbitmq.exchange=cdc
+debezium.sink.rabbitmq.routingKey.source=topic
+debezium.sink.rabbitmq.autoCreateRoutingKey=true
+debezium.sink.rabbitmq.routingKeyDurable=true
+debezium.sink.rabbitmq.deliveryMode=2
+debezium.sink.rabbitmq.ackTimeout=30000
+
+# Connection credentials are injected via environment variables in docker-compose.debezium.yml
+
+# =============================================================================
+# Source: PostgreSQL
+# =============================================================================
+debezium.source.connector.class=io.debezium.connector.postgresql.PostgresConnector
+debezium.source.plugin.name=pgoutput
+
+debezium.source.database.dbname=__DATABASE__
+
+debezium.source.topic.prefix=cdc.__INSTANCE__
+debezium.source.publication.name=dbz_publication
+debezium.source.publication.autocreate.mode=disabled
+debezium.source.slot.name=debezium_slot___INSTANCE__
+
+# Comma-separated list of tables to capture (schema.table)
+debezium.source.table.include.list=public.example
+
+debezium.source.snapshot.mode=initial
+debezium.source.snapshot.locking.mode=none
+
+# Database host/user/password are injected via environment variables in docker-compose.debezium.yml
+
+# =============================================================================
+# Offset & schema history storage
+# =============================================================================
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.offset.flush.interval.ms=1000
+
+debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory
+debezium.source.schema.history.internal.file.filename=data/schema_history.dat

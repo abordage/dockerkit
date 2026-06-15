@@ -51,7 +51,7 @@ DESCRIPTION:
     • Docker containers, images, volumes and networks
     • Configuration files created from examples
     • Generated SSL certificates and nginx configs
-    • Network aliases file
+    • Network aliases and Debezium compose files
     • Persistent data (optional, with confirmation)
     • System-wide dangling Docker images (optional)
     • System-wide unused Docker images (optional)
@@ -159,6 +159,7 @@ main() {
 
     print_section "Removing network aliases"
     remove_network_aliases
+    remove_debezium_compose
 
     print_section "Docker cleanup"
     local project_name
