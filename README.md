@@ -41,7 +41,8 @@ DockerKit is a modern development environment enabling you to run, configure, an
 2. [Configuration](#configuration)
 3. [Usage](#usage)
 4. [Web Consoles](#web-consoles)
-5. [Development Tools](#development-tools)
+5. [Change Data Capture (Debezium)](#change-data-capture-debezium)
+6. [Development Tools](#development-tools)
 
 ## Quick Start
 
@@ -263,6 +264,102 @@ Access management interfaces for development services:
 | **Grafana**       | <http://localhost:3100>  | dockerkit / dockerkit | Metrics dashboards  |
 
 > Prometheus and Grafana are optional services. Add `prometheus grafana` to `ENABLE_SERVICES` in `.env` to start them.
+
+## Change Data Capture (Debezium)
+
+Debezium Server captures PostgreSQL changes via logical replication (WAL) and publishes them to RabbitMQ. **One Debezium instance monitors one PostgreSQL database.** For multiple databases, create multiple instances.
+
+### Create an instance
+
+```bash
+make debezium-instance INSTANCE=myapp DATABASE=myapp_db PORT=8081
+make debezium-instance INSTANCE=api DATABASE=api_db PORT=8082
+```
+
+This creates:
+
+```text
+debezium/instances/
+├── _template/              # Template (do not use as instance)
+├── myapp/
+│   ├── application.properties   # connector config (table.include.list, topic.prefix)
+│   └── instance.env             # SERVER_PORT for health endpoint
+└── api/
+    ├── application.properties
+    └── instance.env
+```
+
+`make setup` regenerates `docker-compose.debezium.yml` with a service per instance (`debezium-myapp`, `debezium-api`, …).
+
+### Enable instances
+
+Add each instance to `ENABLE_SERVICES` in `.env` (requires `postgres` and `rabbitmq`):
+
+```bash
+ENABLE_SERVICES="nginx php-fpm workspace postgres rabbitmq debezium-myapp debezium-api"
+```
+
+Then run `make restart`.
+
+> **Note:** `wal_level=logical` is configured in `postgres/postgresql.conf`. If the PostgreSQL volume already exists, restart PostgreSQL after the config change. In some cases you may need to recreate the `postgres_data` volume.  
+> Also you can set up `max_wal_senders = 5` and `max_replication_slots = 5`.
+> **max_replication_slots** - Specifies the maximum number of replication slots that the server can support (10 by default).  
+> **max_wal_senders** - Sets the maximum number of simultaneously running WAL sender processes (10 by default).
+
+### PostgreSQL setup
+
+Run the following SQL **in each database** you want to capture (replace placeholders):
+
+```sql
+-- 1. Create a replication user (run once per PostgreSQL server)
+CREATE USER debezium WITH REPLICATION LOGIN PASSWORD 'your_password';
+
+-- 2. Connect to the target database and grant access
+GRANT CONNECT ON DATABASE your_db TO debezium;
+GRANT USAGE ON SCHEMA public TO debezium;
+
+-- 3. Grant SELECT on tables you want to capture
+GRANT SELECT ON TABLE public.table1, public.table2 TO debezium;
+
+-- 4. Create a publication for those tables
+CREATE PUBLICATION dbz_publication FOR TABLE public.table1, public.table2;
+```
+
+Match `DEBEZIUM_DB_USER` / `DEBEZIUM_DB_PASSWORD` in `.env` with the user created above. The publication name must match `debezium.source.publication.name` in the instance `application.properties` (default: `dbz_publication`).
+
+Each instance uses a unique `topic.prefix` (e.g. `cdc.myapp`) and `slot.name` (e.g. `debezium_slot_myapp`) — set automatically when creating the instance.
+
+Debezium creates the replication slot automatically.
+
+### RabbitMQ setup
+
+Create a **direct** exchange (default name: `cdc`) and bind one queue per table.
+
+Routing key format: `{topic.prefix}.{schema}.{table}`
+
+| Instance | Table           | Routing key                 | Queue   |
+|----------|-----------------|-----------------------------|---------|
+| `myapp`  | `public.orders` | `cdc.myapp.public.orders`   | `orders`  |
+| `api`    | `public.events` | `cdc.api.public.events`     | `events`  |
+
+With `autoCreateRoutingKey=true` (default), queues are created automatically when the first message arrives. To use custom queue names, create the queue and binding manually in the [RabbitMQ Management UI](http://localhost:15672).
+
+### Adding a new table
+
+1. `GRANT SELECT ON TABLE public.new_table TO debezium;`
+2. `ALTER PUBLICATION dbz_publication ADD TABLE public.new_table;`
+3. Add `public.new_table` to `table.include.list` in `debezium/instances/<instance>/application.properties`
+4. Create a queue and binding in RabbitMQ (if not using auto-create)
+5. `docker compose restart debezium-<instance>`
+
+### Health check
+
+```bash
+curl http://localhost:8081/q/health   # debezium-myapp (if SERVER_PORT=8080)
+curl http://localhost:8082/q/health   # debezium-api
+```
+
+Ports are configured per instance in `debezium/instances/<instance>/instance.env`. Default starting port: `DEBEZIUM_SERVER_PORT_BASE` in `.env` (8080).
 
 ## Development Tools
 

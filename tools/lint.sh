@@ -186,8 +186,8 @@ check_docker_compose() {
         local error_count=0
 
         while IFS= read -r -d '' compose_file; do
-            # Skip aliases files as they're meant to extend main compose file
-            if [[ "$compose_file" == *"aliases"* ]]; then
+            # Skip generated compose overlays (they extend docker-compose.yml)
+            if [[ "$compose_file" == *"aliases"* || "$compose_file" == *"debezium"* ]]; then
                 continue
             fi
 

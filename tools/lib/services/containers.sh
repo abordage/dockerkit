@@ -73,6 +73,11 @@ execute_docker_compose() {
         compose_files="$compose_files -f docker-compose.aliases.yml"
     fi
 
+    # Add Debezium instances file if it exists
+    if [ -f "docker-compose.debezium.yml" ]; then
+        compose_files="$compose_files -f docker-compose.debezium.yml"
+    fi
+
     case "$action" in
         start|restart)
             if ! docker compose $compose_files up -d $ENABLE_SERVICES; then

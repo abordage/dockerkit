@@ -17,7 +17,7 @@ endif
 
 # Declare all targets as phony (they don't create files)
 .PHONY: help status setup start stop restart reset rebuild update \
-		project dump lint
+		project dump lint debezium-instance
 
 # Colors for output
 RED := \033[0;31m
@@ -37,6 +37,9 @@ ifneq (,$(wildcard docker-compose.aliases.yml))
     ALIASES_AVAILABLE = true
 else
     ALIASES_AVAILABLE = false
+endif
+ifneq (,$(wildcard docker-compose.debezium.yml))
+    COMPOSE_FILES += -f docker-compose.debezium.yml
 endif
 
 # Function to show aliases status
@@ -140,3 +143,6 @@ dump: ## Create/restore database dump
 
 project: ## Create new project
 	@tools/project.sh
+
+debezium-instance: ## Create Debezium CDC instance (INSTANCE=name DATABASE=db [PORT=8080])
+	@tools/debezium-instance.sh INSTANCE=$(INSTANCE) DATABASE=$(DATABASE) $(if $(PORT),PORT=$(PORT))
