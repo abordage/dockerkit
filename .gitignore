@@ -22,8 +22,15 @@
 # Auto-generated network aliases
 docker-compose.aliases.yml
 
+# Auto-generated Debezium instances
+docker-compose.debezium.yml
+
 # Prometheus scrape configuration (contains project-specific targets)
 /prometheus/prometheus.yml
+
+# Debezium instance configurations (per-database CDC)
+/debezium/instances/*
+!/debezium/instances/_template/
 
 # Grafana dashboards (distributed out-of-band, not tracked by git)
 /grafana/dashboards/*.json

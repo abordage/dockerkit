@@ -171,3 +171,10 @@ remove_network_aliases() {
         print_success "Removed network aliases file"
     fi
 }
+
+remove_debezium_compose() {
+    if [ -f "$DOCKERKIT_DIR/docker-compose.debezium.yml" ]; then
+        rm -f "$DOCKERKIT_DIR/docker-compose.debezium.yml"
+        print_success "Removed Debezium compose file"
+    fi
+}
