@@ -1,3 +1,10 @@
+# [2.18.0](https://github.com/abordage/dockerkit/compare/v2.17.0...v2.18.0) (2026-06-27)
+
+
+### Features
+
+* **tools:** add support for Debezium CDC instance management ([2be2769](https://github.com/abordage/dockerkit/commit/2be2769d11526e0690768bb51b6f8b39ea40949a))
+
 # [2.17.0](https://github.com/abordage/dockerkit/compare/v2.16.3...v2.17.0) (2026-04-22)
 
 
