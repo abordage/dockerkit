@@ -145,6 +145,9 @@ ENABLE_SERVICES="nginx,php-fpm,workspace,postgres,mysql,redis,rabbitmq,minio"
 
 # Customize PHP extensions
 DEPENDENCY_PHP_EXTENSIONS="gd,imagick,redis,xdebug,opcache"
+
+# PostgreSQL major (13 and 18 both work). Recreate postgres_data when changing it.
+POSTGRES_VERSION=17
 ```
 
 ### Git configuration (host)

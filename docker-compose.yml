@@ -154,7 +154,10 @@ services:
 
   ### PostgreSQL ###########################################
   postgres:
-    image: postgres:${POSTGRES_VERSION}
+    build:
+      context: ./postgres
+      args:
+        - POSTGRES_VERSION
     restart: unless-stopped
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -164,7 +167,7 @@ services:
       - POSTGRES_PASSWORD
       - TZ
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
