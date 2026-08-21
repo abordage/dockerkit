@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/abordage/dockerkit/compare/v2.18.0...v2.19.0) (2026-08-21)
+
+
+### Features
+
+* **postgres:** use versioned PGDATA so 13 and 18 share one volume mount ([aabfd0c](https://github.com/abordage/dockerkit/commit/aabfd0cafb2a21be893af1a5fd73e1bcf094041c))
+
 # [2.18.0](https://github.com/abordage/dockerkit/compare/v2.17.0...v2.18.0) (2026-06-27)
 
 
