@@ -2,7 +2,9 @@ ignored:
   - DL3003  # Use WORKDIR to switch to a directory - subshell (cd && cmd) is acceptable pattern
   - DL3008  # Pin versions in apt get install - ignored for dev environment flexibility
   - DL3016  # Pin versions in npm - ignored for dev environment flexibility
+  - DL3025  # HEALTHCHECK CMD shell form - matches existing workspace/php-fpm pattern
   - DL3059  # Multiple consecutive RUN instructions - acceptable for readability
+  - DL3066  # USER ${APP_UID}:${APP_GID} is numeric at build time via ARG
   - SC2015  # A && B || C is not if-then-else - known shell pattern
   - SC2086  # Double quote to prevent globbing - word splitting needed for package lists
 

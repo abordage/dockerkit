@@ -40,3 +40,10 @@ jobs:
           dockerfile: php-fpm/Dockerfile
           format: gcc
           failure-threshold: error
+
+      - name: Run Hadolint on postgres/Dockerfile
+        uses: hadolint/hadolint-action@v3.4.0
+        with:
+          dockerfile: postgres/Dockerfile
+          format: gcc
+          failure-threshold: error
