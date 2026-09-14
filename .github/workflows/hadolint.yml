@@ -28,21 +28,21 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Run Hadolint on workspace/Dockerfile
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: workspace/Dockerfile
           format: gcc
           failure-threshold: error
 
       - name: Run Hadolint on php-fpm/Dockerfile
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: php-fpm/Dockerfile
           format: gcc
           failure-threshold: error
 
       - name: Run Hadolint on postgres/Dockerfile
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: postgres/Dockerfile
           format: gcc
