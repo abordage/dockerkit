@@ -1,3 +1,11 @@
+## [2.19.1](https://github.com/abordage/dockerkit/compare/v2.19.0...v2.19.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **project:** install maintained client and server builds ([db1ab3c](https://github.com/abordage/dockerkit/commit/db1ab3c626d64760614edb4a44512c7d148521f2))
+* **project:** pin the Silo tag when SILO_VERSION is unset ([3fb4fda](https://github.com/abordage/dockerkit/commit/3fb4fda5c39778599a96ccf069876468bdcd44de))
+
 # [2.19.0](https://github.com/abordage/dockerkit/compare/v2.18.0...v2.19.0) (2026-08-21)
 
 
