@@ -19,6 +19,13 @@ ARG POSTGRES_VERSION=17
 # cURL Configuration
 ARG CURL_VERSION=curl-8_16_0
 
+# MinIO client fork (mcli), installed as mc.
+# Keep MC_VERSION aligned with the SILO_VERSION default in docker-compose.yml.
+ARG MC_VERSION=RELEASE.2026-10-18T00-00-00Z
+ARG MC_PACKAGE=20261018000000.0.0
+ARG MC_SHA256_AMD64=b5392a642dbc9685b517ee901f032d1d5e88f41704436f0f08dde6060b577db3
+ARG MC_SHA256_ARM64=17f3eb694ed34e155b331b1215832140749656d8d4b60e2e3a4d0573b8f320d7
+
 # Xdebug Configuration
 ARG PHP_XDEBUG_CLIENT_PORT=9003
 
@@ -405,46 +412,48 @@ USER ${APP_UID}:${APP_GID}
 # ============================================================================
 # Stage: MinIO Client Tools
 # ============================================================================
+# Upstream community binaries are no longer served from dl.min.io.
+# This stage installs the pgsty/mc fork and exposes it as `mc`, which is the
+# name entrypoint scripts and the ~/.mc config directory already use.
 FROM node-install AS minio-tools
 
 USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-RUN set -eux; \
-    echo "Installing MinIO Client..."; \
-    # Test network connectivity first \
-    curl -fsSL --connect-timeout 10 --max-time 30 https://dl.min.io/ > /dev/null && \
-    echo "MinIO download server is accessible"; \
-    # Detect architecture for MinIO Client \
+ARG MC_VERSION
+ARG MC_PACKAGE
+ARG MC_SHA256_AMD64
+ARG MC_SHA256_ARM64
+
+RUN --mount=type=cache,target=/tmp/downloads \
+    set -eux; \
+    echo "Installing MinIO client ${MC_VERSION}..."; \
     ARCH=$(uname -m); \
     case "$ARCH" in \
-        x86_64) GO_ARCH="linux-amd64" ;; \
-        aarch64) GO_ARCH="linux-arm64" ;; \
-        armv7l) GO_ARCH="linux-arm" ;; \
+        x86_64) \
+            MC_ARCH="amd64"; \
+            MC_SHA256="${MC_SHA256_AMD64}"; \
+            ;; \
+        aarch64) \
+            MC_ARCH="arm64"; \
+            MC_SHA256="${MC_SHA256_ARM64}"; \
+            ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac; \
-    MC_ARCH="$GO_ARCH" && \
-    echo "Detected architecture: $ARCH, using MinIO Client variant: ${MC_ARCH}"; \
-    # Download MinIO Client with retry logic \
-    for attempt in 1 2 3; do \
-        echo "Download attempt ${attempt}/3..."; \
-        if curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 \
-            "https://dl.min.io/client/mc/release/${MC_ARCH}/mc" \
-            -o /usr/local/bin/mc; then \
-            echo "MinIO Client binary downloaded successfully"; \
-            break; \
-        else \
-            echo "Download attempt ${attempt} failed"; \
-            [ ${attempt} -eq 3 ] && exit 1; \
-            sleep 5; \
-        fi; \
-    done; \
-    # Set executable permissions immediately after download \
-    chmod +x /usr/local/bin/mc && \
-    echo "MinIO Client permissions set successfully"; \
-    # Test installation \
-    /usr/local/bin/mc --version && \
-    echo "MinIO Client installed and tested successfully";
+    MC_ARCHIVE="mcli_${MC_PACKAGE}_linux_${MC_ARCH}.tar.gz"; \
+    echo "Detected architecture: $ARCH, using archive: ${MC_ARCHIVE}"; \
+    if ! echo "${MC_SHA256}  /tmp/downloads/${MC_ARCHIVE}" | sha256sum -c -; then \
+        echo "Downloading ${MC_ARCHIVE}..."; \
+        curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 5 \
+            -o "/tmp/downloads/${MC_ARCHIVE}" \
+            "https://github.com/pgsty/mc/releases/download/${MC_VERSION}/${MC_ARCHIVE}"; \
+        echo "${MC_SHA256}  /tmp/downloads/${MC_ARCHIVE}" | sha256sum -c -; \
+    fi; \
+    tar -xzf "/tmp/downloads/${MC_ARCHIVE}" -C /tmp/downloads mcli; \
+    install -m 0755 /tmp/downloads/mcli /usr/local/bin/mc; \
+    rm -f /tmp/downloads/mcli; \
+    mc --version; \
+    echo "MinIO client installed and tested successfully";
 
 USER ${APP_UID}:${APP_GID}
 

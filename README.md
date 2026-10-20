@@ -148,7 +148,12 @@ DEPENDENCY_PHP_EXTENSIONS="gd,imagick,redis,xdebug,opcache"
 
 # PostgreSQL major (13 and 18 both work). Recreate postgres_data when changing it.
 POSTGRES_VERSION=17
+
+# Object storage image. Leave unset to use the release pinned in docker-compose.yml.
+# SILO_VERSION=RELEASE.2026-10-18T00-00-00Z
 ```
+
+The MinIO service runs [Silo](https://github.com/pgsty/silo), a maintained build of the archived MinIO server. `docker-compose.yml` uses `RELEASE.2026-10-18T00-00-00Z` when `SILO_VERSION` is unset, so an existing `.env` does not need editing. A leftover `MINIO_VERSION` line is not read. Set `SILO_VERSION` only to pick another tag. The workspace image installs the matching `mc` client; that version is `MC_VERSION` in `workspace/Dockerfile`. Keep the two versions on the same release. Existing bucket data in `minio_data` stays readable. Do not remove that volume when recreating the container.
 
 ### Git configuration (host)
 
