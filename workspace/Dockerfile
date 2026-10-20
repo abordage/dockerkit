@@ -20,7 +20,7 @@ ARG POSTGRES_VERSION=17
 ARG CURL_VERSION=curl-8_16_0
 
 # MinIO client fork (mcli), installed as mc.
-# Keep MC_VERSION aligned with MINIO_VERSION in .env.example.
+# Keep MC_VERSION aligned with the SILO_VERSION default in docker-compose.yml.
 ARG MC_VERSION=RELEASE.2026-10-18T00-00-00Z
 ARG MC_PACKAGE=20261018000000.0.0
 ARG MC_SHA256_AMD64=b5392a642dbc9685b517ee901f032d1d5e88f41704436f0f08dde6060b577db3

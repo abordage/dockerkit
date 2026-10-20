@@ -357,7 +357,7 @@ services:
 
   ### Minio ################################################
   minio:
-    image: pgsty/silo:${MINIO_VERSION}
+    image: pgsty/silo:${SILO_VERSION:-RELEASE.2026-10-18T00-00-00Z}
     restart: unless-stopped
     command: server --console-address ":9001" /data
     ports:
