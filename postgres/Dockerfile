@@ -10,8 +10,3 @@ FROM postgres:${POSTGRES_VERSION}
 # so a parent-directory mount does not persist. Pin the 18+ layout for every major
 # so compose can always mount postgres_data at /var/lib/postgresql.
 ENV PGDATA=/var/lib/postgresql/${PG_MAJOR}/docker
-
-# Debian 13 creates /var/log/postgresql as root:root 0755 and does not
-# apply the postgresql-common tmpfiles ownership without systemd.
-# logging_collector runs as postgres and must create postgresql.log.
-RUN install --directory --owner postgres --group postgres --mode 2775 /var/log/postgresql
