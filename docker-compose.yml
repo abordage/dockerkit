@@ -390,7 +390,7 @@ services:
     volumes:
       - mailpit_data:/data
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8025 || exit 1" ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8025" ]
       interval: ${HEALTH_CHECK_INTERVAL}
       timeout: ${HEALTH_CHECK_TIMEOUT}
       retries: ${HEALTH_CHECK_RETRIES}
