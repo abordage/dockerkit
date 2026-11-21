@@ -1,3 +1,10 @@
+## [2.19.3](https://github.com/abordage/dockerkit/compare/v2.19.2...v2.19.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **postgres:** send server logs to stderr ([7a80458](https://github.com/abordage/dockerkit/commit/7a8045822be7b2f4d1aa001666af282adb80b908))
+
 ## [2.19.2](https://github.com/abordage/dockerkit/compare/v2.19.1...v2.19.2) (2026-11-21)
 
 
