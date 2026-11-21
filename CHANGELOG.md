@@ -1,3 +1,11 @@
+## [2.19.2](https://github.com/abordage/dockerkit/compare/v2.19.1...v2.19.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **docker:** probe mailpit health with wget ([73003ce](https://github.com/abordage/dockerkit/commit/73003ce3e48f8c849c4352228df5bd847caee550))
+* **postgres:** make the log directory writable by postgres ([6582dff](https://github.com/abordage/dockerkit/commit/6582dff5b10a3a458874507c3a0475ca80806193))
+
 ## [2.19.1](https://github.com/abordage/dockerkit/compare/v2.19.0...v2.19.1) (2026-10-20)
 
 
